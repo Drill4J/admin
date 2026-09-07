@@ -27,7 +27,8 @@ import com.epam.drill.admin.config.SchedulerConfig
 import com.epam.drill.admin.config.monitoringDIModule
 import com.epam.drill.admin.config.schedulerDIModule
 import com.epam.drill.admin.metrics.config.etlDIModule
-import com.epam.drill.admin.etl.route.etlManagementRoutes
+import com.epam.drill.admin.etl.route.etlManagementReadRoutes
+import com.epam.drill.admin.etl.route.etlManagementWriteRoutes
 import com.epam.drill.admin.metrics.config.*
 import com.epam.drill.admin.route.rootRoute
 import com.epam.drill.admin.route.uiConfigRoute
@@ -125,26 +126,38 @@ fun Application.module() {
             //Admin
             authenticate("jwt", "api-key") {
                 tryApiKeyRoute()
+                withRole(Role.USER, Role.ADMIN) {
+                    settingsReadRoutes()
+                }
                 withRole(Role.ADMIN) {
                     userManagementRoutes()
                     apiKeyManagementRoutes()
-                    settingsRoutes()
+                    settingsWriteRoutes()
                 }
             }
 
             //Data Management
             authenticate("jwt", "api-key") {
+                withRole(Role.USER, Role.ADMIN) {
+                    dataManagementReadRoutes()
+                }
                 withRole(Role.ADMIN) {
                     dataManagementRoutes()
+                    dataManagementWriteRoutes()
                 }
             }
 
             //Metrics
             authenticate("jwt", "api-key") {
                 metricsRoutes()
+                withRole(Role.USER, Role.ADMIN) {
+                    route("/metrics") {
+                        etlManagementReadRoutes()
+                    }
+                }
                 withRole(Role.ADMIN) {
                     route("/metrics") {
-                        etlManagementRoutes()
+                        etlManagementWriteRoutes()
                     }
                 }
             }

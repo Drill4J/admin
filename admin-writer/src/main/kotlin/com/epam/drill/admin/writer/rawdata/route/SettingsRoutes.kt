@@ -34,7 +34,17 @@ class GroupSettingsRoute {
 }
 
 fun Route.settingsRoutes() {
+    settingsReadRoutes()
+    settingsWriteRoutes()
+}
+
+/** Read group settings (USER + ADMIN). */
+fun Route.settingsReadRoutes() {
     getGroupSettings()
+}
+
+/** Save or clear group settings (ADMIN). */
+fun Route.settingsWriteRoutes() {
     putGroupSettings()
     deleteGroupSettings()
 }

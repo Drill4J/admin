@@ -24,6 +24,7 @@ open class MethodCriteria(
     val methodName: String? = null,
     val methodParams: String? = null,
     val returnType: String? = null,
+    val methodSignature: String? = null,
     val excludeMethodSignatures: List<String> = emptyList()
 ) {
     object NONE : MethodCriteria()
@@ -32,10 +33,11 @@ open class MethodCriteria(
         get() = packageName?.let { "$it%" }
 
     open val signaturePattern: String?
-        get() = listOf(
-            className?.takeIf { it.isNotEmpty() } ?: "%",
-            methodName?.takeIf { it.isNotEmpty() } ?: "%",
-            methodParams?.takeIf { it.isNotEmpty() } ?: "%",
-            returnType?.takeIf { it.isNotEmpty() } ?: "%"
-        ).joinToString(":").takeIf { it != "%:%:%:%" }
+        get() = methodSignature?.takeIf { it.isNotEmpty() }
+            ?: listOf(
+                className?.takeIf { it.isNotEmpty() } ?: "%",
+                methodName?.takeIf { it.isNotEmpty() } ?: "%",
+                methodParams?.takeIf { it.isNotEmpty() } ?: "%",
+                returnType?.takeIf { it.isNotEmpty() } ?: "%"
+            ).joinToString(":").takeIf { it != "%:%:%:%" }
 }

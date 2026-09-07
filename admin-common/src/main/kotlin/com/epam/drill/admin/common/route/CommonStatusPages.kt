@@ -17,6 +17,10 @@ package com.epam.drill.admin.common.route
 
 import com.epam.drill.admin.common.exception.BuildNotFound
 import com.epam.drill.admin.common.exception.InvalidParameters
+import com.epam.drill.admin.common.exception.ResourceNotFoundException
+import com.epam.drill.admin.common.model.MessageResponse
+import io.ktor.http.HttpStatusCode
+import io.ktor.server.response.respond
 import io.ktor.server.plugins.statuspages.*
 import kotlinx.serialization.MissingFieldException
 import mu.KotlinLogging
@@ -35,6 +39,11 @@ fun StatusPagesConfig.commonStatusPages() {
     exception<BuildNotFound> { call, exception ->
         logger.trace(exception) { "422 Build not found" }
         call.unprocessableEntity(exception, "Build not found")
+    }
+    exception<ResourceNotFoundException> { call, exception ->
+        val message = exception.message ?: "Resource not found"
+        logger.trace(exception) { "404 $message" }
+        call.respond(HttpStatusCode.NotFound, MessageResponse("404 $message"))
     }
     exception<MissingFieldException> { call, exception ->
         logger.trace(exception) { "400 MissingFieldException ${exception.message}" }

@@ -53,9 +53,19 @@ class LastProcessedTimestamp(
 )
 
 fun Route.etlManagementRoutes() {
-    postRefreshMetrics()
+    etlManagementReadRoutes()
+    etlManagementWriteRoutes()
+}
+
+/** Read refresh status and freshness (USER + ADMIN). */
+fun Route.etlManagementReadRoutes() {
     getRefreshStatus()
     getLastProcessedTimestamp()
+}
+
+/** Trigger refresh / list or cancel jobs (ADMIN). */
+fun Route.etlManagementWriteRoutes() {
+    postRefreshMetrics()
     getActiveJobs()
     cancelJobs()
 }

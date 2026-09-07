@@ -51,4 +51,20 @@ class SqlBuilderImplTest {
         assertEquals("", builder.sqlQuery.toString())
         assertEquals(emptyList(), builder.params)
     }
+
+    @Test
+    fun `appendOptional should apply transform to each vararg and not treat trailing lambda as a param`() {
+        val builder = SqlBuilderImpl()
+        builder.appendOptional(
+            "AND (a ILIKE ? OR b ILIKE ? OR c ILIKE ?)",
+            "foo",
+            "foo",
+            "foo",
+        ) { "%$it%" }
+        assertEquals(
+            "AND (a ILIKE ? OR b ILIKE ? OR c ILIKE ?)",
+            builder.sqlQuery.toString(),
+        )
+        assertEquals(listOf("%foo%", "%foo%", "%foo%"), builder.params.toList())
+    }
 }

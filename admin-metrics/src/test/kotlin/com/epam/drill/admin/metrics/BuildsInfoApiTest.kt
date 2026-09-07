@@ -103,7 +103,7 @@ class BuildsInfoApiTest : MetricsDatabaseTests({ default, metrics ->
         client.get("/metrics/builds") {
             parameter("groupId", testGroup)
             parameter("appId", testApp)
-            parameter("branch", testBranch)
+            parameter("branches", testBranch)
         }.apply {
             assertEquals(HttpStatusCode.OK, status)
             val json = JsonPath.parse(bodyAsText())
@@ -126,7 +126,7 @@ class BuildsInfoApiTest : MetricsDatabaseTests({ default, metrics ->
         client.get("/metrics/builds") {
             parameter("groupId", testGroup)
             parameter("appId", testApp)
-            parameter("envId", testEnv)
+            parameter("envIds", testEnv)
         }.apply {
             assertEquals(HttpStatusCode.OK, status)
             val json = JsonPath.parse(bodyAsText())
@@ -171,6 +171,22 @@ class BuildsInfoApiTest : MetricsDatabaseTests({ default, metrics ->
                 assertEquals(1, data.size)
                 val total = json.read<Int>("$.paging.total")
                 assertEquals(3, total)
+            }
+        }
+
+    @Test
+    fun `given groupId and appId, get app branches should return distinct branches for the app`() =
+        havingData {
+            initTestData()
+        }.expectThat {
+            client.get("/metrics/apps/branches") {
+                parameter("groupId", testGroup)
+                parameter("appId", testApp)
+            }.apply {
+                assertEquals(HttpStatusCode.OK, status)
+                val json = JsonPath.parse(bodyAsText())
+                val data = json.read<List<String>>("$.data")
+                assertEquals(listOf("develop", testBranch), data)
             }
         }
 
@@ -228,6 +244,23 @@ class BuildsInfoApiTest : MetricsDatabaseTests({ default, metrics ->
                 assertEquals("1.0.0", data[0]["buildVersion"])
                 assertEquals("2.0.0", data[1]["buildVersion"])
                 assertEquals("3.0.0", data[2]["buildVersion"])
+            }
+        }
+
+    @Test
+    fun `given groupId and appId, get app env ids should return distinct env ids for the app`() =
+        havingData {
+            initTestData()
+            initEnvironmentData()
+        }.expectThat {
+            client.get("/metrics/apps/env-ids") {
+                parameter("groupId", testGroup)
+                parameter("appId", testApp)
+            }.apply {
+                assertEquals(HttpStatusCode.OK, status)
+                val json = JsonPath.parse(bodyAsText())
+                val data = json.read<List<String>>("$.data")
+                assertEquals(listOf(testEnv, "env-2"), data)
             }
         }
 

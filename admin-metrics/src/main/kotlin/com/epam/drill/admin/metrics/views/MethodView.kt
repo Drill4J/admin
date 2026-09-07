@@ -19,6 +19,7 @@ import kotlinx.serialization.Serializable
 
 @Serializable
 open class MethodView (
+    val methodId: String? = null,
     val signature: String,
     val className: String,
     val name: String,
@@ -30,5 +31,7 @@ open class MethodView (
     val coveredProbesInOtherBuilds: Int? = null,
     val coverageRatio: Double? = null,
     val coverageRatioInOtherBuilds: Double? = null,
+    val missedProbes: Int? = null,
+    val missedProbesInOtherBuilds: Int? = null,
     val impactedTests: Int? = null,
 )
