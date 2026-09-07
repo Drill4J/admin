@@ -30,6 +30,7 @@ ON CONFLICT (
     build_id,
     method_id,
     test_session_id,
+    created_at_day,
     COALESCE(app_env_id,''),
     COALESCE(test_result,''),
     COALESCE(test_tag,'')

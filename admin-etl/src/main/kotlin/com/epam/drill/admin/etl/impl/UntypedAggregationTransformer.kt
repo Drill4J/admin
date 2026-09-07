@@ -23,6 +23,7 @@ import com.epam.drill.admin.etl.config.EtlMeter
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import mu.KotlinLogging
+import java.time.Instant
 import java.util.concurrent.atomic.AtomicInteger
 import kotlin.time.Duration.Companion.seconds
 
@@ -38,12 +39,14 @@ class UntypedAggregationTransformer(
 
     override suspend fun transform(
         context: EtlContext,
-        collector: Flow<UntypedRow>
+        sinceTimestamp: Instant,
+        untilTimestamp: Instant,
+        collector: Flow<UntypedRow>,
+        onTransformationProgress: suspend (Instant) -> Unit
     ): Flow<UntypedRow> = flow {
-        val groupId = context.groupId
         var isTransformationStarted = false
         val transformedRows = AtomicInteger()
-        val aggregatedRows = metrics.rowsAggregated(name, context)
+        val aggregatedRows = metrics.rowsAggregated(name, context, sinceTimestamp)
         val bufferOccupancy = metrics.aggregationBufferOccupancyRatio(name, context)
         val buffer = LruMap<List<Any?>, UntypedRow>(maxSize = bufferSize)
 
@@ -51,7 +54,7 @@ class UntypedAggregationTransformer(
             try {
                 collector.collect { row ->
                     if (!isTransformationStarted) {
-                        logger.debug { "ETL transformer [$name] for group [$groupId] started transformation..." }
+                        logger.debug { "ETL transformer [$name] started transformation..." }
                         isTransformationStarted = true
                     }
 
@@ -77,20 +80,20 @@ class UntypedAggregationTransformer(
                     emit(evicted)
                 }
             } catch (e: Exception) {
-                logger.error(e) { "ETL transformer [$name] for group [$groupId] failed during transformation: ${e.message}" }
+                logger.error(e) { "ETL transformer [$name] failed during transformation: ${e.message}" }
                 throw e
             }
         }.every(loggingFrequency.seconds) {
             if (isTransformationStarted)
                 logger.debug {
-                    "ETL transformer [$name] for group [$groupId] transformed ${transformedRows.get()} rows" +
+                    "ETL transformer [$name] transformed ${transformedRows.get()} rows" +
                             ", buffer occupancy: ${buffer.size}" +
                             ", buffer occupancy ratio: ${bufferOccupancy.get()}"
                 }
         }
         if (isTransformationStarted) {
             logger.debug {
-                "ETL transformer [$name] for group [$groupId] completed transformation for $transformedRows rows"
+                "ETL transformer [$name] completed transformation for ${transformedRows.get()} rows"
             }
         }
         bufferOccupancy.set(0.0)

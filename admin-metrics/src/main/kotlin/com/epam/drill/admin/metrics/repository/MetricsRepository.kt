@@ -591,6 +591,8 @@ interface MetricsRepository {
         coverageAppEnvIds: List<String> = emptyList(),
     ): Map<String, List<String>>
 
+    suspend fun getInstanceDateRange(groupId: String, appId: String, buildId: String): Pair<Instant, Instant>?
+
     suspend fun deleteAllBuildDataCreatedBefore(groupId: String, timestamp: Instant)
     suspend fun deleteAllTestDataCreatedBefore(groupId: String, timestamp: Instant)
     suspend fun deleteAllDailyDataCreatedBefore(groupId: String, timestamp: Instant)

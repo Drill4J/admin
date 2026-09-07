@@ -15,15 +15,18 @@
  */
 package com.epam.drill.admin.metrics.job
 
+import com.epam.drill.admin.etl.service.EtlService
 import com.epam.drill.admin.metrics.repository.MetricsRepository
 import kotlinx.coroutines.runBlocking
 import org.quartz.DisallowConcurrentExecution
 import org.quartz.Job
 import org.quartz.JobExecutionContext
+import java.time.ZoneOffset
 
 @DisallowConcurrentExecution
 class DeleteMetricsDataJob(
     private val metricsRepository: MetricsRepository,
+    private val etlService: EtlService,
 ) : Job {
     override fun execute(context: JobExecutionContext) {
         val dataType = context.mergedJobDataMap.getString("dataType")
@@ -33,7 +36,13 @@ class DeleteMetricsDataJob(
                 "build" -> {
                     val appId = context.mergedJobDataMap.getString("appId")
                     val buildId = context.mergedJobDataMap.getString("buildId")
+                    val period = metricsRepository.getInstanceDateRange(groupId, appId, buildId)
                     metricsRepository.deleteAllBuildDataByBuildId(groupId, appId, buildId)
+                    period?.let { (startedAt, stoppedAt) ->
+                        val from = startedAt.atZone(ZoneOffset.UTC).toLocalDate()
+                        val to = stoppedAt.atZone(ZoneOffset.UTC).toLocalDate()
+                        etlService.rerunDateRange(groupId, from, to)
+                    }
                 }
                 "testSession" -> {
                     val testSessionId = context.mergedJobDataMap.getString("testSessionId")

@@ -15,7 +15,16 @@
  */
 package com.epam.drill.admin.etl
 
-enum class EtlRunStatus {
-    RUNNING,
-    IDLE;
-}
+import java.time.Instant
+
+/**
+ * A result (status) of a single ETL job run.
+ */
+data class EtlJobResult(
+    val job: EtlJob,
+    val status: EtlJobStatus,
+    val processedUntilTimestamp: Instant? = null,
+    val errorMessage: String? = null,
+    val workerId : String? = null,
+    val lockExpiresAt: Instant? = null,
+)

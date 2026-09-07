@@ -81,8 +81,20 @@ class EtlConfig(private val config: ApplicationConfig, val metrics: EtlMeter) {
         get() = config.propertyOrNull("lockLeaseSeconds")?.getString()?.toLongOrNull() ?: 180L
 
     /**
-     * Polling interval (in seconds) used by the orchestrator while waiting for a busy lock to free.
+     * Interval (in seconds) at which the ETL process refreshes its run-lock lease.
      */
-    val lockPollDelaySeconds : Long
-        get() = config.propertyOrNull("lockPollDelaySeconds")?.getString()?.toLongOrNull() ?: 5L
+    val lockRetryDelay: Long
+        get() = config.propertyOrNull("lockRetryDelaySeconds")?.getString()?.toLongOrNull() ?: 30L
+
+    /**
+     * Number of attempts to acquire the run-lock before giving up.
+     */
+    val lockAttempts: Int
+        get() = config.propertyOrNull("lockAttempts")?.getString()?.toIntOrNull() ?: 6
+
+    /**
+     * Upper bound on the number of ETL workers (jobs) that may be running concurrently.
+     */
+    val maxWorkers : Int
+        get() = config.propertyOrNull("maxWorkers")?.getString()?.toIntOrNull() ?: 4
 }

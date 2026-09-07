@@ -35,6 +35,17 @@ val EtlConfig.buildMethodsExtractor
         metrics = metrics,
     )
 
+val EtlConfig.methodsExtractor
+    get() = UntypedSqlDataExtractor(
+        name = "methods",
+        sqlQuery = fromResource("/metrics/db/etl/methods_extractor.sql"),
+        database = RawDataWriterDatabaseConfig.database,
+        fetchSize = fetchSize,
+        extractionLimit = extractionLimit,
+        lastExtractedAtColumnName = "created_at",
+        metrics = metrics,
+    )
+
 val EtlConfig.buildMethodsLoader
     get() = UntypedSqlDataLoader(
         name = "build_methods",
@@ -62,8 +73,5 @@ val EtlConfig.buildMethodsPipeline
 
 val EtlConfig.methodsPipeline
     get() = pipeline("methods")
-        .extractWith(buildMethodsExtractor)
-        .aggregateBy("group_id", "app_id", "method_id") { _, next ->
-            UntypedRow(next.timestamp, next)
-        }
+        .extractWith(methodsExtractor)
         .loadWith(methodsLoader)

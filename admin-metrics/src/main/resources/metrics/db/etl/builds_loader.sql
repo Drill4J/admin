@@ -13,7 +13,9 @@ INSERT INTO metrics.builds (
     created_at,
     updated_at,
     created_at_day,
-    updated_at_day
+    updated_at_day,
+    first_instance_created_at,
+    last_instance_heartbeat_at
 )
 VALUES (
     :group_id,
@@ -30,7 +32,9 @@ VALUES (
     :created_at,
     :updated_at,
     :created_at_day,
-    :updated_at_day
+    :updated_at_day,
+    :first_instance_created_at,
+    :last_instance_heartbeat_at
 )
 ON CONFLICT (
     group_id,
@@ -47,4 +51,6 @@ SET
     commit_message = EXCLUDED.commit_message,
     committed_at = EXCLUDED.committed_at,
     updated_at = EXCLUDED.updated_at,
-    updated_at_day = EXCLUDED.updated_at_day
+    updated_at_day = EXCLUDED.updated_at_day,
+    first_instance_created_at = EXCLUDED.first_instance_created_at,
+    last_instance_heartbeat_at = EXCLUDED.last_instance_heartbeat_at

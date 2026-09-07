@@ -31,6 +31,7 @@ ON CONFLICT (
     method_id,
     test_session_id,
     test_definition_id,
+    created_at_day,
     COALESCE(app_env_id,''),
     COALESCE(test_result,'')
 )

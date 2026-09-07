@@ -19,6 +19,8 @@ import com.epam.drill.admin.etl.table.EtlMetadataTable
 import com.epam.drill.admin.etl.EtlMetadata
 import com.epam.drill.admin.etl.EtlMetadataRepository
 import com.epam.drill.admin.etl.EtlContext
+import com.epam.drill.admin.etl.EtlPeriod
+import com.epam.drill.admin.etl.EtlRunTarget
 import com.epam.drill.admin.etl.EtlStatus
 import org.jetbrains.exposed.sql.Database
 import org.jetbrains.exposed.sql.Op
@@ -29,6 +31,8 @@ import org.jetbrains.exposed.sql.and
 import org.jetbrains.exposed.sql.andWhere
 import org.jetbrains.exposed.sql.deleteWhere
 import org.jetbrains.exposed.sql.javatime.CurrentDateTime
+import org.jetbrains.exposed.sql.javatime.CurrentTimestamp
+import org.jetbrains.exposed.sql.or
 import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.transactions.experimental.newSuspendedTransaction
 import org.jetbrains.exposed.sql.update
@@ -42,20 +46,21 @@ class EtlMetadataRepositoryImpl(
 ) : EtlMetadataRepository {
     private val metadataTable: EtlMetadataTable = EtlMetadataTable("$dbSchema.$metadataTableName")
 
-    override suspend fun getAllMetadata(context: EtlContext): List<EtlMetadata> {
+    override suspend fun getAllMetadata(context: EtlContext, period: EtlPeriod): List<EtlMetadata> {
         return newSuspendedTransaction(db = database) {
             metadataTable.selectAll()
-                .andWhere { metadataTableHas(context) }
+                .andWhere { metadataTableHas(context, period) }
                 .map(::mapMetadata)
         }
     }
 
     override suspend fun getMetadata(
         context: EtlContext,
-        pipelineName: String
+        pipelineName: String,
+        period: EtlPeriod
     ): EtlMetadata? = newSuspendedTransaction(db = database) {
         metadataTable.selectAll()
-            .andWhere { metadataTableHas(context) }
+            .andWhere { metadataTableHas(context, period) }
             .andWhere { metadataTable.pipelineName eq pipelineName }
             .map(::mapMetadata)
             .singleOrNull()
@@ -77,7 +82,7 @@ class EtlMetadataRepositoryImpl(
 
             it[status] = metadata.status.name
             it[lastProcessedAt] = metadata.lastProcessedAt
-            it[lastRunAt] = metadata.lastRunAt
+            it[lastRunAt] = CurrentTimestamp
             it[lastLoadDuration] = metadata.lastLoadDuration
             it[lastExtractDuration] = metadata.lastExtractDuration
             it[lastRowsProcessed] = metadata.lastRowsProcessed
@@ -91,6 +96,9 @@ class EtlMetadataRepositoryImpl(
             it[testDefinitionId] = context.testDefinitionId ?: ""
             it[testLaunchId] = context.testLaunchId ?: ""
 
+            it[periodFrom] = metadata.period.storedFrom
+            it[periodTo] = metadata.period.storedTo
+
             it[updatedAt] = CurrentDateTime
         }
     }
@@ -98,6 +106,7 @@ class EtlMetadataRepositoryImpl(
     override suspend fun accumulateMetadataByLoader(
         context: EtlContext,
         pipelineName: String,
+        period: EtlPeriod,
         lastProcessedAt: Instant?,
         status: EtlStatus?,
         loadDuration: Long,
@@ -106,7 +115,7 @@ class EtlMetadataRepositoryImpl(
     ) {
         newSuspendedTransaction(db = database) {
             metadataTable.update(where = {
-                metadataTableHas(context) and (metadataTable.pipelineName eq pipelineName)
+                metadataTableHas(context, period) and (metadataTable.pipelineName eq pipelineName)
             }) {
                 if (errorMessage != null) {
                     it[metadataTable.errorMessage] = errorMessage
@@ -127,10 +136,10 @@ class EtlMetadataRepositoryImpl(
         }
     }
 
-    override suspend fun deleteMetadataByPipeline(context: EtlContext, pipelineName: String) {
+    override suspend fun deleteMetadataByPipeline(context: EtlContext, pipelineName: String, period: EtlPeriod) {
         newSuspendedTransaction(db = database) {
             metadataTable.deleteWhere {
-                metadataTableHas(context) and (metadataTable.pipelineName eq pipelineName)
+                metadataTableHas(context, period) and (metadataTable.pipelineName eq pipelineName)
             }
         }
     }
@@ -138,13 +147,14 @@ class EtlMetadataRepositoryImpl(
     override suspend fun accumulateMetadataByExtractor(
         context: EtlContext,
         pipelineName: String,
+        period: EtlPeriod,
         status: EtlStatus?,
         extractDuration: Long,
         errorMessage: String?
     ) {
         newSuspendedTransaction(db = database) {
             metadataTable.update(where = {
-                metadataTableHas(context) and
+                metadataTableHas(context, period) and
                         (metadataTable.pipelineName eq pipelineName) and
                         (status?.let { metadataTable.status neq EtlStatus.FAILED.name } ?: Op.TRUE)
             }) {
@@ -162,26 +172,58 @@ class EtlMetadataRepositoryImpl(
         }
     }
 
+    override suspend fun getUnfinishedTargets(pipelineNames: Collection<String>): List<EtlRunTarget> {
+        if (pipelineNames.isEmpty()) return emptyList()
+        val unfinishedStatuses = listOf(EtlStatus.EXTRACTING.name, EtlStatus.LOADING.name, EtlStatus.FAILED.name)
+        return newSuspendedTransaction(db = database) {
+            metadataTable.selectAll()
+                .andWhere { metadataTable.pipelineName inList pipelineNames }
+                .andWhere { metadataTable.status inList unfinishedStatuses }
+                // bounded periods only: the incremental (sentinel) lane is handled by run()
+                .andWhere {
+                    (metadataTable.periodFrom neq EtlPeriod.SENTINEL_FROM) or
+                            (metadataTable.periodTo neq EtlPeriod.SENTINEL_TO)
+                }
+                .map(::mapRunTarget)
+                .distinct()
+        }
+    }
+
     private fun mapMetadata(row: ResultRow): EtlMetadata = EtlMetadata(
         pipelineName = row[metadataTable.pipelineName],
         extractorName = row[metadataTable.extractorName],
         loaderName = row[metadataTable.loaderName],
         lastProcessedAt = row[metadataTable.lastProcessedAt],
-        lastRunAt = row[metadataTable.lastRunAt],
         lastLoadDuration = row[metadataTable.lastLoadDuration],
         lastExtractDuration = row[metadataTable.lastExtractDuration],
         lastRowsProcessed = row[metadataTable.lastRowsProcessed],
         status = EtlStatus.valueOf(row[metadataTable.status]),
         errorMessage = row[metadataTable.errorMessage],
+        period = EtlPeriod.fromStored(row[metadataTable.periodFrom], row[metadataTable.periodTo]),
     )
-    
-    private fun metadataTableHas(context: EtlContext): Op<Boolean> {
+
+    private fun mapRunTarget(row: ResultRow): EtlRunTarget = EtlRunTarget(
+        context = EtlContext(
+            groupId = row[metadataTable.groupId],
+            appId = row[metadataTable.appId].ifEmpty { null },
+            buildId = row[metadataTable.buildId].ifEmpty { null },
+            instanceId = row[metadataTable.instanceId].ifEmpty { null },
+            testSessionId = row[metadataTable.testSessionId].ifEmpty { null },
+            testDefinitionId = row[metadataTable.testDefinitionId].ifEmpty { null },
+            testLaunchId = row[metadataTable.testLaunchId].ifEmpty { null },
+        ),
+        period = EtlPeriod.fromStored(row[metadataTable.periodFrom], row[metadataTable.periodTo]),
+    )
+
+    private fun metadataTableHas(context: EtlContext, period: EtlPeriod): Op<Boolean> {
         return (metadataTable.groupId eq context.groupId) and
                 (metadataTable.appId eq (context.appId ?: "")) and
                 (metadataTable.buildId eq (context.buildId ?: "")) and
                 (metadataTable.instanceId eq (context.instanceId ?: "")) and
                 (metadataTable.testSessionId eq (context.testSessionId ?: "")) and
                 (metadataTable.testDefinitionId eq (context.testDefinitionId ?: "")) and
-                (metadataTable.testLaunchId eq (context.testLaunchId ?: ""))
+                (metadataTable.testLaunchId eq (context.testLaunchId ?: "")) and
+                (metadataTable.periodFrom eq period.storedFrom) and
+                (metadataTable.periodTo eq period.storedTo)
     }
 }

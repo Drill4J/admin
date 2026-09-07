@@ -18,43 +18,30 @@ package com.epam.drill.admin.etl
 import java.time.Instant
 
 /**
- * EtlOrchestrator is responsible for:
- * - Coordinating the lifecycle of multiple pipelines.
- * - Storing and retrieving ETL metadata.
- * - Providing high-level monitoring and error handling.
+ * Orchestrates the ETL process by coordinating the pipelines.
  */
 interface EtlOrchestrator {
     val name: String
     val pipelines: List<EtlPipeline<*, *>>
 
     /**
-     * Runs all pipelines in the orchestrator for the given context and time range.
-     * @param context The ETL context containing identifiers for the data to process.
-     * @param initTimestamp The start of the time range for processing (inclusive).
-     * @param finalTimestamp The end of the time range for processing (exclusive). If null, calculated on the implementation side.
-     * @return A list of EtlProcessingResult
+     * Runs all pipelines for its `(context, period)` up to [snapshotTimestamp].
      */
     suspend fun run(
-        context: EtlContext,
-        initTimestamp: Instant = Instant.EPOCH,
-        finalTimestamp: Instant? = null,
-        skipIfLocked: Boolean = false,
-    ): List<EtlProcessingResult>
+        job: EtlJob,
+        workerId: String,
+        snapshotTimestamp: Instant? = null,
+    ): EtlJobResult
 
     /**
-     * Reruns all pipelines in the orchestrator for the given context and time range, with an option to delete existing data.
-     * @param context The ETL context containing identifiers for the data to process.
-     * @param initTimestamp The start of the time range for processing (inclusive).
-     * @param finalTimestamp The end of the time range for processing (exclusive). If null, calculated on the implementation side.
-     * @param withDataDeletion If true, existing data in the target storage for the specified time range will be deleted before reprocessing.
-     * @return A list of EtlProcessingResult
+     * Clears its pipelines' `etl_metadata` watermarks (and, when [withDataDeletion],
+     * deletes previously loaded data via [EtlPipeline.cleanUp]) scoped to the job's period, then
+     * runs the job from scratch (see [run]).
      */
     suspend fun rerun(
-        context: EtlContext,
-        initTimestamp: Instant = Instant.EPOCH,
-        finalTimestamp: Instant? = null,
+        job: EtlJob,
+        workerId: String,
         withDataDeletion: Boolean = false,
-        skipIfLocked: Boolean = false,
-    ): List<EtlProcessingResult>
+    ): EtlJobResult
 }
 

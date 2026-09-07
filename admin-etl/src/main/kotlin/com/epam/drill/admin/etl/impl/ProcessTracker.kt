@@ -15,26 +15,28 @@
  */
 package com.epam.drill.admin.etl.impl
 
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlin.time.Duration
 
-class ProgressTracker(val job: suspend () -> Unit) {
-    suspend fun every(duration: Duration, track: suspend () -> Unit) = coroutineScope {
+class ProgressTracker<T>(val job: suspend () -> T) {
+    suspend fun every(duration: Duration, track: suspend CoroutineScope.() -> Unit): T = coroutineScope {
         val trackingJob = launch {
             while (isActive) {
                 delay(duration.inWholeMilliseconds)
-                track()
+                this@coroutineScope.track()
             }
         }
         try {
-            job()
+            return@coroutineScope job()
         } finally {
-            trackingJob.cancel()
+            trackingJob.cancelAndJoin()
         }
     }
 }
 
-fun trackProgressOf(job: suspend () -> Unit) = ProgressTracker(job)
+fun <T> trackProgressOf(job: suspend () -> T) = ProgressTracker(job)
