@@ -23,6 +23,7 @@ import java.time.LocalDate
 class EtlJobView(
     val workerId: String?,
     val processedUntilTimestamp: String?,
+    val etlName: String,
     val groupId: String,
     val fromDay: String?,
     val toDay: String?,

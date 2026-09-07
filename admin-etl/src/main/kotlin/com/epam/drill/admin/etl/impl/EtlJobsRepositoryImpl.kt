@@ -286,17 +286,19 @@ class EtlJobsRepositoryImpl(
                 EtlJobStatus.RUNNING -> EtlDailyStatus.SCHEDULED
                 EtlJobStatus.IDLE -> EtlDailyStatus.SCHEDULED
                 EtlJobStatus.CANCELLING -> EtlDailyStatus.SCHEDULED
-                EtlJobStatus.ERROR, EtlJobStatus.CANCELLED -> EtlDailyStatus.FAILED
+                EtlJobStatus.ERROR -> EtlDailyStatus.FAILED
                 EtlJobStatus.COMPLETED -> EtlDailyStatus.UNLOADED
+                EtlJobStatus.CANCELLED -> EtlDailyStatus.UNLOADED
             }
         }
         //job is processing data for the day
         return when (coveredJob.status) {
             EtlJobStatus.RUNNING -> EtlDailyStatus.RUNNING
-            EtlJobStatus.IDLE -> EtlDailyStatus.RUNNING
+            EtlJobStatus.IDLE -> EtlDailyStatus.COMPLETED
             EtlJobStatus.CANCELLING -> EtlDailyStatus.RUNNING
-            EtlJobStatus.ERROR, EtlJobStatus.CANCELLED -> EtlDailyStatus.FAILED
+            EtlJobStatus.ERROR -> EtlDailyStatus.FAILED
             EtlJobStatus.COMPLETED -> EtlDailyStatus.COMPLETED
+            EtlJobStatus.CANCELLED -> EtlDailyStatus.UNLOADED
         }
     }
 
