@@ -162,6 +162,7 @@ class EtlServiceImpl(
     }
 
     private fun EtlJobResult.toJobView(): EtlJobView = EtlJobView(
+        etlName = this.job.etlName,
         groupId = this.job.context.groupId,
         workerId = this.workerId,
         status = this.status,
