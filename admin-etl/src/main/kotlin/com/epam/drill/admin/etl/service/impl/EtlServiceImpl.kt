@@ -66,7 +66,8 @@ class EtlServiceImpl(
         groupId: String?,
         from: LocalDate?,
         to: LocalDate?,
-        workers: Int?
+        workers: Int?,
+        withDataDeletion: Boolean
     ): List<EtlJobView> {
         val today = LocalDate.now(UTC)
         val yesterday = today.minusDays(1)
@@ -76,27 +77,27 @@ class EtlServiceImpl(
         val resolvedTo = to?.takeIf { to.isBefore(today) } ?: yesterday
         val historyJobs = forEachContextWithPeriodFrom(groupId, from) { context, resolvedFrom ->
             val period = EtlPeriod(resolvedFrom, resolvedTo)
-            historicalLauncher.rerun(context, period, workers ?: maxWorkers, withDataDeletion = true)
+            historicalLauncher.rerun(context, period, workers ?: maxWorkers, withDataDeletion)
         }.map { it.toJobView() }
         val todayJobs = if (to == null || to.isEqual(today)) {
-            rerunToday(groupId)
+            rerunToday(groupId, withDataDeletion)
         } else {
             emptyList()
         }
         return (historyJobs + todayJobs)
     }
 
-    override suspend fun rerunAllData(groupId: String?, workers: Int?): List<EtlJobView> {
-        return rerunDateRange(groupId, null, null, workers)
+    override suspend fun rerunAllData(groupId: String?, workers: Int?, withDataDeletion: Boolean): List<EtlJobView> {
+        return rerunDateRange(groupId, null, null, workers, withDataDeletion)
     }
 
-    override suspend fun rerunToday(groupId: String?): List<EtlJobView> {
+    override suspend fun rerunToday(groupId: String?, withDataDeletion: Boolean): List<EtlJobView> {
         return forEachContext(groupId) { context ->
             todayLauncher.rerun(
                 context = context,
                 period = EtlPeriod.FROM_TODAY,
                 workers = maxWorkers,
-                withDataDeletion = true,
+                withDataDeletion = withDataDeletion,
             )
         }.map { it.toJobView() }
     }
