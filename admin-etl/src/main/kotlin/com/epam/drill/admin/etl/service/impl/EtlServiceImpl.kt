@@ -111,10 +111,16 @@ class EtlServiceImpl(
 
     override suspend fun getDailyStatuses(groupId: String, from: LocalDate?, to: LocalDate?): List<EtlDailyStatusRow> {
         val context = EtlContext(groupId)
+        val today = LocalDate.now(UTC)
         val resolvedFrom = from ?: resolveHistoryStart(settingsService.getGroupSettings(groupId))
-        val resolvedTo = to ?: LocalDate.now(UTC)
+        val resolvedTo = to ?: today
         val period = EtlPeriod(resolvedFrom, resolvedTo)
-        return historicalLauncher.getDailyStatuses(context, period)
+        val historicalStatuses = historicalLauncher.getDailyStatuses(context, period)
+        if (resolvedTo.isBefore(today)) {
+            return historicalStatuses
+        }
+        val todayStatus = todayLauncher.getDailyStatuses(context, EtlPeriod.TODAY)
+        return historicalStatuses + todayStatus
     }
 
     override suspend fun getLastProcessedTimestamp(groupId: String): Instant? {
