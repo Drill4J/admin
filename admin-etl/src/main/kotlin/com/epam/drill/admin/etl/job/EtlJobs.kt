@@ -22,8 +22,6 @@ import org.quartz.Job
 import org.quartz.JobExecutionContext
 import org.quartz.JobKey
 
-const val DEFAULT_ETL = "metrics"
-
 @DisallowConcurrentExecution
 class IncrementalRunEtlJob(
     private val etlService: EtlService,

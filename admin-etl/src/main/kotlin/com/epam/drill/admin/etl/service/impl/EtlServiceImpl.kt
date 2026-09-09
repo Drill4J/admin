@@ -31,7 +31,8 @@ import java.time.LocalDate
 import java.time.ZoneOffset.UTC
 
 class EtlServiceImpl(
-    private val defaultLauncher: EtlLauncher,
+    private val todayLauncher: EtlLauncher,
+    private val historicalLauncher: EtlLauncher,
     private val testDefinitionCoverageLauncher: EtlLauncher,
     private val settingsService: SettingsService,
     private val maxWorkers: Int,
@@ -43,19 +44,19 @@ class EtlServiceImpl(
 
     override suspend fun refresh(groupId: String?) {
         forEachContext(groupId) { context ->
-            defaultLauncher.resume(context, EtlPeriod.TODAY, skipIfRunning = true).takeIf { it.isNotEmpty() }
-                ?: defaultLauncher.schedule(context, EtlPeriod.FROM_TODAY, 1).map {
-                    defaultLauncher.run(it, skipIfRunning = true)
+            todayLauncher.resume(context, EtlPeriod.TODAY, skipIfRunning = true).takeIf { it.isNotEmpty() }
+                ?: todayLauncher.schedule(context, EtlPeriod.FROM_TODAY, 1).map {
+                    todayLauncher.run(it, skipIfRunning = true)
                 }
         }
     }
 
     override suspend fun forceRefresh(groupId: String?, snapshotTimestamp: Instant?): Instant {
         return forEachContext(groupId) { context ->
-            defaultLauncher.resume(context, EtlPeriod.TODAY, snapshotTimestamp, skipIfRunning = false)
+            todayLauncher.resume(context, EtlPeriod.TODAY, snapshotTimestamp, skipIfRunning = false)
                 .takeIf { it.isNotEmpty() }
-                ?: defaultLauncher.schedule(context, EtlPeriod.FROM_TODAY, 1).map {
-                    defaultLauncher.run(it, snapshotTimestamp, skipIfRunning = false)
+                ?: todayLauncher.schedule(context, EtlPeriod.FROM_TODAY, 1).map {
+                    todayLauncher.run(it, snapshotTimestamp, skipIfRunning = false)
                 }.takeIf { it.isNotEmpty() }
                 ?: throw IllegalStateException("Cannot force refresh ETL, because some job is already running for group ${context.groupId}.")
         }.minOf { it.processedUntilTimestamp ?: Instant.EPOCH }
@@ -65,40 +66,67 @@ class EtlServiceImpl(
         groupId: String?,
         from: LocalDate?,
         to: LocalDate?,
-        workers: Int?
+        workers: Int?,
+        withDataDeletion: Boolean
     ): List<EtlJobView> {
-        return forEachContextWithPeriodFrom(groupId, from) { context, resolvedFrom ->
-            val period = EtlPeriod(resolvedFrom, to)
-            defaultLauncher.rerun(context, period, workers ?: maxWorkers, withDataDeletion = true)
+        val today = LocalDate.now(UTC)
+        val yesterday = today.minusDays(1)
+        check(to?.isBefore(today.plusDays(1)) ?: true) {
+            "Cannot rerun ETL for future dates."
+        }
+        val resolvedTo = to?.takeIf { to.isBefore(today) } ?: yesterday
+        val historyJobs = forEachContextWithPeriodFrom(groupId, from) { context, resolvedFrom ->
+            val period = EtlPeriod(resolvedFrom, resolvedTo)
+            historicalLauncher.rerun(context, period, workers ?: maxWorkers, withDataDeletion)
+        }.map { it.toJobView() }
+        val todayJobs = if (to == null || to.isEqual(today)) {
+            rerunToday(groupId, withDataDeletion)
+        } else {
+            emptyList()
+        }
+        return (historyJobs + todayJobs)
+    }
+
+    override suspend fun rerunAllData(groupId: String?, workers: Int?, withDataDeletion: Boolean): List<EtlJobView> {
+        return rerunDateRange(groupId, null, null, workers, withDataDeletion)
+    }
+
+    override suspend fun rerunToday(groupId: String?, withDataDeletion: Boolean): List<EtlJobView> {
+        return forEachContext(groupId) { context ->
+            todayLauncher.rerun(
+                context = context,
+                period = EtlPeriod.FROM_TODAY,
+                workers = maxWorkers,
+                withDataDeletion = withDataDeletion,
+            )
         }.map { it.toJobView() }
     }
 
-    override suspend fun rerunAllData(groupId: String?, workers: Int?): List<EtlJobView> {
-        return rerunDateRange(groupId, null, null, workers)
-    }
-
-    override suspend fun rerunToday(groupId: String?): List<EtlJobView> {
-        val today = LocalDate.now(UTC)
-        return rerunDateRange(groupId, from = today, to = null, workers = null)
-    }
-
     override suspend fun runIdleJobs(groupId: String?): List<EtlJobView> {
+        val today = LocalDate.now(UTC)
+        val yesterday = today.minusDays(1)
         return forEachContextWithPeriodFrom(groupId) { context, from ->
-            defaultLauncher.resume(context, EtlPeriod(from, null))
+            historicalLauncher.resume(context, EtlPeriod(from, yesterday))
         }.map { it.toJobView() }
     }
 
     override suspend fun getDailyStatuses(groupId: String, from: LocalDate?, to: LocalDate?): List<EtlDailyStatusRow> {
         val context = EtlContext(groupId)
+        val today = LocalDate.now(UTC)
         val resolvedFrom = from ?: resolveHistoryStart(settingsService.getGroupSettings(groupId))
-        val resolvedTo = to ?: LocalDate.now(UTC)
+        val resolvedTo = to ?: today
         val period = EtlPeriod(resolvedFrom, resolvedTo)
-        return defaultLauncher.getDailyStatuses(context, period)
+        val historicalStatuses = historicalLauncher.getDailyStatuses(context, period)
+        if (resolvedTo.isBefore(today)) {
+            return historicalStatuses
+        }
+        val todayStatus = todayLauncher.getDailyStatuses(context, EtlPeriod.TODAY)
+        return historicalStatuses + todayStatus
     }
 
     override suspend fun getLastProcessedTimestamp(groupId: String): Instant? {
         val context = EtlContext(groupId)
-        return defaultLauncher.getLastProcessedTimestamp(context)
+        return todayLauncher.getLastProcessedTimestamp(context)
     }
 
     override suspend fun loadTestDefinitionCoverage(
@@ -121,7 +149,9 @@ class EtlServiceImpl(
     ): List<EtlJobView> {
         val period = EtlPeriod(from, to)
         val context = groupId?.let { EtlContext(groupId = it) }
-        return defaultLauncher.getActiveJobs(context, period).map { it.toJobView() }
+        val todayJobs = todayLauncher.getActiveJobs(context, period).map { it.toJobView() }
+        val historicalJobs = historicalLauncher.getActiveJobs(context, period).map { it.toJobView() }
+        return todayJobs + historicalJobs
     }
 
     override suspend fun cancelJobs(groupId: String?,
@@ -134,7 +164,7 @@ class EtlServiceImpl(
         return forEachContextWithPeriodFrom(groupId, from) { context, resolvedFrom ->
             val resolvedTo = to ?: today
             val period = EtlPeriod(resolvedFrom, resolvedTo)
-            defaultLauncher.cancel(context, period)
+            historicalLauncher.cancel(context, period)
         }.map { it.toJobView() }
     }
 

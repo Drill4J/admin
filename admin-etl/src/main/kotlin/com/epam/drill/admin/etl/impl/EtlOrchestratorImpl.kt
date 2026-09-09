@@ -81,15 +81,15 @@ open class EtlOrchestratorImpl(
     override suspend fun rerun(job: EtlJob, workerId: String, withDataDeletion: Boolean): EtlJobResult {
         val context = job.context
         val period = job.period
-        logger.info { "ETL job [$workerId] is deleting metadata for rerun $period..." }
+        logger.info { "ETL [$name] worker [$workerId] is deleting metadata for rerun $period..." }
         pipelines.map { it.name }.forEach { pipelineName ->
             metadataRepository.deleteMetadataByPipeline(context, pipelineName, period)
         }
-        logger.info { "ETL job [$workerId] deleted metadata for rerun $period." }
+        logger.info { "ETL [$name] worker [$workerId] deleted metadata for rerun $period." }
         if (withDataDeletion) {
-            logger.info { "ETL job [$workerId] is deleting data for rerun $period..." }
+            logger.info { "ETL [$name] worker [$workerId] is deleting data for rerun $period..." }
             pipelines.forEach { it.cleanUp(context, period) }
-            logger.info { "ETL job [$workerId] deleted data for rerun $period." }
+            logger.info { "ETL [$name] worker [$workerId] deleted data for rerun $period." }
         }
         return runSafely(job, workerId, snapshotTimestamp = null)
     }
@@ -107,7 +107,7 @@ open class EtlOrchestratorImpl(
                 ?: period.untilTimestamp?.takeIf { it.isBefore(now) }
                 ?: now
         check(finalTimestamp.isAfter(initTimestamp)) {
-            "ETL job [$workerId] has no new data to process (init=$initTimestamp, final=$finalTimestamp)"
+            "ETL [$name] worker [$workerId] has no new data to process (init=$initTimestamp, final=$finalTimestamp)"
         }
         val timer = metrics.etlDuration(name, workerId, job.context).start()
         try {
@@ -151,7 +151,7 @@ open class EtlOrchestratorImpl(
                 }
             }
         } catch (e: CancellationException) {
-            logger.info { "ETL job [$workerId] interrupted: ${e.message}" }
+            logger.info { "ETL [$name] worker [$workerId] interrupted: ${e.message}" }
             job.markCancelled(workerId)
             return EtlJobResult(
                 job = job,
@@ -159,7 +159,7 @@ open class EtlOrchestratorImpl(
                 processedUntilTimestamp = initTimestamp
             )
         } catch (e: Throwable) {
-            logger.error(e) { "ETL job [$workerId] failed: ${e.message}" }
+            logger.error(e) { "ETL [$name] worker [$workerId] failed: ${e.message}" }
             job.markError(workerId, e.message ?: e::class.java.name)
             return EtlJobResult(
                 job = job,
@@ -183,7 +183,7 @@ open class EtlOrchestratorImpl(
                     this@every.cancel(CancellationException("Job was cancelled"))
                 }
             }.onFailure { e ->
-                logger.warn(e) { "ETL job [$workerId] failed to extend run-lock lease" }
+                logger.warn(e) { "ETL [${job.etlName}] worker [$workerId] failed to extend run-lock lease" }
                 this@every.cancel(CancellationException(e.message))
             }
         }
@@ -191,25 +191,25 @@ open class EtlOrchestratorImpl(
 
     private suspend fun EtlJob.markCompleted(workerId: String, processedUntilTimestamp: Instant) {
         runCatching { jobsRepository.markCompleted(this, workerId, processedUntilTimestamp) }.onFailure {
-            logger.warn(it) { "ETL job [$workerId] failed to mark job as COMPLETED" }
+            logger.warn(it) { "ETL [$name] worker [$workerId] failed to mark job as COMPLETED" }
         }
     }
 
     private suspend fun EtlJob.markIdle(workerId: String, processedUntilTimestamp: Instant) {
         runCatching { jobsRepository.markIdle(this, workerId, processedUntilTimestamp) }.onFailure {
-            logger.warn(it) { "ETL job [$workerId] failed to mark job as IDLE" }
+            logger.warn(it) { "ETL [$name] worker [$workerId] failed to mark job as IDLE" }
         }
     }
 
     private suspend fun EtlJob.markCancelled(workerId: String) {
         runCatching { jobsRepository.markCancelled(this, workerId) }.onFailure {
-            logger.warn(it) { "ETL job [$workerId] failed to mark job as CANCELLED" }
+            logger.warn(it) { "ETL [$name] worker [$workerId] failed to mark job as CANCELLED" }
         }
     }
 
     private suspend fun EtlJob.markError(workerId: String, errorMessage: String) {
         runCatching { jobsRepository.markError(this, workerId, errorMessage) }.onFailure {
-            logger.warn(it) { "ETL job [$workerId] failed to mark job as ERROR" }
+            logger.warn(it) { "ETL [$name] worker [$workerId] failed to mark job as ERROR" }
         }
     }
 
@@ -219,7 +219,7 @@ open class EtlOrchestratorImpl(
         initTimestamp: Instant,
         finalTimestamp: Instant,
     ): List<EtlProcessingResult> = withContext(Dispatchers.IO) {
-        logger.info("ETL job [$workerId] is starting ${job.period}...")
+        logger.info("ETL [$name] worker [$workerId] is starting ${job.period}...")
         val results = Collections.synchronizedList(mutableListOf<EtlProcessingResult>())
         val progressTracker = ProgressTracker()
         val duration = measureTimeMillis {
@@ -247,7 +247,7 @@ open class EtlOrchestratorImpl(
                 val processed = Duration.between(initTimestamp, processedUntilTimestamp).toMillis()
                 val progress = ((processed.toDouble() / total) * 100).toInt()
 
-                logger.info { "ETL job [$workerId] is still running ${job.period} ... Progress: $progress%" }
+                logger.info { "ETL [$name] worker [$workerId] is still running ${job.period} ... Progress: $progress%" }
                 jobsRepository.updateProcessedUntilTimestamp(
                     job,
                     workerId,
@@ -259,9 +259,9 @@ open class EtlOrchestratorImpl(
             val rowsProcessed = results.sumOf { it.rowsProcessed }
             val failures = results.count { it.status == EtlStatus.FAILED }
             if (rowsProcessed == 0L && failures == 0)
-                "ETL job [$workerId] completed ${job.period} in ${duration}ms, no new rows"
+                "ETL [$name] worker [$workerId] completed ${job.period} in ${duration}ms, no new rows"
             else
-                "ETL job [$workerId] completed ${job.period} in ${duration}ms, rows processed: $rowsProcessed, failures: $failures"
+                "ETL [$name] worker [$workerId] completed ${job.period} in ${duration}ms, rows processed: $rowsProcessed, failures: $failures"
         }
         return@withContext results
     }
