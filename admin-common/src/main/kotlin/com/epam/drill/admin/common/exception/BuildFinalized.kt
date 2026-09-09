@@ -13,6 +13,6 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.epam.drill.admin.writer.rawdata.exception
+package com.epam.drill.admin.common.exception
 
-class InvalidMethodIgnoreRule(message: String) : Exception(message)
+class BuildFinalized: RuntimeException("Build is finalized, no more changes are allowed")
