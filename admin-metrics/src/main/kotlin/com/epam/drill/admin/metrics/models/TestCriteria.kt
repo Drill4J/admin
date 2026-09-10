@@ -25,6 +25,7 @@ open class TestCriteria(
     val testRunner: String? = null,
     val testTaskId: String? = null,
     val testDefinitionId: String? = null,
+    val testProjectId: String? = null,
 ) {
     object NONE: TestCriteria()
 }

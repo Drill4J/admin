@@ -24,4 +24,5 @@ data class ImpactedTestsFilterOptionsView(
     val testRunners: List<String> = emptyList(),
     val testTags: List<String> = emptyList(),
     val testTaskIds: List<String> = emptyList(),
+    val testProjectIds: List<String> = emptyList(),
 )

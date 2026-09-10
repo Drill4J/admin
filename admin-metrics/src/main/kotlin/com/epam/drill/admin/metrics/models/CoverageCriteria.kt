@@ -21,6 +21,7 @@ import kotlinx.serialization.Serializable
 open class CoverageCriteria(
     val branches: List<String> = emptyList(),
     val appEnvIds: List<String> = emptyList(),
+    val testProjectIds: List<String> = emptyList(),
 ) {
     object NONE: CoverageCriteria()
 }

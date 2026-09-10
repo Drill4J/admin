@@ -7,6 +7,7 @@ INSERT INTO metrics.build_method_test_session_coverage (
     app_env_id,
     test_result,
     test_tag,
+    test_project_id,
     created_at_day,
     updated_at_day,
     probes
@@ -20,6 +21,7 @@ VALUES (
     :app_env_id,
     :test_result,
     :test_tag,
+    :test_project_id,
     :created_at_day,
     :created_at_day,
     :probes
@@ -33,7 +35,8 @@ ON CONFLICT (
     created_at_day,
     COALESCE(app_env_id,''),
     COALESCE(test_result,''),
-    COALESCE(test_tag,'')
+    COALESCE(test_tag,''),
+    COALESCE(test_project_id,'')
 )
 DO UPDATE
 SET

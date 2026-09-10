@@ -8,6 +8,7 @@ SELECT
     td.metadata AS test_metadata,
     td.created_at,
     td.updated_at,
+    td.test_project_id,
     DATE_TRUNC('day', td.created_at) AS created_at_day,
     DATE_TRUNC('day', td.updated_at) AS updated_at_day
 FROM raw_data.test_definitions td

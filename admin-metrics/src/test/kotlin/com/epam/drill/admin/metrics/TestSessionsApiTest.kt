@@ -248,6 +248,37 @@ class TestSessionsApiTest : MetricsDatabaseTests({ default, metrics ->
             assertEquals(2, total.toInt())
         }
 
+    @Test
+    fun `given testProjectIds filter, group list should return only matching sessions`(): Unit =
+        havingData {
+            build1 has listOf(method1)
+            test1 of session1.testProjectId("project-a") covers method1 with probesOf(1, 1) on build1
+            test2 of session2.testProjectId("project-b") covers method1 with probesOf(1, 1) on build1
+        }.expectThat {
+            client.get("/metrics/test-sessions") {
+                parameter("groupId", testGroup)
+                parameter("testProjectIds", "project-a")
+            }.returns { data ->
+                assertEquals(1, data.size)
+                assertEquals(session1.id, data[0]["testSessionId"])
+                assertEquals("project-a", data[0]["testProjectId"])
+            }
+        }
+
+    @Test
+    fun `given testProjectIds filter option, should return distinct values`(): Unit =
+        havingData {
+            build1 has listOf(method1)
+            test1 of session1.testProjectId("project-a") covers method1 with probesOf(1, 1) on build1
+        }.expectThat {
+            client.get("/metrics/test-sessions/filter-options") {
+                parameter("groupId", testGroup)
+                parameter("field", "testProjectIds")
+            }.returnsStrings { data ->
+                assertTrue(data.contains("project-a"))
+            }
+        }
+
     @AfterEach
     fun cleanup() = withTransaction(RawDataWriterDatabaseConfig.database) {
         MethodCoverageTable.deleteAll()

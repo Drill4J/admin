@@ -25,6 +25,7 @@ data class TestSessionView(
     val appId: String? = null,
     val buildId: String? = null,
     val testTaskId: String?,
+    val testProjectId: String? = null,
     val sessionStartedAt: LocalDateTime?,
     val createdBy: String?,
     val testDefinitions: Int,
@@ -47,6 +48,7 @@ data class TestSessionFilterOptionsView(
     val testTaskIds: List<String>,
     val createdBys: List<String>,
     val results: List<String>,
+    val testProjectIds: List<String> = emptyList(),
 )
 
 @Serializable
@@ -70,6 +72,7 @@ data class TestSessionDetailView(
     val buildVersion: String?,
     val branch: String?,
     val testTaskId: String?,
+    val testProjectId: String? = null,
     val sessionStartedAt: LocalDateTime?,
     val createdBy: String?,
     val testDefinitions: Int,
@@ -95,6 +98,7 @@ data class TestDefinitionView(
     val testRunner: String?,
     val testResult: String,
     val testLaunches: Int,
+    val testProjectId: String? = null,
 )
 
 @Serializable

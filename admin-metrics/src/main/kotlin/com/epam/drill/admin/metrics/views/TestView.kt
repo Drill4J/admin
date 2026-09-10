@@ -25,6 +25,7 @@ class TestView(
     val testPath: String,
     val testName: String,
     val testTaskId: String? = null,
+    val testProjectId: String? = null,
     val tags: List<String>? = null,
     val metadata: JsonElement? = null,
     val impactStatus: TestImpactStatus? = null,

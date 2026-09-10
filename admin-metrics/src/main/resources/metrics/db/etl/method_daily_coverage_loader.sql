@@ -7,6 +7,7 @@ INSERT INTO metrics.method_daily_coverage (
     test_result,
     test_tag,
     test_task_id,
+    test_project_id,
     created_at_day,
     probes
 )
@@ -19,6 +20,7 @@ VALUES (
     :test_result,
     :test_tag,
     :test_task_id,
+    :test_project_id,
     :created_at_day,
     :probes
 )
@@ -31,7 +33,8 @@ ON CONFLICT (
     COALESCE(app_env_id,''),
     COALESCE(test_result,''),
     COALESCE(test_tag,''),
-    COALESCE(test_task_id,'')
+    COALESCE(test_task_id,''),
+    COALESCE(test_project_id,'')
 )
 DO UPDATE
 SET

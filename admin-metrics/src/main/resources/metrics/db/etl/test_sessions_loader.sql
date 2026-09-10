@@ -5,6 +5,7 @@ INSERT INTO metrics.test_sessions (
     session_started_at,
     created_at,
     created_by,
+    test_project_id,
     created_at_day
 )
 VALUES (
@@ -14,6 +15,7 @@ VALUES (
     :session_started_at,
     :created_at,
     :created_by,
+    :test_project_id,
     :created_at_day
 )
 ON CONFLICT (
@@ -26,5 +28,6 @@ SET
     session_started_at = EXCLUDED.session_started_at,
     created_at = EXCLUDED.created_at,
     created_by = EXCLUDED.created_by,
+    test_project_id = EXCLUDED.test_project_id,
     created_at_day = EXCLUDED.created_at_day
 
