@@ -70,6 +70,7 @@ class SessionPayload(
     val testTaskId: String,
     val startedAt: Instant,
     val builds: List<SingleSessionBuildPayload> = emptyList(),
+    val testProjectId: String? = null,
 ): RawDataPayload
 
 @Serializable
@@ -91,6 +92,7 @@ class TestLaunchPayload (
 @Serializable
 class AddTestDefinitionsPayload(
     val groupId: String,
+    val testProjectId: String? = null,
     val definitions: List<TestDefinitionPayload>
 ): RawDataPayload
 

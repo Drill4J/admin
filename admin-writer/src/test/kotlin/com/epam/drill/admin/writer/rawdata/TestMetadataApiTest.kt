@@ -140,6 +140,7 @@ class TestMetadataApiTest : DatabaseTests({ RawDataWriterDatabaseConfig.init(it)
     @Test
     fun `given test definitions payload, post test definitions should return OK and save definitions`() = withRollback {
         val testGroup = "group-1"
+        val testProjectId = "test-project-1"
         val testDefinition1 = "def-1"
         val testDefinition2 = "def-2"
         val timeBeforeTest = LocalDateTime.now()
@@ -154,6 +155,7 @@ class TestMetadataApiTest : DatabaseTests({ RawDataWriterDatabaseConfig.init(it)
                 """
             {
                 "groupId": "$testGroup",
+                "testProjectId": "$testProjectId",
                 "definitions": [
                     {
                         "id": "$testDefinition1",
@@ -192,6 +194,7 @@ class TestMetadataApiTest : DatabaseTests({ RawDataWriterDatabaseConfig.init(it)
         waitUntilInTransaction {
             val saved = TestDefinitionTable.selectAll()
                 .filter { it[TestDefinitionTable.groupId] == testGroup }
+                .filter { it[TestDefinitionTable.testProjectId] == testProjectId }
 
             assertEquals(2, saved.size)
             saved.forEach {
