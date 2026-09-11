@@ -19,6 +19,7 @@ import org.jetbrains.exposed.sql.javatime.datetime
 
 object TestSessionTable : TrackedStringIdTable("raw_data.test_sessions") {
     val groupId = varchar("group_id",  SHORT_TEXT_LENGTH)
+    val testProjectId = varchar("test_project_id", SHORT_TEXT_LENGTH).nullable()
     val testTaskId = varchar("test_task_id", SHORT_TEXT_LENGTH).nullable()
     val startedAt = datetime("started_at")
 }

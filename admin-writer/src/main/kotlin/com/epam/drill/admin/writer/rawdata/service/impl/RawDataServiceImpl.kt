@@ -254,6 +254,7 @@ class RawDataServiceImpl(
         testDefinitionsPayload.definitions.map { definition ->
             TestDefinition(
                 groupId = testDefinitionsPayload.groupId,
+                testProjectId = testDefinitionsPayload.testProjectId,
                 id = definition.id,
                 type = definition.type,
                 runner = definition.runner,
@@ -269,6 +270,7 @@ class RawDataServiceImpl(
         testLaunchesPayload.launches.map { launch ->
             TestLaunch(
                 groupId = testLaunchesPayload.groupId,
+                testProjectId = testLaunchesPayload.testProjectId,
                 id = launch.id,
                 testDefinitionId = launch.testDefinitionId,
                 testSessionId = testLaunchesPayload.testSessionId,
@@ -282,6 +284,7 @@ class RawDataServiceImpl(
         val testSession = TestSession(
             id = sessionPayload.id,
             groupId = sessionPayload.groupId,
+            testProjectId = sessionPayload.testProjectId,
             testTaskId = sessionPayload.testTaskId,
             startedAt = sessionPayload.startedAt.toLocalDateTime(TimeZone.UTC).toJavaLocalDateTime(),
             createdBy = username

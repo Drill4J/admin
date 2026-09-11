@@ -70,6 +70,7 @@ $$ LANGUAGE plpgsql STABLE PARALLEL SAFE;
 -- @param input_coverage_test_tags: Array of test tags to filter coverage
 -- @param input_coverage_test_task_ids: Array of test task IDs to filter coverage
 -- @param input_coverage_test_results: Array of test results to filter coverage
+-- @param input_coverage_test_project_ids: Array of test project IDs to filter coverage
 -- @param input_coverage_period_from: Optional timestamp to filter coverage by creation date
 -- @param is_smart_coverage_before_build: Boolean value indicating whether smart coverage should only be considered up to the build date
 -- @returns TABLE: A table containing methods with coverage information
@@ -89,6 +90,7 @@ CREATE OR REPLACE FUNCTION metrics.get_methods_with_coverage(
     input_coverage_test_tags VARCHAR[] DEFAULT NULL,
     input_coverage_test_task_ids VARCHAR[] DEFAULT NULL,
     input_coverage_test_results VARCHAR[] DEFAULT NULL,
+    input_coverage_test_project_ids VARCHAR[] DEFAULT NULL,
     input_coverage_period_from TIMESTAMP DEFAULT NULL,
 
     include_smart_coverage BOOLEAN DEFAULT TRUE,
@@ -146,6 +148,7 @@ BEGIN
 		  	AND (input_coverage_test_task_ids IS NULL OR ic.test_task_id = ANY(input_coverage_test_task_ids::VARCHAR[]))
 		  	AND (input_coverage_test_tags IS NULL OR ic.test_tag = ANY(input_coverage_test_tags::VARCHAR[]))
 		  	AND (input_coverage_test_results IS NULL OR ic.test_result = ANY(input_coverage_test_results::VARCHAR[]))
+		  	AND (input_coverage_test_project_ids IS NULL OR ic.test_project_id = ANY(input_coverage_test_project_ids::VARCHAR[]))
 		  	AND (input_coverage_period_from IS NULL OR ic.created_at_day >= input_coverage_period_from)
 		LEFT JOIN metrics.method_daily_coverage sc ON include_smart_coverage IS true AND sc.group_id = bm.group_id AND sc.app_id = bm.app_id AND sc.method_id = bm.method_id
 			-- Filters by smart coverage
@@ -155,6 +158,7 @@ BEGIN
 		  	AND (input_coverage_test_task_ids IS NULL OR sc.test_task_id = ANY(input_coverage_test_task_ids::VARCHAR[]))
 		  	AND (input_coverage_test_tags IS NULL OR sc.test_tag = ANY(input_coverage_test_tags::VARCHAR[]))
 		  	AND (input_coverage_test_results IS NULL OR sc.test_result = ANY(input_coverage_test_results::VARCHAR[]))
+		  	AND (input_coverage_test_project_ids IS NULL OR sc.test_project_id = ANY(input_coverage_test_project_ids::VARCHAR[]))
 		  	AND (input_coverage_period_from IS NULL OR sc.created_at_day >= input_coverage_period_from)
 		WHERE bm.group_id = _group_id
 			AND bm.app_id = _app_id
@@ -206,6 +210,7 @@ $$ LANGUAGE plpgsql STABLE PARALLEL SAFE;
 -- @param input_coverage_test_tags: Array of test tags to filter coverage
 -- @param input_coverage_test_task_ids: Array of test task IDs to filter coverage
 -- @param input_coverage_test_results: Array of test results to filter coverage
+-- @param input_coverage_test_project_ids: Array of test project IDs to filter coverage
 -- @param input_coverage_period_from: Optional timestamp to filter coverage by creation date
 -- @param is_smart_coverage_before_build: Boolean value indicating whether smart coverage should only be considered up to the build date
 -- @returns TABLE: A table containing builds with coverage information
@@ -225,6 +230,7 @@ CREATE OR REPLACE FUNCTION metrics.get_builds_with_coverage(
     input_coverage_test_tags VARCHAR[] DEFAULT NULL,
     input_coverage_test_task_ids VARCHAR[] DEFAULT NULL,
     input_coverage_test_results VARCHAR[] DEFAULT NULL,
+    input_coverage_test_project_ids VARCHAR[] DEFAULT NULL,
     input_coverage_period_from TIMESTAMP DEFAULT NULL,
 
     include_smart_coverage BOOLEAN DEFAULT TRUE,
@@ -287,6 +293,7 @@ BEGIN
             input_coverage_test_tags => input_coverage_test_tags,
             input_coverage_test_task_ids => input_coverage_test_task_ids,
             input_coverage_test_results => input_coverage_test_results,
+            input_coverage_test_project_ids => input_coverage_test_project_ids,
             input_coverage_period_from => input_coverage_period_from,
 
             include_smart_coverage => include_smart_coverage,
@@ -422,6 +429,7 @@ $$ LANGUAGE plpgsql STABLE PARALLEL SAFE;
 -- @param input_coverage_test_tags: Array of test tags to filter coverage
 -- @param input_coverage_test_task_ids: Array of test task IDs to filter coverage
 -- @param input_coverage_test_results: Array of test results to filter coverage
+-- @param input_coverage_test_project_ids: Array of test project IDs to filter coverage
 -- @param input_coverage_period_from: Optional timestamp to filter coverage by creation date
 -- @param is_smart_coverage_before_build: Boolean value indicating whether smart coverage should only be considered up to the build date
 -- @returns TABLE: A table containing changes in methods with coverage information between the two builds
@@ -440,6 +448,7 @@ CREATE OR REPLACE FUNCTION metrics.get_changes_with_coverage(
     input_coverage_test_tags VARCHAR[] DEFAULT NULL,
     input_coverage_test_task_ids VARCHAR[] DEFAULT NULL,
     input_coverage_test_results VARCHAR[] DEFAULT NULL,
+    input_coverage_test_project_ids VARCHAR[] DEFAULT NULL,
     input_coverage_period_from TIMESTAMP DEFAULT NULL,
 
     include_smart_coverage BOOLEAN DEFAULT TRUE,
@@ -507,6 +516,7 @@ BEGIN
         input_coverage_test_tags => input_coverage_test_tags,
         input_coverage_test_task_ids => input_coverage_test_task_ids,
         input_coverage_test_results => input_coverage_test_results,
+        input_coverage_test_project_ids => input_coverage_test_project_ids,
         input_coverage_period_from => input_coverage_period_from,
 
         include_smart_coverage => include_smart_coverage,
@@ -615,6 +625,7 @@ $$ LANGUAGE plpgsql STABLE PARALLEL SAFE;
 -- @param input_test_tags: Array of test tags to filter tests
 -- @param input_test_path_pattern: Optional pattern to filter tests by path
 -- @param input_test_name_pattern: Optional pattern to filter tests by name
+-- @param input_test_project_id: Optional test project ID to filter tests
 
 -- @param input_coverage_branches: Array of branch names to filter coverage
 -- @param input_coverage_app_env_ids: Array of app environment IDs to filter coverage
@@ -635,6 +646,7 @@ CREATE OR REPLACE FUNCTION metrics.get_impacted_tests_v3(
     input_test_tags VARCHAR[] DEFAULT NULL,
     input_test_path_pattern VARCHAR DEFAULT NULL,
     input_test_name_pattern VARCHAR DEFAULT NULL,
+    input_test_project_id VARCHAR DEFAULT NULL,
 
     input_coverage_branches VARCHAR[] DEFAULT NULL,
     input_coverage_app_env_ids VARCHAR[] DEFAULT NULL,
@@ -649,6 +661,7 @@ CREATE OR REPLACE FUNCTION metrics.get_impacted_tests_v3(
     test_metadata JSON,
     test_runner VARCHAR,
     test_task_id VARCHAR,
+    test_project_id VARCHAR,
     impact_status VARCHAR,
     impacted_methods NUMERIC
 ) AS $$
@@ -701,6 +714,7 @@ BEGIN
                 AND (input_test_tags IS NULL OR td.test_tags && input_test_tags::VARCHAR[])
                 AND (input_test_path_pattern IS NULL OR td.test_path LIKE input_test_path_pattern)
                 AND (input_test_name_pattern IS NULL OR td.test_name LIKE input_test_name_pattern)
+                AND (input_test_project_id IS NULL OR td.test_project_id = input_test_project_id)
             GROUP BY tc.test_definition_id
         )
         SELECT
@@ -712,6 +726,7 @@ BEGIN
             td.test_metadata::JSON,
             td.test_runner,
             it.test_task_id::VARCHAR,
+            td.test_project_id::VARCHAR,
             'IMPACTED'::VARCHAR AS impact_status,
             it.impacted_methods::NUMERIC
         FROM metrics.test_definitions td
@@ -767,6 +782,7 @@ BEGIN
                 AND (input_test_tags IS NULL OR td.test_tags && input_test_tags::VARCHAR[])
                 AND (input_test_path_pattern IS NULL OR td.test_path LIKE input_test_path_pattern)
                 AND (input_test_name_pattern IS NULL OR td.test_name LIKE input_test_name_pattern)
+                AND (input_test_project_id IS NULL OR td.test_project_id = input_test_project_id)
             GROUP BY td.test_definition_id
         )
         SELECT
@@ -778,6 +794,7 @@ BEGIN
             td.test_metadata::JSON,
             td.test_runner,
             it.test_task_id::VARCHAR,
+            td.test_project_id::VARCHAR,
             (CASE
                 WHEN it.impacted IS TRUE THEN 'IMPACTED'
                 WHEN it.unknown_impact IS FALSE THEN 'NOT_IMPACTED'
@@ -812,6 +829,7 @@ $$ LANGUAGE plpgsql STABLE PARALLEL SAFE;
 -- @param input_test_tags: Array of test tags to filter tests
 -- @param input_test_path_pattern: Optional pattern to filter tests by path
 -- @param input_test_name_pattern: Optional pattern to filter tests by name
+-- @param input_test_project_id: Optional test project ID to filter tests
 -- @param input_coverage_app_env_ids: Array of app environment IDs to filter coverage
 -- @param input_coverage_period_from: Optional timestamp to filter coverage by creation date
 -- @param input_coverage_period_until: Optional timestamp to filter coverage by creation date
@@ -830,6 +848,7 @@ CREATE OR REPLACE FUNCTION metrics.get_impacted_methods_v2(
     input_test_tags VARCHAR[] DEFAULT NULL,
     input_test_path_pattern VARCHAR DEFAULT NULL,
     input_test_name_pattern VARCHAR DEFAULT NULL,
+    input_test_project_id VARCHAR DEFAULT NULL,
 
     input_coverage_branches VARCHAR[] DEFAULT NULL,
     input_coverage_app_env_ids VARCHAR[] DEFAULT NULL
@@ -894,6 +913,7 @@ BEGIN
 		AND (input_test_tags IS NULL OR td.test_tags && input_test_tags::VARCHAR[])
 		AND (input_test_path_pattern IS NULL OR td.test_path LIKE input_test_path_pattern)
 		AND (input_test_name_pattern IS NULL OR td.test_name LIKE input_test_name_pattern)
+		AND (input_test_project_id IS NULL OR td.test_project_id = input_test_project_id)
 	GROUP BY tc.group_id, tc.app_id, tc.signature
     ;
 END;

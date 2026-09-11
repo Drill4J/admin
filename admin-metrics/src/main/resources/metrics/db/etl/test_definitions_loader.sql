@@ -8,6 +8,7 @@ INSERT INTO metrics.test_definitions (
     test_metadata,
     created_at,
     updated_at,
+    test_project_id,
     created_at_day,
     updated_at_day
 )
@@ -21,6 +22,7 @@ VALUES (
     :test_metadata,
     :created_at,
     :updated_at,
+    :test_project_id,
     :created_at_day,
     :updated_at_day
 )
@@ -36,4 +38,5 @@ SET
     test_tags = EXCLUDED.test_tags,
     test_metadata = EXCLUDED.test_metadata,
     updated_at = EXCLUDED.updated_at,
+    test_project_id = EXCLUDED.test_project_id,
     updated_at_day = EXCLUDED.updated_at_day

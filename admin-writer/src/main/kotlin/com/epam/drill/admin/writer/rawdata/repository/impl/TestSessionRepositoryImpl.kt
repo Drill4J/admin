@@ -40,6 +40,7 @@ class TestSessionRepositoryImpl : TestSessionRepository {
         TestSessionTable.upsert {
             it[id] = session.id
             it[groupId] = session.groupId
+            it[testProjectId] = session.testProjectId
             it[testTaskId] = session.testTaskId
             it[startedAt] = session.startedAt
             it[createdBy] = session.createdBy

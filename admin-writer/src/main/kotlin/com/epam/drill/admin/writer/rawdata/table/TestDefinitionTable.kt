@@ -23,6 +23,7 @@ import org.jetbrains.exposed.sql.json.json
 
 object TestDefinitionTable : StringIdTable("raw_data.test_definitions") {
     val groupId = varchar("group_id",  SHORT_TEXT_LENGTH)
+    val testProjectId = varchar("test_project_id", SHORT_TEXT_LENGTH).nullable()
     val type = varchar("type",  SHORT_TEXT_LENGTH).nullable()
     val runner = varchar("runner", SHORT_TEXT_LENGTH).nullable()
     val name = varchar("name",  MEDIUM_TEXT_LENGTH).nullable()

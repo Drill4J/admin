@@ -34,6 +34,7 @@ class TestDefinitionRepositoryImpl: TestDefinitionRepository {
         ) {
             this[TestDefinitionTable.id] = it.id
             this[TestDefinitionTable.groupId] = it.groupId
+            this[TestDefinitionTable.testProjectId] = it.testProjectId
             this[TestDefinitionTable.type] = it.type
             this[TestDefinitionTable.runner] = it.runner
             this[TestDefinitionTable.name] = it.name

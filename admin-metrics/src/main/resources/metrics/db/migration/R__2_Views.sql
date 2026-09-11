@@ -69,6 +69,7 @@ SELECT
     ts.group_id,
     ts.test_session_id,
     MIN(ts.test_task_id) AS test_task_id,
+    MIN(ts.test_project_id) AS test_project_id,
     MIN(ts.session_started_at) AS session_started_at,
     MIN(ts.created_by) AS created_by,
     COUNT(DISTINCT tl.test_definition_id) AS test_definitions,
@@ -155,7 +156,8 @@ SELECT
     MIN(td.test_path) AS test_path,
     MIN(td.test_runner) AS test_runner,
     MIN(td.test_tags) AS test_tags,
-    array_to_string(MIN(td.test_tags), ', ') AS test_tags_formatted
+    array_to_string(MIN(td.test_tags), ', ') AS test_tags_formatted,
+    MIN(td.test_project_id) AS test_project_id
 FROM metrics.test_sessions ts
 JOIN metrics.test_launches tl ON tl.test_session_id = ts.test_session_id AND tl.group_id = ts.group_id
 JOIN metrics.test_definitions td ON td.group_id = tl.group_id AND td.test_definition_id = tl.test_definition_id
