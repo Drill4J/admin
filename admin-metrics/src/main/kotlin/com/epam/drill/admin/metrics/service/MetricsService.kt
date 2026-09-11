@@ -36,14 +36,14 @@ interface MetricsService {
     suspend fun getBuilds(
         groupId: String,
         appId: String,
-        branches: List<String>,
-        envIds: List<String>,
-        commitSha: String?,
-        buildVersion: String?,
+        branches: List<String> = emptyList(),
+        envIds: List<String> = emptyList(),
+        commitSha: String? = null,
+        buildVersion: String? = null,
         sortBy: BuildSortField? = null,
         sortOrder: SortOrder? = null,
-        page: Int?,
-        pageSize: Int?,
+        page: Int? = null,
+        pageSize: Int? = null,
         freshAfter: Instant? = null,
     ): PagedList<BuildView>
 
@@ -75,22 +75,20 @@ interface MetricsService {
 
     suspend fun getBuildCoverageByProbes(
         buildId: String,
-        baselineBuildId: String?,
-        envIds: List<String>,
-        branches: List<String>,
-        testTags: List<String>,
-        testResults: List<String> = emptyList(),
+        baselineBuildId: String? = null,
+        envIds: List<String> = emptyList(),
+        branches: List<String> = emptyList(),
         testProjectIds: List<String> = emptyList(),
+        testResults: List<String> = emptyList(),
     ): CoverageUnitSummaryView
 
     suspend fun getBuildCoverageByMethods(
         buildId: String,
-        baselineBuildId: String?,
-        envIds: List<String>,
-        branches: List<String>,
-        testTags: List<String>,
-        testResults: List<String> = emptyList(),
+        baselineBuildId: String? = null,
+        envIds: List<String> = emptyList(),
+        branches: List<String> = emptyList(),
         testProjectIds: List<String> = emptyList(),
+        testResults: List<String> = emptyList(),
     ): CoverageUnitSummaryView
 
     suspend fun getChangesSummary(
@@ -101,24 +99,22 @@ interface MetricsService {
     suspend fun getAppCoverageTrends(
         groupId: String,
         appId: String,
-        branches: List<String>,
-        envIds: List<String>,
-        testTags: List<String>,
+        branches: List<String> = emptyList(),
+        envIds: List<String> = emptyList(),
         testResults: List<String> = emptyList(),
         testProjectIds: List<String> = emptyList(),
-        size: Int?,
+        size: Int? = null,
     ): List<CoverageTrendPointView>
 
     suspend fun getAppChangesTrends(
         groupId: String,
         appId: String,
         baselineBuildId: String,
-        branches: List<String>,
-        envIds: List<String>,
-        testTags: List<String>,
+        branches: List<String> = emptyList(),
+        envIds: List<String> = emptyList(),
         testResults: List<String> = emptyList(),
         testProjectIds: List<String> = emptyList(),
-        size: Int?,
+        size: Int? = null,
     ): List<ChangesTrendPointView>
 
     suspend fun getSimilarBuilds(buildId: String): List<SimilarBuildView>
@@ -127,27 +123,27 @@ interface MetricsService {
 
     suspend fun getGroupTestSessions(
         groupId: String,
-        testTaskIds: List<String>,
-        createdBys: List<String>,
-        results: List<String>,
-        testProjectIds: List<String>,
-        sortBy: String?,
-        sortOrder: SortOrder?,
-        page: Int?,
-        pageSize: Int?,
+        testProjectIds: List<String> = emptyList(),
+        testTaskIds: List<String> = emptyList(),
+        createdBys: List<String> = emptyList(),
+        results: List<String> = emptyList(),
+        sortBy: String? = null,
+        sortOrder: SortOrder? = null,
+        page: Int? = null,
+        pageSize: Int? = null,
     ): PagedList<TestSessionView>
 
     suspend fun getBuildTestSessions(
         groupId: String,
         buildId: String,
-        testTaskIds: List<String>,
-        createdBys: List<String>,
-        results: List<String>,
-        testProjectIds: List<String>,
-        sortBy: String?,
-        sortOrder: SortOrder?,
-        page: Int?,
-        pageSize: Int?,
+        testTaskIds: List<String> = emptyList(),
+        createdBys: List<String> = emptyList(),
+        results: List<String> = emptyList(),
+        testProjectIds: List<String> = emptyList(),
+        sortBy: String? = null,
+        sortOrder: SortOrder? = null,
+        page: Int? = null,
+        pageSize: Int? = null,
     ): PagedList<TestSessionView>
 
     suspend fun getTestSessionFilterOptions(
@@ -212,6 +208,7 @@ interface MetricsService {
     suspend fun getTestLaunchPage(
         groupId: String,
         testSessionId: String,
+        testLaunchId: String,
         buildId: String? = null,
         path: String? = null,
         testNames: List<String> = emptyList(),
@@ -220,7 +217,6 @@ interface MetricsService {
         sortBy: String? = null,
         sortOrder: SortOrder? = null,
         pageSize: Int? = null,
-        launchId: String,
     ): TablePageView
 
     suspend fun getTestFileLaunches(
@@ -264,14 +260,14 @@ interface MetricsService {
 
     suspend fun getCoverageTreemap(
         buildId: String,
-        testTags: List<String>,
-        envIds: List<String>,
-        branches: List<String>,
-        testResults: List<String> = emptyList(),
+        envIds: List<String> = emptyList(),
+        branches: List<String> = emptyList(),
         testProjectIds: List<String> = emptyList(),
-        packageNamePattern: String?,
-        classNamePattern: String?,
-        rootId: String?,
+        testResults: List<String> = emptyList(),
+        testTags: List<String>,
+        packageNamePattern: String? = null,
+        classNamePattern: String? = null,
+        rootId: String? = null,
         testSessionId: String? = null,
         testDefinitionId: String? = null,
         includeOtherBuilds: Boolean = true,
@@ -281,16 +277,15 @@ interface MetricsService {
     suspend fun getChangesCoverageTreemap(
         buildId: String,
         baselineBuildId: String,
-        testTags: List<String>,
-        envIds: List<String>,
-        branches: List<String>,
-        testResults: List<String> = emptyList(),
+        envIds: List<String> = emptyList(),
+        branches: List<String> = emptyList(),
         testProjectIds: List<String> = emptyList(),
-        packageNamePattern: String?,
-        classNamePattern: String?,
-        rootId: String?,
-        includeDeleted: Boolean?,
-        includeEqual: Boolean?,
+        testResults: List<String> = emptyList(),
+        packageNamePattern: String? = null,
+        classNamePattern: String? = null,
+        rootId: String? = null,
+        includeDeleted: Boolean? = null,
+        includeEqual: Boolean? = null,
         includeOtherBuilds: Boolean = true,
         freshAfter: Instant? = null,
     ): List<Any>
@@ -318,7 +313,6 @@ interface MetricsService {
         baselineInstanceId: String?,
         baselineCommitSha: String?,
         baselineBuildVersion: String?,
-        testTags: List<String> = emptyList(),
         testResults: List<String> = emptyList(),
         envIds: List<String> = emptyList(),
         branches: List<String> = emptyList(),
@@ -359,7 +353,6 @@ interface MetricsService {
 
     suspend fun getCoverageByPackage(
         buildId: String,
-        testTags: List<String> = emptyList(),
         testResults: List<String> = emptyList(),
         envIds: List<String> = emptyList(),
         branches: List<String> = emptyList(),
@@ -391,8 +384,8 @@ interface MetricsService {
         impactStatuses: List<TestImpactStatus> = listOf(TestImpactStatus.IMPACTED),
         sortBy: String? = null,
         sortOrder: SortOrder? = null,
-        page: Int?,
-        pageSize: Int?,
+        page: Int? = null,
+        pageSize: Int? = null,
         freshAfter: Instant? = null,
     ): PagedList<TestView>
 
@@ -411,8 +404,8 @@ interface MetricsService {
         coverageCriteria: CoverageCriteria = CoverageCriteria.NONE,
         sortBy: String? = null,
         sortOrder: SortOrder? = null,
-        page: Int?,
-        pageSize: Int?,
+        page: Int? = null,
+        pageSize: Int? = null,
         freshAfter: Instant? = null,
     ): PagedList<MethodView>
 }

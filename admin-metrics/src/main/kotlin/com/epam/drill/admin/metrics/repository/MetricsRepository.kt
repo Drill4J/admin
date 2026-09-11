@@ -19,7 +19,6 @@ import com.epam.drill.admin.metrics.models.BuildSortField
 import com.epam.drill.admin.metrics.models.SortOrder
 import com.epam.drill.admin.metrics.views.TestImpactStatus
 import java.time.Instant
-import java.time.LocalDateTime
 
 interface MetricsRepository {
 
@@ -86,7 +85,6 @@ interface MetricsRepository {
         baselineBuildId: String?,
         envIds: List<String>,
         branches: List<String>,
-        testTags: List<String>,
         testResults: List<String> = emptyList(),
         testProjectIds: List<String> = emptyList(),
     ): Map<String, Any?>?
@@ -96,7 +94,6 @@ interface MetricsRepository {
         appId: String,
         branches: List<String> = emptyList(),
         envIds: List<String> = emptyList(),
-        testTags: List<String> = emptyList(),
         testResults: List<String> = emptyList(),
         testProjectIds: List<String> = emptyList(),
         size: Int = 100,
@@ -108,7 +105,6 @@ interface MetricsRepository {
         baselineBuildId: String,
         branches: List<String> = emptyList(),
         envIds: List<String> = emptyList(),
-        testTags: List<String> = emptyList(),
         testResults: List<String> = emptyList(),
         testProjectIds: List<String> = emptyList(),
         size: Int = 100,
@@ -277,7 +273,7 @@ interface MetricsRepository {
         testTags: List<String> = emptyList(),
         sortBy: String? = null,
         sortOrder: SortOrder? = null,
-        launchId: String,
+        testLaunchId: String,
     ): Long?
 
     suspend fun getTestFileLaunches(
@@ -333,7 +329,6 @@ interface MetricsRepository {
 
     suspend fun getMethodsWithCoverage(
         buildId: String,
-        coverageTestTags: List<String> = emptyList(),
         coverageAppEnvIds: List<String> = emptyList(),
         coverageBranches: List<String> = emptyList(),
         coverageTestResults: List<String> = emptyList(),
@@ -438,7 +433,6 @@ interface MetricsRepository {
 
     suspend fun getPackageCoverage(
         buildId: String,
-        coverageTestTags: List<String> = emptyList(),
         coverageAppEnvIds: List<String> = emptyList(),
         coverageBranches: List<String> = emptyList(),
         coverageTestResults: List<String> = emptyList(),
@@ -448,7 +442,6 @@ interface MetricsRepository {
     suspend fun getClassCoverage(
         buildId: String,
         packageName: String? = null,
-        coverageTestTags: List<String> = emptyList(),
         coverageAppEnvIds: List<String> = emptyList(),
         coverageBranches: List<String> = emptyList(),
         coverageTestResults: List<String> = emptyList(),
@@ -462,7 +455,6 @@ interface MetricsRepository {
     suspend fun getClassCoverageCount(
         buildId: String,
         packageName: String? = null,
-        coverageTestTags: List<String> = emptyList(),
         coverageAppEnvIds: List<String> = emptyList(),
         coverageBranches: List<String> = emptyList(),
         coverageTestResults: List<String> = emptyList(),
@@ -472,7 +464,6 @@ interface MetricsRepository {
     suspend fun getChangesWithCoverage(
         buildId: String,
         baselineBuildId: String? = null,
-        coverageTestTags: List<String> = emptyList(),
         coverageAppEnvIds: List<String> = emptyList(),
         coverageBranches: List<String> = emptyList(),
         coverageTestResults: List<String> = emptyList(),
@@ -489,7 +480,6 @@ interface MetricsRepository {
         baselineBuildId: String,
         groupId: String,
         appId: String,
-        coverageTestTags: List<String> = emptyList(),
         coverageAppEnvIds: List<String> = emptyList(),
         coverageBranches: List<String> = emptyList(),
         coverageTestResults: List<String> = emptyList(),
@@ -509,7 +499,6 @@ interface MetricsRepository {
         baselineBuildId: String,
         groupId: String,
         appId: String,
-        coverageTestTags: List<String> = emptyList(),
         coverageAppEnvIds: List<String> = emptyList(),
         coverageBranches: List<String> = emptyList(),
         coverageTestResults: List<String> = emptyList(),

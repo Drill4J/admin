@@ -277,7 +277,6 @@ class MetricsRepositoryImpl : MetricsRepository {
         baselineBuildId: String?,
         envIds: List<String>,
         branches: List<String>,
-        testTags: List<String>,
         testResults: List<String>,
         testProjectIds: List<String>,
     ): Map<String, Any?>? = transaction {
@@ -296,7 +295,12 @@ class MetricsRepositoryImpl : MetricsRepository {
                 """.trimIndent(), buildId
             )
             appendOptional(", input_baseline_build_id => ?", baselineBuildId)
-            appendCoverageFilterParams(testTags, envIds, branches, testResults, testProjectIds)
+            appendCoverageFilterParams(
+                coverageAppEnvIds = envIds,
+                coverageBranches = branches,
+                coverageTestResults = testResults,
+                coverageTestProjectIds = testProjectIds
+            )
             append("\n)")
         }.firstOrNull()
     }
@@ -306,7 +310,6 @@ class MetricsRepositoryImpl : MetricsRepository {
         appId: String,
         branches: List<String>,
         envIds: List<String>,
-        testTags: List<String>,
         testResults: List<String>,
         testProjectIds: List<String>,
         size: Int,
@@ -349,7 +352,12 @@ class MetricsRepositoryImpl : MetricsRepository {
                 """.trimIndent(),
                 size,
             )
-            appendCoverageFilterParams(testTags, envIds, branches, testResults, testProjectIds)
+            appendCoverageFilterParams(
+                coverageAppEnvIds = envIds,
+                coverageBranches = branches,
+                coverageTestResults = testResults,
+                coverageTestProjectIds = testProjectIds
+            )
             append(
                 """
                 ) c
@@ -368,7 +376,6 @@ class MetricsRepositoryImpl : MetricsRepository {
         baselineBuildId: String,
         branches: List<String>,
         envIds: List<String>,
-        testTags: List<String>,
         testResults: List<String>,
         testProjectIds: List<String>,
         size: Int,
@@ -425,7 +432,12 @@ class MetricsRepositoryImpl : MetricsRepository {
                 size,
                 baselineBuildId,
             )
-            appendCoverageFilterParams(testTags, envIds, branches, testResults, testProjectIds)
+            appendCoverageFilterParams(
+                coverageAppEnvIds = envIds,
+                coverageBranches = branches,
+                coverageTestResults = testResults,
+                coverageTestProjectIds = testProjectIds
+            )
             append(
                 """
                 ) c
@@ -1103,7 +1115,7 @@ class MetricsRepositoryImpl : MetricsRepository {
         testTags: List<String>,
         sortBy: String?,
         sortOrder: SortOrder?,
-        launchId: String,
+        testLaunchId: String,
     ): Long? = transaction {
         val orderBy = resolveTestLaunchesOrderBy(sortBy, sortOrder)
         executeQueryReturnMap {
@@ -1122,7 +1134,7 @@ class MetricsRepositoryImpl : MetricsRepository {
                 """.trimIndent(), groupId, testSessionId
             )
             appendTestLaunchesWhere(buildId, path, testNames, testResults, testTags)
-            append(") ranked WHERE ranked.test_definition_id = ?", launchId)
+            append(") ranked WHERE ranked.test_definition_id = ?", testLaunchId)
         }.firstOrNull()?.let { rowNumber(it["rn"]) }
     }
 
@@ -1526,7 +1538,6 @@ class MetricsRepositoryImpl : MetricsRepository {
 
     override suspend fun getMethodsWithCoverage(
         buildId: String,
-        coverageTestTags: List<String>,
         coverageAppEnvIds: List<String>,
         coverageBranches: List<String>,
         coverageTestResults: List<String>,
@@ -1541,6 +1552,7 @@ class MetricsRepositoryImpl : MetricsRepository {
         val orderBy = when (sortBy) {
             "isolated_probes_coverage_ratio" ->
                 "isolated_probes_coverage_ratio $sortDirection, method_id ASC"
+
             "probes_count" -> "probes_count $sortDirection, method_id ASC"
             "isolated_covered_probes" -> "isolated_covered_probes $sortDirection, method_id ASC"
             else -> "method_id ASC"
@@ -1567,7 +1579,12 @@ class MetricsRepositoryImpl : MetricsRepository {
             )
             appendOptional(", input_package_name_pattern => ?", packageName) { "$it%" }
             appendOptional(", input_class_name_pattern => ?", className) { "%$it" }
-            appendCoverageFilterParams(coverageTestTags, coverageAppEnvIds, coverageBranches, coverageTestResults, coverageTestProjectIds)
+            appendCoverageFilterParams(
+                coverageAppEnvIds = coverageAppEnvIds,
+                coverageBranches = coverageBranches,
+                coverageTestResults = coverageTestResults,
+                coverageTestProjectIds = coverageTestProjectIds
+            )
             append(
                 """
                 ) 
@@ -1770,6 +1787,7 @@ class MetricsRepositoryImpl : MetricsRepository {
                     ELSE 0
                 END $sortDirection, class_name ASC
             """.trimIndent()
+
             "methods_count" -> "methods_count $sortDirection, class_name ASC"
             "covered_methods" -> "covered_methods $sortDirection, class_name ASC"
             "probes_coverage_ratio" -> """
@@ -1778,6 +1796,7 @@ class MetricsRepositoryImpl : MetricsRepository {
                     ELSE 0
                 END $sortDirection, class_name ASC
             """.trimIndent()
+
             "probes_count" -> "probes_count $sortDirection, class_name ASC"
             "covered_probes" -> "covered_probes $sortDirection, class_name ASC"
             else -> "class_name ASC"
@@ -1877,6 +1896,7 @@ class MetricsRepositoryImpl : MetricsRepository {
                     ELSE 0
                 END $sortDirection, class_name ASC
             """.trimIndent()
+
             "methods_count" -> "methods_count $sortDirection, class_name ASC"
             "covered_methods" -> "covered_methods $sortDirection, class_name ASC"
             "probes_coverage_ratio" -> """
@@ -1885,6 +1905,7 @@ class MetricsRepositoryImpl : MetricsRepository {
                     ELSE 0
                 END $sortDirection, class_name ASC
             """.trimIndent()
+
             "probes_count" -> "probes_count $sortDirection, class_name ASC"
             "covered_probes" -> "covered_probes $sortDirection, class_name ASC"
             else -> "class_name ASC"
@@ -1970,7 +1991,6 @@ class MetricsRepositoryImpl : MetricsRepository {
         baselineBuildId: String,
         groupId: String,
         appId: String,
-        coverageTestTags: List<String>,
         coverageAppEnvIds: List<String>,
         coverageBranches: List<String>,
         coverageTestResults: List<String>,
@@ -2010,7 +2030,6 @@ class MetricsRepositoryImpl : MetricsRepository {
                 baselineBuildId = baselineBuildId,
                 groupId = groupId,
                 appId = appId,
-                coverageTestTags = coverageTestTags,
                 coverageAppEnvIds = coverageAppEnvIds,
                 coverageBranches = coverageBranches,
                 coverageTestResults = coverageTestResults,
@@ -2031,7 +2050,6 @@ class MetricsRepositoryImpl : MetricsRepository {
         baselineBuildId: String,
         groupId: String,
         appId: String,
-        coverageTestTags: List<String>,
         coverageAppEnvIds: List<String>,
         coverageBranches: List<String>,
         coverageTestResults: List<String>,
@@ -2048,7 +2066,6 @@ class MetricsRepositoryImpl : MetricsRepository {
                 baselineBuildId = baselineBuildId,
                 groupId = groupId,
                 appId = appId,
-                coverageTestTags = coverageTestTags,
                 coverageAppEnvIds = coverageAppEnvIds,
                 coverageBranches = coverageBranches,
                 coverageTestResults = coverageTestResults,
@@ -2067,7 +2084,6 @@ class MetricsRepositoryImpl : MetricsRepository {
         baselineBuildId: String,
         groupId: String,
         appId: String,
-        coverageTestTags: List<String>,
         coverageAppEnvIds: List<String>,
         coverageBranches: List<String>,
         coverageTestResults: List<String>,
@@ -2085,7 +2101,12 @@ class MetricsRepositoryImpl : MetricsRepository {
                     input_baseline_build_id => ?
             """.trimIndent(), buildId, baselineBuildId
         )
-        appendCoverageFilterParams(coverageTestTags, coverageAppEnvIds, coverageBranches, coverageTestResults, coverageTestProjectIds)
+        appendCoverageFilterParams(
+            coverageAppEnvIds = coverageAppEnvIds,
+            coverageBranches = coverageBranches,
+            coverageTestResults = coverageTestResults,
+            coverageTestProjectIds = coverageTestProjectIds
+        )
         val includeEqual = changeTypes.any { it.equals("equal", ignoreCase = true) }
         appendOptional(", include_deleted => ?", true) { it }
         appendOptional(", include_equal => ?", includeEqual) { it }
@@ -2097,7 +2118,6 @@ class MetricsRepositoryImpl : MetricsRepository {
                     input_baseline_build_id => ?
             """.trimIndent(), buildId, baselineBuildId
         )
-        appendOptional(", input_test_tags => ?", coverageTestTags)
         append(
             """
                 ) i ON c.signature = i.signature
@@ -2155,7 +2175,6 @@ class MetricsRepositoryImpl : MetricsRepository {
     override suspend fun getChangesWithCoverage(
         buildId: String,
         baselineBuildId: String?,
-        coverageTestTags: List<String>,
         coverageAppEnvIds: List<String>,
         coverageBranches: List<String>,
         coverageTestResults: List<String>,
@@ -2189,7 +2208,12 @@ class MetricsRepositoryImpl : MetricsRepository {
             appendOptional(", input_baseline_build_id => ?", baselineBuildId)
             appendOptional(", input_package_name_pattern => ?", packageName) { "$it%" }
             appendOptional(", input_class_name_pattern => ?", className) { "%$it" }
-            appendCoverageFilterParams(coverageTestTags, coverageAppEnvIds, coverageBranches, coverageTestResults, coverageTestProjectIds)
+            appendCoverageFilterParams(
+                coverageAppEnvIds = coverageAppEnvIds,
+                coverageBranches = coverageBranches,
+                coverageTestResults = coverageTestResults,
+                coverageTestProjectIds = coverageTestProjectIds
+            )
             appendOptional(", include_deleted => ?", includeDeleted) { it }
             appendOptional(", include_equal => ?", includeEqual) { it }
             append(
@@ -2205,7 +2229,6 @@ class MetricsRepositoryImpl : MetricsRepository {
 
     override suspend fun getPackageCoverage(
         buildId: String,
-        coverageTestTags: List<String>,
         coverageAppEnvIds: List<String>,
         coverageBranches: List<String>,
         coverageTestResults: List<String>,
@@ -2234,7 +2257,12 @@ class MetricsRepositoryImpl : MetricsRepository {
                         input_build_id => ?
                 """.trimIndent(), buildId
             )
-            appendCoverageFilterParams(coverageTestTags, coverageAppEnvIds, coverageBranches, coverageTestResults, coverageTestProjectIds)
+            appendCoverageFilterParams(
+                coverageAppEnvIds = coverageAppEnvIds,
+                coverageBranches = coverageBranches,
+                coverageTestResults = coverageTestResults,
+                coverageTestProjectIds = coverageTestProjectIds
+            )
             append(
                 """
                     )
@@ -2249,7 +2277,6 @@ class MetricsRepositoryImpl : MetricsRepository {
     override suspend fun getClassCoverage(
         buildId: String,
         packageName: String?,
-        coverageTestTags: List<String>,
         coverageAppEnvIds: List<String>,
         coverageBranches: List<String>,
         coverageTestResults: List<String>,
@@ -2267,6 +2294,7 @@ class MetricsRepositoryImpl : MetricsRepository {
                     ELSE 0
                 END $sortDirection, class_name ASC
             """.trimIndent()
+
             "methods_count" -> "methods_count $sortDirection, class_name ASC"
             "covered_methods" -> "covered_methods $sortDirection, class_name ASC"
             "probes_coverage_ratio" -> """
@@ -2275,6 +2303,7 @@ class MetricsRepositoryImpl : MetricsRepository {
                     ELSE 0
                 END $sortDirection, class_name ASC
             """.trimIndent()
+
             "probes_count" -> "probes_count $sortDirection, class_name ASC"
             "covered_probes" -> "covered_probes $sortDirection, class_name ASC"
             else -> "class_name ASC"
@@ -2300,7 +2329,12 @@ class MetricsRepositoryImpl : MetricsRepository {
                 """.trimIndent(), buildId
             )
             appendOptional(", input_package_name_pattern => ?", packageName) { "$it%" }
-            appendCoverageFilterParams(coverageTestTags, coverageAppEnvIds, coverageBranches, coverageTestResults, coverageTestProjectIds)
+            appendCoverageFilterParams(
+                coverageAppEnvIds = coverageAppEnvIds,
+                coverageBranches = coverageBranches,
+                coverageTestResults = coverageTestResults,
+                coverageTestProjectIds = coverageTestProjectIds
+            )
             append(
                 """
                     )
@@ -2318,7 +2352,6 @@ class MetricsRepositoryImpl : MetricsRepository {
     override suspend fun getClassCoverageCount(
         buildId: String,
         packageName: String?,
-        coverageTestTags: List<String>,
         coverageAppEnvIds: List<String>,
         coverageBranches: List<String>,
         coverageTestResults: List<String>,
@@ -2335,7 +2368,12 @@ class MetricsRepositoryImpl : MetricsRepository {
                 """.trimIndent(), buildId
             )
             appendOptional(", input_package_name_pattern => ?", packageName) { "$it%" }
-            appendCoverageFilterParams(coverageTestTags, coverageAppEnvIds, coverageBranches, coverageTestResults, coverageTestProjectIds)
+            appendCoverageFilterParams(
+                coverageAppEnvIds = coverageAppEnvIds,
+                coverageBranches = coverageBranches,
+                coverageTestResults = coverageTestResults,
+                coverageTestProjectIds = coverageTestProjectIds
+            )
             append(
                 """
                     )
@@ -3151,9 +3189,9 @@ private fun SqlBuilder.appendImpactedTestsResultFilters(
 }
 
 private fun SqlBuilder.appendCoverageFilterParams(
-    coverageTestTags: List<String>,
-    coverageAppEnvIds: List<String>,
-    coverageBranches: List<String>,
+    coverageTestTags: List<String> = emptyList(),
+    coverageAppEnvIds: List<String> = emptyList(),
+    coverageBranches: List<String> = emptyList(),
     coverageTestResults: List<String> = emptyList(),
     coverageTestProjectIds: List<String> = emptyList(),
 ) {
