@@ -20,6 +20,7 @@ import org.jetbrains.exposed.sql.javatime.datetime
 
 object TestLaunchTable : StringIdTable("raw_data.test_launches") {
     val groupId = varchar("group_id",  SHORT_TEXT_LENGTH)
+    val testProjectId = varchar("test_project_id", SHORT_TEXT_LENGTH).nullable()
     val testDefinitionId = varchar("test_definition_id",  SHORT_TEXT_LENGTH)
     val testSessionId = varchar("test_session_id",  SHORT_TEXT_LENGTH)
     val result = varchar("result",  SHORT_TEXT_LENGTH).nullable()

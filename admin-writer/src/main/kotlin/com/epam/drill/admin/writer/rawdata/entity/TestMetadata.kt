@@ -25,6 +25,7 @@ class TestMetadata (
 
 class TestLaunch (
     val groupId: String,
+    val testProjectId: String? = null,
     val id: String,
     val testDefinitionId: String,
     val testSessionId: String,

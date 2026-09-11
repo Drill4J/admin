@@ -19,7 +19,7 @@ import kotlinx.datetime.Instant
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonElement
 
-// TODO update test agent
+@Deprecated("Use AddTestLaunchesPayload instead")
 @Serializable
 class AddTestsPayload(
     val groupId: String,
@@ -27,6 +27,7 @@ class AddTestsPayload(
     val tests: List<TestLaunchInfo> = emptyList(),
 ): RawDataPayload
 
+@Deprecated("Use AddTestLaunchesPayload instead")
 @Serializable
 class TestLaunchInfo(
     val testLaunchId: String,
@@ -36,6 +37,7 @@ class TestLaunchInfo(
     val details: TestDetails,
 )
 
+@Deprecated("Use AddTestDefinitionsPayload instead")
 @Serializable
 class TestDetails @JvmOverloads constructor(
     val runner: String = "",
@@ -67,15 +69,16 @@ class SingleSessionBuildPayload(
 class SessionPayload(
     val id: String,
     val groupId: String,
+    val testProjectId: String? = null,
     val testTaskId: String,
     val startedAt: Instant,
     val builds: List<SingleSessionBuildPayload> = emptyList(),
-    val testProjectId: String? = null,
 ): RawDataPayload
 
 @Serializable
 class AddTestLaunchesPayload(
     val groupId: String,
+    val testProjectId: String? = null,
     val testSessionId: String,
     val launches: List<TestLaunchPayload>,
 ): RawDataPayload
@@ -88,7 +91,6 @@ class TestLaunchPayload (
     val duration: Int? = null,
 )
 
-
 @Serializable
 class AddTestDefinitionsPayload(
     val groupId: String,
@@ -96,10 +98,6 @@ class AddTestDefinitionsPayload(
     val definitions: List<TestDefinitionPayload>
 ): RawDataPayload
 
-// TODO: update test agent
-//  Order of fields, and field definitions changed compared to original TestDefinition class:
-//       - name and runner are no longer nullable
-//       - type field is moved and became nullable
 @Serializable
 class TestDefinitionPayload(
     val id: String,

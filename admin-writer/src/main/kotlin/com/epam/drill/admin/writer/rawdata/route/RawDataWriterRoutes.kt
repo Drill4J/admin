@@ -74,6 +74,7 @@ class CoverageRoute(): DataIngestRoute
 @Resource("methods")
 class MethodsRoute(): DataIngestRoute
 
+@Deprecated("Use test-launches and test-definitions instead")
 @Resource("tests-metadata")
 class TestMetadataRoute(): DataIngestRoute
 
@@ -170,6 +171,7 @@ fun Route.putMethods() {
     }
 }
 
+@Deprecated("Use test-launches and test-definitions instead")
 fun Route.postTestMetadata() {
     val queuedRawDataWriter by closestDI().instance<QueuedRawDataWriter>()
 

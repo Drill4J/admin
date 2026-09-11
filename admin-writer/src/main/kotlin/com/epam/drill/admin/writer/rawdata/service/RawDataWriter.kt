@@ -25,6 +25,7 @@ interface RawDataWriter {
     suspend fun saveInstanceHeartbeat(agentHeartbeatPayload: AgentHeartbeatPayload)
     suspend fun saveMethods(methodsPayload: MethodsPayload)
     suspend fun saveCoverage(coveragePayload: CoveragePayload)
+    @Deprecated("Use saveTestLaunches and saveTestDefinitions instead")
     suspend fun saveTestMetadata(testsPayload: AddTestsPayload)
     suspend fun saveTestDefinitions(testDefinitionsPayload: AddTestDefinitionsPayload)
     suspend fun saveTestLaunches(testLaunchesPayload: AddTestLaunchesPayload)

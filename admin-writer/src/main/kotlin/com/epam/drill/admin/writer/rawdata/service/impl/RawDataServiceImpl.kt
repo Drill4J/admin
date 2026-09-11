@@ -270,6 +270,7 @@ class RawDataServiceImpl(
         testLaunchesPayload.launches.map { launch ->
             TestLaunch(
                 groupId = testLaunchesPayload.groupId,
+                testProjectId = testLaunchesPayload.testProjectId,
                 id = launch.id,
                 testDefinitionId = launch.testDefinitionId,
                 testSessionId = testLaunchesPayload.testSessionId,
