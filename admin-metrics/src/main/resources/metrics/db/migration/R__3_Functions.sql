@@ -731,7 +731,7 @@ BEGIN
             'IMPACTED'::VARCHAR AS impact_status,
             it.impacted_methods::NUMERIC
         FROM metrics.test_definitions td
-                 JOIN impacted_tests it ON it.test_definition_id = td.test_definition_id AND it.test_project_id = td.test_project_id
+        JOIN impacted_tests it ON it.test_definition_id = td.test_definition_id AND it.test_project_id = td.test_project_id
         WHERE td.group_id = _group_id
           AND (
             input_method_signature_pattern IS NULL
@@ -771,7 +771,7 @@ BEGIN
                     COUNT(DISTINCT changed_m.signature) AS impacted_methods,
                     BOOL_OR(changed_m.signature LIKE input_method_signature_pattern) AS matches_signature_pattern
                 FROM metrics.test_definitions td
-                         LEFT JOIN metrics.test_to_code_mapping tc ON td.group_id = tc.group_id
+                LEFT JOIN metrics.test_to_code_mapping tc ON td.group_id = tc.group_id
                     AND td.test_definition_id = tc.test_definition_id
                     AND tc.app_id = _app_id
                     AND td.test_project_id = tc.test_project_id
@@ -786,7 +786,7 @@ BEGIN
                   AND (input_test_path_pattern IS NULL OR td.test_path LIKE input_test_path_pattern)
                   AND (input_test_name_pattern IS NULL OR td.test_name LIKE input_test_name_pattern)
                   AND (input_test_project_id IS NULL OR td.test_project_id = input_test_project_id)
-                GROUP BY td.test_project_id, tc.test_definition_id
+                GROUP BY td.test_project_id, td.test_definition_id
             )
         SELECT
             td.group_id,
