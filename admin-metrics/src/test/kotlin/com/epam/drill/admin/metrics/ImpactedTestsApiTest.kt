@@ -251,7 +251,7 @@ class ImpactedTestsApiTest : MetricsDatabaseTests({ default, metrics ->
             }.returns { data ->
                 assertTrue(data.isNotEmpty(), "Expected at least one test from task-a")
                 assertTrue(data.all { it["testName"] == "testFromTaskA" }, "All returned tests should belong to task-a")
-                assertTrue(data.all { it["testTaskId"] == "task-a" }, "All returned tests should have testTaskId task-a")
+                assertTrue(data.all { (it["testTaskIds"] as List<String>).contains("task-a") }, "All returned tests should have testTaskId task-a")
                 assertTrue(data.none { it["testName"] == "testFromTaskB" }, "No tests from task-b should be returned")
             }
         }
