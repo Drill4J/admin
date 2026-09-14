@@ -10,8 +10,8 @@ INSERT INTO metrics.test_sessions (
 )
 VALUES (
     :test_session_id,
-    :test_project_id,
     :group_id,
+    :test_project_id,
     :test_task_id,
     :session_started_at,
     :created_at,
