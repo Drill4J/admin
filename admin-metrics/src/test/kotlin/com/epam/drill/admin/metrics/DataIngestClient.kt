@@ -48,25 +48,53 @@ suspend fun HttpClient.launchTest(
     coverage: Array<Pair<SingleMethodPayload, IntArray>>,
     result: TestResult = TestResult.PASSED,
     duration: Int = 10,
+){
+    this.launchTest(
+        session = session,
+        testDefinition = TestDefinitionPayload(
+            id = test.definitionId,
+            runner = test.runner,
+            path = test.path,
+            name = test.testName
+        ),
+        instance = instance,
+        coverage = coverage,
+        result = result,
+        duration = duration
+    )
+}
+suspend fun HttpClient.launchTest(
+    session: SessionPayload,
+    testDefinition: TestDefinitionPayload,
+    instance: InstancePayload,
+    coverage: Array<Pair<SingleMethodPayload, IntArray>>,
+    result: TestResult = TestResult.PASSED,
+    duration: Int = 10,
 ) {
     val testLaunchId = "test-launch-${counter.incrementAndGet()}"
     putTestSession(session)
-    postTestMetadata(
-        AddTestsPayload(
+    postTestDefinitions(
+        AddTestDefinitionsPayload(
             groupId = instance.groupId,
-            sessionId = session.id,
-            tests = listOf(
-                TestLaunchInfo(
-                    testLaunchId = testLaunchId,
-                    testDefinitionId = test.definitionId,
-                    result = result,
-                    duration = duration,
-                    details = test
+            testProjectId = session.testProjectId,
+            definitions = listOf(testDefinition)
+        )
+    )
+    postTestLaunches(
+        AddTestLaunchesPayload(
+            groupId = session.groupId,
+            testSessionId = session.id,
+            testProjectId = session.testProjectId,
+            launches = listOf(
+                TestLaunchPayload(
+                    id = testLaunchId,
+                    testDefinitionId = testDefinition.id,
+                    result = result.name,
+                    duration = duration
                 )
             )
         )
     )
-
     postCoverage(
         CoveragePayload(
             groupId = instance.groupId,
@@ -128,6 +156,19 @@ suspend fun HttpClient.postCoverage(payload: CoveragePayload): HttpResponse {
     }.assertSuccessStatus()
 }
 
+suspend fun HttpClient.postTestDefinitions(payload: AddTestDefinitionsPayload): HttpResponse {
+    return post("/data-ingest/test-definitions") {
+        setBody(payload)
+    }.assertSuccessStatus()
+}
+
+suspend fun HttpClient.postTestLaunches(payload: AddTestLaunchesPayload): HttpResponse {
+    return post("/data-ingest/test-launches") {
+        setBody(payload)
+    }.assertSuccessStatus()
+}
+
+@Deprecated("Use postTestDefinitions and postTestLaunches instead")
 suspend fun HttpClient.postTestMetadata(payload: AddTestsPayload): HttpResponse {
     return post("/data-ingest/tests-metadata") {
         setBody(payload)

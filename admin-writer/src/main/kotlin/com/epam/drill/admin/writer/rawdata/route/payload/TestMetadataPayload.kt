@@ -103,7 +103,7 @@ class TestDefinitionPayload(
     val id: String,
     val runner: String,
     val name: String,
-    val type: String?,
+    val type: String? = null,
     val path: String?,
     val tags: List<String> = emptyList(),
     val metadata: JsonElement? = null,
