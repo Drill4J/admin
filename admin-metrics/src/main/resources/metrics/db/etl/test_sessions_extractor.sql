@@ -1,11 +1,11 @@
 SELECT
     ts.id AS test_session_id,
     ts.group_id,
+    ts.test_project_id,
     ts.test_task_id,
     ts.started_at AS session_started_at,
     ts.created_by,
     ts.created_at,
-    ts.test_project_id,
     DATE_TRUNC('day', ts.created_at) AS created_at_day
 FROM raw_data.test_sessions ts
 WHERE ts.group_id = :group_id

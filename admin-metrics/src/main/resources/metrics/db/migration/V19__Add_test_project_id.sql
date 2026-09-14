@@ -1,8 +1,23 @@
 ALTER TABLE metrics.test_sessions
-ADD COLUMN test_project_id VARCHAR;
+    ADD COLUMN test_project_id VARCHAR NOT NULL DEFAULT '';
+ALTER TABLE metrics.test_sessions
+    DROP CONSTRAINT test_sessions_pkey;
+ALTER TABLE metrics.test_sessions
+    ADD PRIMARY KEY (group_id, test_project_id, test_session_id);
 
 ALTER TABLE metrics.test_definitions
-ADD COLUMN test_project_id VARCHAR;
+    ADD COLUMN test_project_id VARCHAR NOT NULL DEFAULT '';
+ALTER TABLE metrics.test_definitions
+    DROP CONSTRAINT test_definitions_pkey;
+ALTER TABLE metrics.test_definitions
+    ADD PRIMARY KEY (group_id, test_project_id, test_definition_id);
+
+ALTER TABLE metrics.test_launches
+    ADD COLUMN test_project_id VARCHAR NOT NULL DEFAULT '';
+ALTER TABLE metrics.test_launches
+    DROP CONSTRAINT test_launches_pkey;
+ALTER TABLE metrics.test_launches
+    ADD PRIMARY KEY (group_id, test_project_id, test_launch_id);
 
 ALTER TABLE metrics.build_method_test_definition_coverage
 ADD COLUMN test_project_id VARCHAR;

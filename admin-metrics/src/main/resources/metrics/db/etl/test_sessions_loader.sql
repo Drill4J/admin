@@ -1,25 +1,26 @@
 INSERT INTO metrics.test_sessions (
     test_session_id,
     group_id,
+    test_project_id,
     test_task_id,
     session_started_at,
     created_at,
     created_by,
-    test_project_id,
     created_at_day
 )
 VALUES (
     :test_session_id,
+    :test_project_id,
     :group_id,
     :test_task_id,
     :session_started_at,
     :created_at,
     :created_by,
-    :test_project_id,
     :created_at_day
 )
 ON CONFLICT (
     group_id,
+    test_project_id,
     test_session_id
 )
 DO UPDATE
@@ -28,6 +29,5 @@ SET
     session_started_at = EXCLUDED.session_started_at,
     created_at = EXCLUDED.created_at,
     created_by = EXCLUDED.created_by,
-    test_project_id = EXCLUDED.test_project_id,
     created_at_day = EXCLUDED.created_at_day
 

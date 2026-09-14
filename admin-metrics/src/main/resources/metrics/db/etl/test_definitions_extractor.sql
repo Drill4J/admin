@@ -1,6 +1,7 @@
 SELECT
     td.id AS test_definition_id,
     td.group_id,
+    td.test_project_id,
     td.path AS test_path,
     td.name AS test_name,
     td.runner AS test_runner,
@@ -8,7 +9,6 @@ SELECT
     td.metadata AS test_metadata,
     td.created_at,
     td.updated_at,
-    td.test_project_id,
     DATE_TRUNC('day', td.created_at) AS created_at_day,
     DATE_TRUNC('day', td.updated_at) AS updated_at_day
 FROM raw_data.test_definitions td

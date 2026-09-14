@@ -25,10 +25,11 @@ import org.jetbrains.exposed.sql.batchUpsert
 import org.jetbrains.exposed.sql.deleteWhere
 import java.time.LocalDate
 
-class TestDefinitionRepositoryImpl: TestDefinitionRepository {
+class TestDefinitionRepositoryImpl : TestDefinitionRepository {
     override suspend fun createMany(testDefinitionList: List<TestDefinition>) {
         TestDefinitionTable.batchUpsert(
-            testDefinitionList,
+            data = testDefinitionList,
+            TestDefinitionTable.groupId, TestDefinitionTable.testProjectId, TestDefinitionTable.id,
             onUpdateExclude = listOf(TestDefinitionTable.createdAt),
             shouldReturnGeneratedValues = false
         ) {

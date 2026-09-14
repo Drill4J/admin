@@ -25,7 +25,7 @@ class TestMetadata (
 
 class TestLaunch (
     val groupId: String,
-    val testProjectId: String? = null,
+    val testProjectId: String,
     val id: String,
     val testDefinitionId: String,
     val testSessionId: String,
@@ -35,7 +35,7 @@ class TestLaunch (
 
 class TestDefinition(
     val groupId: String,
-    val testProjectId: String? = null,
+    val testProjectId: String,
     val id: String,
     val type: String?,
     val runner: String?,
@@ -48,7 +48,7 @@ class TestDefinition(
 class TestSession (
     val id: String,
     val groupId: String,
-    val testProjectId: String? = null,
+    val testProjectId: String,
     val testTaskId: String?,
     val startedAt: LocalDateTime,
     val createdBy: String? = null
