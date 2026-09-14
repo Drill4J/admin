@@ -208,7 +208,7 @@ interface MetricsService {
     suspend fun getTestLaunchPage(
         groupId: String,
         testSessionId: String,
-        testLaunchId: String,
+        testDefinitionId: String,
         buildId: String? = null,
         path: String? = null,
         testNames: List<String> = emptyList(),

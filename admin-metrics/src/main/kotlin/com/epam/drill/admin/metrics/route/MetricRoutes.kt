@@ -933,7 +933,7 @@ fun Route.getTestLaunchPage() {
             sortBy = launches.sortBy,
             sortOrder = launches.sortOrder,
             pageSize = launches.pageSize,
-            testLaunchId = params.launchId,
+            testDefinitionId = params.launchId,
         )
         this.call.respond(HttpStatusCode.OK, ApiResponse(data))
     }
@@ -1090,18 +1090,18 @@ fun Route.getCoverageTreemap() {
 
     get<Metrics.CoverageTreemap> { params ->
         val treemap = metricsService.getCoverageTreemap(
-            params.buildId,
-            params.testTags,
-            params.envIds,
-            params.branches,
-            params.testResults,
-            params.testProjectIds,
-            params.packageNamePattern,
-            params.classNamePattern,
-            params.rootId,
-            params.testSessionId,
-            params.testDefinitionId,
-            params.includeOtherBuilds,
+            buildId = params.buildId,
+            envIds = params.envIds,
+            branches = params.branches,
+            testProjectIds = params.testProjectIds,
+            testResults = params.testResults,
+            testTags = params.testTags,
+            packageNamePattern = params.packageNamePattern,
+            classNamePattern = params.classNamePattern,
+            rootId = params.rootId,
+            testSessionId = params.testSessionId,
+            testDefinitionId = params.testDefinitionId,
+            includeOtherBuilds = params.includeOtherBuilds,
             freshAfter = params.parent.freshAfter.toInstant(),
         )
         this.call.respond(HttpStatusCode.OK, ApiResponse(treemap))

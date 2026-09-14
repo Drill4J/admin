@@ -2553,7 +2553,7 @@ class MetricsRepositoryImpl : MetricsRepository {
                     test_path,
                     test_name,
                     test_runner,
-                    test_task_id,
+                    test_task_ids,
                     test_project_id,
                     test_tags,
                     test_metadata,
@@ -2826,7 +2826,8 @@ class MetricsRepositoryImpl : MetricsRepository {
             appendImpactedTestsFilterParams()
             append(
                 """
-                )
+                ) it
+                CROSS JOIN LATERAL unnest(it.test_task_ids) AS test_task_id
                 WHERE test_task_id IS NOT NULL AND test_task_id <> ''
                 ORDER BY 1
                 """.trimIndent()

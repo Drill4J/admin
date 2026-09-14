@@ -644,7 +644,7 @@ class MetricsServiceImpl(
     override suspend fun getTestLaunchPage(
         groupId: String,
         testSessionId: String,
-        testLaunchId: String,
+        testDefinitionId: String,
         buildId: String?,
         path: String?,
         testNames: List<String>,
@@ -662,8 +662,8 @@ class MetricsServiceImpl(
                 throw ResourceNotFoundException("Test session $testSessionId is not linked to build $it")
             }
         }
-        if (testLaunchId.isBlank()) {
-            throw IllegalArgumentException("launchId is required")
+        if (testDefinitionId.isBlank()) {
+            throw IllegalArgumentException("testDefinitionId is required")
         }
         val validatedSortBy = validateTestLaunchSortBy(sortBy)
         val rowNumber = metricsRepository.getTestLaunchRowNumber(
@@ -676,8 +676,8 @@ class MetricsServiceImpl(
             testTags = testTags,
             sortBy = validatedSortBy,
             sortOrder = sortOrder,
-            testLaunchId = testLaunchId,
-        ) ?: throw ResourceNotFoundException("Test launch $testLaunchId was not found")
+            testLaunchId = testDefinitionId,
+        ) ?: throw ResourceNotFoundException("Test $testDefinitionId was not found")
         TablePageView(page = pageFromRowNumber(rowNumber, pageSize))
     }
 
@@ -1469,7 +1469,7 @@ class MetricsServiceImpl(
                     testPath = data["test_path"] as String,
                     testName = data["test_name"] as String,
                     testRunner = data["test_runner"] as String?,
-                    testTaskId = data["test_task_id"] as String?,
+                    testTaskIds = data["test_task_ids"] as List<String>?,
                     testProjectId = data["test_project_id"] as String?,
                     tags = data["test_tags"] as List<String>?,
                     metadata = data["test_metadata"] as JsonElement?,
