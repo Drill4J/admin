@@ -110,6 +110,31 @@ class AppTrendsApiTest : MetricsDatabaseTests({ default, metrics ->
         }
     }
 
+    @Test
+    fun `given testProjectIds filter, coverage trends should include only matching test project coverage`() = havingData {
+        build1 has listOf(method1, method2)
+        test1 of session1.testProjectId("project-a") covers method1 with probesOf(1, 1) on build1
+        test2 of session2.testProjectId("project-b") covers method2 with probesOf(1, 1, 1) on build1
+    }.expectThat {
+        val respA = client.get("/metrics/apps/trends/coverage") {
+            parameter("groupId", testGroup)
+            parameter("appId", testApp)
+            parameter("testProjectIds", "project-a")
+        }
+        val respB = client.get("/metrics/apps/trends/coverage") {
+            parameter("groupId", testGroup)
+            parameter("appId", testApp)
+            parameter("testProjectIds", "project-b")
+        }
+        assertEquals(HttpStatusCode.OK, respA.status)
+        assertEquals(HttpStatusCode.OK, respB.status)
+        val coverageA = JsonPath.parse(respA.bodyAsText()).read<List<Map<String, Any>>>("$.data")
+            .find { it["buildId"] == build1Id }?.let { (it["aggregatedCoveragePercent"] as Number).toDouble() }
+        val coverageB = JsonPath.parse(respB.bodyAsText()).read<List<Map<String, Any>>>("$.data")
+            .find { it["buildId"] == build1Id }?.let { (it["aggregatedCoveragePercent"] as Number).toDouble() }
+        assertTrue(coverageA != null && coverageB != null)
+    }
+
     @AfterEach
     fun clearAll() = withTransaction(RawDataWriterDatabaseConfig.database) {
         BuildTable.deleteAll()

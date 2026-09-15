@@ -272,6 +272,24 @@ class CoverageTreemapTest : MetricsDatabaseTests({ default, metrics ->
     }
 
     @Test
+    fun `coverage-treemap filtered by testProjectIds should return only matching test project coverage`() {
+        havingData {
+            build1 has listOf(method1, method2)
+            test1 of session1.testProjectId("project-a") covers method1 with probesOf(1, 1) on build1
+            test2 of session2.testProjectId("project-b") covers method2 with probesOf(1, 1, 1) on build1
+        }.expectThat {
+            client.get("/metrics/coverage-treemap") {
+                parameter("buildId", "${build1.groupId}:${build1.appId}:${build1.buildVersion}")
+                parameter("testProjectIds", "project-a")
+            }.returns { data ->
+                assertTrue(data.isNotEmpty())
+                assertTrue(treemapAny(data) { it["name"].toString().startsWith(method1.name) && it["covered_probes"] == 2 })
+                assertTrue(treemapAny(data) { it["name"].toString().startsWith(method2.name) && it["covered_probes"] == 0 })
+            }
+        }
+    }
+
+    @Test
     fun `coverage-treemap filtered by envId should return only matching environments`() {
         havingData {
             val envA = InstancePayload(

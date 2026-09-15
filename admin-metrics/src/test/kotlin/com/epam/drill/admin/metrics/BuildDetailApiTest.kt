@@ -92,6 +92,22 @@ class BuildDetailApiTest : MetricsDatabaseTests({ default, metrics ->
     }
 
     @Test
+    fun `given testProjectIds filter, coverage-by-probes should include only matching test project coverage`() = havingData {
+        build1 has listOf(method1, method2)
+        test1 of session1.testProjectId("project-a") covers method1 with probesOf(1, 1) on build1
+        test2 of session2.testProjectId("project-b") covers method2 with probesOf(1, 1, 1) on build1
+    }.expectThat {
+        client.get("/metrics/builds/$build1Id/coverage-by-probes") {
+            parameter("testProjectIds", "project-a")
+        }.apply {
+            assertEquals(HttpStatusCode.OK, status)
+            val slices = JsonPath.parse(bodyAsText()).read<List<Map<String, Any>>>("$.data.slices")
+            val sliceByMetric = slices.associate { it["metric"] as String to (it["value"] as Int) }
+            assertEquals(2, sliceByMetric["covered"] ?: 0) // only method1's 2 probes covered by project-a
+        }
+    }
+
+    @Test
     fun `get coverage by probes should return covered in other builds slice`() = havingData {
         build1 has listOf(method1, method2, method4)
         build2 hasModified method2 comparedTo build1
