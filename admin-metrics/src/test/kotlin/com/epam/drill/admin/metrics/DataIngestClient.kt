@@ -55,7 +55,9 @@ suspend fun HttpClient.launchTest(
             id = test.definitionId,
             runner = test.runner,
             path = test.path,
-            name = test.testName
+            name = test.testName,
+            tags = test.tags,
+            metadata = test.metadata
         ),
         instance = instance,
         coverage = coverage,
