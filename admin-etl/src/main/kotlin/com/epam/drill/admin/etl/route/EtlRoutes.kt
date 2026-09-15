@@ -34,20 +34,20 @@ import kotlin.getValue
 @Resource("/jobs")
 class Jobs(
     val groupId: String? = null,
-    val reset: Boolean = false,
     val fromDay: String? = null,
     val toDay: String? = null,
-    val workers: Int? = null,
 )
 
 @Resource("/sync")
 class Sync(
     val groupId: String? = null,
+    val testSessionId: String? = null,
 )
 
 @Resource("/reload")
 class Reload(
     val groupId: String? = null,
+    val testSessionId: String? = null,
     val reset: Boolean = false,
     val fromDay: String? = null,
     val toDay: String? = null,
@@ -88,21 +88,39 @@ fun Route.postRefreshMetrics() {
     val etlService by closestDI().instance<EtlService>()
 
     postWithParams<Sync> { params ->
-        etlService.forceRefresh(groupId = params.groupId)
-        call.respond(HttpStatusCode.OK, ApiResponse("Metrics synchronized successfully"))
+        when {
+            params.groupId != null && params.testSessionId != null -> {
+                etlService.loadTestSessionCoverage(groupId = params.groupId, testSessionId = params.testSessionId)
+                call.respond(
+                    HttpStatusCode.OK,
+                    ApiResponse("Test session ${params.testSessionId} metrics synchronized")
+                )
+            }
+
+            else -> {
+                etlService.forceRefresh(groupId = params.groupId)
+                call.respond(
+                    HttpStatusCode.OK,
+                    ApiResponse("Metrics ${params.groupId} synchronized")
+                )
+            }
+        }
     }
 
     postWithParams<Reload> { params ->
         val fromDay = params.fromDay?.let { LocalDate.parse(it) }
         val toDay = params.toDay?.let { LocalDate.parse(it) }
         when {
-            fromDay == null && toDay == null -> {
-                etlService.rerunAllData(
+            params.groupId != null && params.testSessionId != null -> {
+                etlService.reloadTestSessionCoverage(
                     groupId = params.groupId,
-                    workers = params.workers,
+                    testSessionId = params.testSessionId,
                     withDataDeletion = params.reset
                 )
-                call.respond(HttpStatusCode.OK, ApiResponse("Metrics have reset and refreshed successfully"))
+                call.respond(
+                    HttpStatusCode.OK,
+                    ApiResponse("Test session ${params.testSessionId} metrics reloaded")
+                )
             }
 
             else -> {
@@ -111,7 +129,7 @@ fun Route.postRefreshMetrics() {
                     workers = params.workers,
                     withDataDeletion = params.reset
                 )
-                call.respond(HttpStatusCode.OK, ApiResponse("Metrics have reset and refreshed successfully"))
+                call.respond(HttpStatusCode.OK, ApiResponse("Metrics ${params.groupId} reloaded"))
             }
         }
     }

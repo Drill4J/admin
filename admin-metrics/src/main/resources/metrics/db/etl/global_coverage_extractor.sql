@@ -30,6 +30,7 @@ WITH coverage AS (
 	    AND c.created_at <= :until_timestamp
 	    AND c.group_id = :group_id
 	    AND c.test_id IS NULL
+        AND (:test_session_id::TEXT IS NULL OR c.test_session_id = :test_session_id)
 	ORDER BY c.created_at, c.method_id
 	LIMIT :limit
 )
