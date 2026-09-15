@@ -140,10 +140,17 @@ suspend fun HttpClient.putTestSession(payload: SessionPayload): HttpResponse {
     }.assertSuccessStatus()
 }
 
-suspend fun HttpClient.refreshMetrics() {
-    post("/metrics/refresh") {
+suspend fun HttpClient.refreshMetrics(sessions: Set<Pair<String, String>>) {
+    post("/metrics/reload") {
         parameter("reset", "true")
     }.assertSuccessStatus()
+    for ((groupId, testSessionId) in sessions) {
+        post("/metrics/reload") {
+            parameter("groupId", groupId)
+            parameter("testSessionId", testSessionId)
+            parameter("reset", "true")
+        }.assertSuccessStatus()
+    }
 }
 
 suspend fun HttpResponse.assertSuccessStatus() = also {

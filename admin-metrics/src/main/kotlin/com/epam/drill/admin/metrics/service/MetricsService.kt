@@ -23,14 +23,12 @@ import com.epam.drill.admin.metrics.models.MethodCriteria
 import com.epam.drill.admin.metrics.models.SortOrder
 import com.epam.drill.admin.metrics.models.TestCriteria
 import com.epam.drill.admin.metrics.views.*
-import java.time.Instant
 
 interface MetricsService {
     suspend fun getGroups(): List<String>
 
     suspend fun getApplications(
         groupId: String? = null,
-        freshAfter: Instant? = null,
     ): List<ApplicationView>
 
     suspend fun getBuilds(
@@ -44,7 +42,6 @@ interface MetricsService {
         sortOrder: SortOrder? = null,
         page: Int?,
         pageSize: Int?,
-        freshAfter: Instant? = null,
     ): PagedList<BuildView>
 
     suspend fun getAppBranches(
@@ -268,7 +265,6 @@ interface MetricsService {
         testSessionId: String? = null,
         testDefinitionId: String? = null,
         includeOtherBuilds: Boolean = true,
-        freshAfter: Instant? = null,
     ): List<Any>
 
     suspend fun getChangesCoverageTreemap(
@@ -284,7 +280,6 @@ interface MetricsService {
         includeDeleted: Boolean?,
         includeEqual: Boolean?,
         includeOtherBuilds: Boolean = true,
-        freshAfter: Instant? = null,
     ): List<Any>
 
     suspend fun getBuildDiffReport(
@@ -297,7 +292,6 @@ interface MetricsService {
         baselineCommitSha: String?,
         baselineBuildVersion: String?,
         coverageThreshold: Double,
-        freshAfter: Instant? = null,
     ): Map<String, Any?>
 
     // TODO: discuss with team later — replaces main's getChanges() (/changes slim method-diff API).
@@ -322,7 +316,6 @@ interface MetricsService {
         sortOrder: SortOrder? = null,
         page: Int?,
         pageSize: Int?,
-        freshAfter: Instant? = null,
     ): PagedList<BuildChangeView>
 
     suspend fun getCoverage(
@@ -344,7 +337,6 @@ interface MetricsService {
         pageSize: Int? = null,
         testSessionId: String? = null,
         testDefinitionId: String? = null,
-        freshAfter: Instant? = null,
     ): PagedList<MethodView>
 
     suspend fun getCoverageByPackage(
@@ -381,7 +373,6 @@ interface MetricsService {
         sortOrder: SortOrder? = null,
         page: Int?,
         pageSize: Int?,
-        freshAfter: Instant? = null,
     ): PagedList<TestView>
 
     suspend fun getImpactedTestsFilterOptions(
@@ -401,6 +392,5 @@ interface MetricsService {
         sortOrder: SortOrder? = null,
         page: Int?,
         pageSize: Int?,
-        freshAfter: Instant? = null,
     ): PagedList<MethodView>
 }
