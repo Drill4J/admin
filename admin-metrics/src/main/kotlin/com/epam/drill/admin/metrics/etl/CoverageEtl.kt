@@ -135,6 +135,7 @@ val EtlConfig.buildMethodCoverageAggregator
             "test_result",
             "test_tag",
             "test_task_id",
+            "test_project_id",
             "created_at_day"
         ),
         aggregate = { current, next ->
@@ -160,6 +161,7 @@ val EtlConfig.buildMethodTestSessionCoverageAggregator
             "app_env_id",
             "test_result",
             "test_tag",
+            "test_project_id",
             "created_at_day"
         ),
         aggregate = { current, next ->
@@ -185,7 +187,8 @@ val EtlConfig.methodDailyCoverageAggregator
             "app_env_id",
             "test_result",
             "test_tag",
-            "test_task_id"
+            "test_task_id",
+            "test_project_id"
         ),
         aggregate = { current, next ->
             val map = HashMap<String, Any?>(current)
@@ -257,6 +260,7 @@ val EtlConfig.test2CodeMappingPipeline
             "branch",
             "app_env_id",
             "test_task_id",
+            "test_project_id",
             "created_at_day"
         ) { current, next -> next }
         .loadWith(test2CodeMappingLoader)

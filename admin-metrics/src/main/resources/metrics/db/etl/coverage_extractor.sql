@@ -51,7 +51,8 @@ SELECT
 	b.branch,
     i.env_id AS app_env_id,
     ts.id AS test_session_id,
-	ts.test_task_id
+	ts.test_task_id,
+	ts.test_project_id
 FROM coverage c
 JOIN raw_data.instances i ON i.id = c.instance_id AND i.app_id = c.app_id AND i.group_id = c.group_id
 JOIN raw_data.builds b ON b.group_id = c.group_id AND b.app_id = c.app_id AND b.id = c.build_id

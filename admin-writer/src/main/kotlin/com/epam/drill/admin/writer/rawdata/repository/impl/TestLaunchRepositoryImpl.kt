@@ -30,6 +30,7 @@ class TestLaunchRepositoryImpl: TestLaunchRepository {
         TestLaunchTable.batchUpsert(testLaunchList, shouldReturnGeneratedValues = false) {
             this[TestLaunchTable.id] = it.id
             this[TestLaunchTable.groupId] = it.groupId
+            this[TestLaunchTable.testProjectId] = it.testProjectId
             this[TestLaunchTable.testDefinitionId] = it.testDefinitionId
             this[TestLaunchTable.testSessionId] = it.testSessionId
             this[TestLaunchTable.result] = it.result

@@ -172,8 +172,8 @@ class BuildDiffReportApiTest : MetricsDatabaseTests({ default, metrics ->
                 parameter("baselineBuildVersion", build1.buildVersion)
             }.returnsSingle("$.data.metrics") { metrics ->
                 assertEquals(2, metrics["impacted_tests"])
-                assertEquals(1, metrics["passed_impacted_tests"])
-                assertEquals(1, metrics["failed_impacted_tests"])
+                assertEquals(1, metrics["passed_impacted_tests"], "Passed impacted tests")
+                assertEquals(1, metrics["failed_impacted_tests"], "Failed impacted tests")
             }
         }
     }

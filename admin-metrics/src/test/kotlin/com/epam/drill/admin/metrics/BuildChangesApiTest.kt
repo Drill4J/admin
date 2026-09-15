@@ -99,6 +99,24 @@ class BuildChangesApiTest : MetricsDatabaseTests({ default, metrics ->
         }
 
     @Test
+    fun `given testProjectIds filter, build-changes should include only matching test project coverage`(): Unit =
+        havingData {
+            initBuildsAndMethodsData()
+            test1 of session1.testProjectId("project-a") covers method2 with probesOf(1, 1, 0) on build3
+            test2 of session2.testProjectId("project-b") covers method2 with probesOf(0, 0, 1) on build3
+        }.expectThat {
+            client.get("/metrics/build-changes") {
+                parameter("groupId", testGroup)
+                parameter("appId", testApp)
+                parameter("buildVersion", "3.0.0")
+                parameter("baselineBuildVersion", "1.0.0")
+                parameter("testProjectIds", "project-a")
+            }.returns { data ->
+                assertTrue(data.any { it["name"] == method2.name && (it["coveredProbes"] as Int) == 2 })
+            }
+        }
+
+    @Test
     fun `given changeTypes filter, build-changes should return only matching rows`(): Unit =
         havingData {
             initBuildsAndMethodsData()

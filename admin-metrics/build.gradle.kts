@@ -12,6 +12,7 @@ version = rootProject.version
 
 val kotlinVersion: String by parent!!.extra
 val microutilsLoggingVersion: String by parent!!.extra
+val logbackVersion: String by parent!!.extra
 val ktorVersion: String by parent!!.extra
 val kodeinVersion: String by parent!!.extra
 val kotlinxSerializationVersion: String by parent!!.extra
@@ -74,6 +75,7 @@ dependencies {
     testImplementation(project(":admin-test"))
     testImplementation(project(":admin-writer"))
     testImplementation(project(":admin-etl"))
+    testRuntimeOnly("ch.qos.logback:logback-classic:$logbackVersion")
 }
 
 tasks {

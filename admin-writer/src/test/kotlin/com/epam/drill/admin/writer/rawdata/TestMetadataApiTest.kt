@@ -140,6 +140,7 @@ class TestMetadataApiTest : DatabaseTests({ RawDataWriterDatabaseConfig.init(it)
     @Test
     fun `given test definitions payload, post test definitions should return OK and save definitions`() = withRollback {
         val testGroup = "group-1"
+        val testProjectId = "test-project-1"
         val testDefinition1 = "def-1"
         val testDefinition2 = "def-2"
         val timeBeforeTest = LocalDateTime.now()
@@ -154,6 +155,7 @@ class TestMetadataApiTest : DatabaseTests({ RawDataWriterDatabaseConfig.init(it)
                 """
             {
                 "groupId": "$testGroup",
+                "testProjectId": "$testProjectId",
                 "definitions": [
                     {
                         "id": "$testDefinition1",
@@ -192,6 +194,7 @@ class TestMetadataApiTest : DatabaseTests({ RawDataWriterDatabaseConfig.init(it)
         waitUntilInTransaction {
             val saved = TestDefinitionTable.selectAll()
                 .filter { it[TestDefinitionTable.groupId] == testGroup }
+                .filter { it[TestDefinitionTable.testProjectId] == testProjectId }
 
             assertEquals(2, saved.size)
             saved.forEach {
@@ -205,6 +208,7 @@ class TestMetadataApiTest : DatabaseTests({ RawDataWriterDatabaseConfig.init(it)
     @Test
     fun `given test launches payload, post test launches should return OK and save launches`() = withRollback {
         val testGroup = "group-1"
+        val testProjectId = "test-project-1"
         val testSession = "session-1"
         val testDefinition = "def-1"
         val launch1 = "launch-1"
@@ -221,6 +225,7 @@ class TestMetadataApiTest : DatabaseTests({ RawDataWriterDatabaseConfig.init(it)
                 """
             {
                 "groupId": "$testGroup",
+                "testProjectId": "$testProjectId",
                 "testSessionId": "$testSession",
                 "launches": [
                     {
@@ -254,6 +259,7 @@ class TestMetadataApiTest : DatabaseTests({ RawDataWriterDatabaseConfig.init(it)
         waitUntilInTransaction {
             val saved = TestLaunchTable.selectAll()
                 .filter { it[TestLaunchTable.groupId] == testGroup }
+                .filter { it[TestLaunchTable.testProjectId] == testProjectId }
                 .filter { it[TestLaunchTable.testSessionId] == testSession }
                 .filter { it[TestLaunchTable.testDefinitionId] == testDefinition }
 

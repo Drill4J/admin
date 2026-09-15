@@ -28,7 +28,11 @@ import org.kodein.di.DI
 import org.kodein.di.ktor.di
 import kotlin.test.assertEquals
 import com.epam.drill.admin.common.route.commonStatusPages
+import com.typesafe.config.ConfigFactory
+import io.ktor.server.application.Application
 import io.ktor.server.application.ApplicationStopping
+import io.ktor.server.config.HoconApplicationConfig
+import io.ktor.server.config.MapApplicationConfig
 import io.micrometer.core.instrument.MeterRegistry
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry
 import kotlinx.coroutines.async
@@ -61,6 +65,12 @@ fun withTransaction(db: Database? = null, test: suspend () -> Unit) {
     }
 }
 
+fun Application.environment(configuration: MapApplicationConfig.() -> Unit) {
+    (this.environment.config as MapApplicationConfig).apply {
+        configuration()
+    }
+}
+
 fun drillApplication(
     vararg diModules: DI.Module = emptyArray(),
     routes: Route.() -> Unit = {}
@@ -73,6 +83,12 @@ fun drillApplication(
         commonStatusPages()
     }
     application {
+        environment {
+            put("drill.etl.lockLeaseSeconds", "5")
+            put("drill.etl.lockRetryDelaySeconds", "1")
+            put("drill.etl.lockAttempts", "1")
+            put("drill.etl.maxWorkers", "1")
+        }
         di {
             import(meterModule)
             diModules.forEach { import(it) }

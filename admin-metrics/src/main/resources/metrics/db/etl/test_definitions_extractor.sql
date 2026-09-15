@@ -1,6 +1,7 @@
 SELECT
     td.id AS test_definition_id,
     td.group_id,
+    td.test_project_id,
     td.path AS test_path,
     td.name AS test_name,
     td.runner AS test_runner,

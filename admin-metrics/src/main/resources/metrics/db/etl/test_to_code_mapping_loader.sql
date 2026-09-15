@@ -6,6 +6,7 @@ INSERT INTO metrics.test_to_code_mapping(
     branch,
     app_env_id,
     test_task_id,
+    test_project_id,
     created_at_day,
     updated_at_day
 )
@@ -17,6 +18,7 @@ VALUES (
     :branch,
     :app_env_id,
     :test_task_id,
+    :test_project_id,
     :created_at_day,
     :created_at_day
 )
@@ -28,6 +30,7 @@ ON CONFLICT (
     created_at_day,
     COALESCE(branch,''),
     COALESCE(app_env_id,''),
-    COALESCE(test_task_id,'')
+    COALESCE(test_task_id,''),
+    COALESCE(test_project_id,'')
 )
 DO NOTHING

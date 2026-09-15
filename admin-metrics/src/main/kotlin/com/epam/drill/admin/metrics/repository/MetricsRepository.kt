@@ -19,7 +19,6 @@ import com.epam.drill.admin.metrics.models.BuildSortField
 import com.epam.drill.admin.metrics.models.SortOrder
 import com.epam.drill.admin.metrics.views.TestImpactStatus
 import java.time.Instant
-import java.time.LocalDateTime
 
 interface MetricsRepository {
 
@@ -86,8 +85,8 @@ interface MetricsRepository {
         baselineBuildId: String?,
         envIds: List<String>,
         branches: List<String>,
-        testTags: List<String>,
         testResults: List<String> = emptyList(),
+        testProjectIds: List<String> = emptyList(),
     ): Map<String, Any?>?
 
     suspend fun getAppCoverageTrends(
@@ -95,8 +94,8 @@ interface MetricsRepository {
         appId: String,
         branches: List<String> = emptyList(),
         envIds: List<String> = emptyList(),
-        testTags: List<String> = emptyList(),
         testResults: List<String> = emptyList(),
+        testProjectIds: List<String> = emptyList(),
         size: Int = 100,
     ): List<Map<String, Any?>>
 
@@ -106,8 +105,8 @@ interface MetricsRepository {
         baselineBuildId: String,
         branches: List<String> = emptyList(),
         envIds: List<String> = emptyList(),
-        testTags: List<String> = emptyList(),
         testResults: List<String> = emptyList(),
+        testProjectIds: List<String> = emptyList(),
         size: Int = 100,
     ): List<Map<String, Any?>>
 
@@ -125,6 +124,7 @@ interface MetricsRepository {
         testTaskIds: List<String> = emptyList(),
         createdBys: List<String> = emptyList(),
         results: List<String> = emptyList(),
+        testProjectIds: List<String> = emptyList(),
         sortBy: String? = null,
         sortOrder: SortOrder? = null,
         offset: Int? = null,
@@ -136,6 +136,7 @@ interface MetricsRepository {
         testTaskIds: List<String> = emptyList(),
         createdBys: List<String> = emptyList(),
         results: List<String> = emptyList(),
+        testProjectIds: List<String> = emptyList(),
     ): Long
 
     suspend fun getBuildTestSessions(
@@ -144,6 +145,7 @@ interface MetricsRepository {
         testTaskIds: List<String> = emptyList(),
         createdBys: List<String> = emptyList(),
         results: List<String> = emptyList(),
+        testProjectIds: List<String> = emptyList(),
         sortBy: String? = null,
         sortOrder: SortOrder? = null,
         offset: Int? = null,
@@ -156,6 +158,7 @@ interface MetricsRepository {
         testTaskIds: List<String> = emptyList(),
         createdBys: List<String> = emptyList(),
         results: List<String> = emptyList(),
+        testProjectIds: List<String> = emptyList(),
     ): Long
 
     suspend fun getTestSessionTestTaskIds(groupId: String, buildId: String? = null): List<String>
@@ -270,7 +273,7 @@ interface MetricsRepository {
         testTags: List<String> = emptyList(),
         sortBy: String? = null,
         sortOrder: SortOrder? = null,
-        launchId: String,
+        testLaunchId: String,
     ): Long?
 
     suspend fun getTestFileLaunches(
@@ -326,10 +329,10 @@ interface MetricsRepository {
 
     suspend fun getMethodsWithCoverage(
         buildId: String,
-        coverageTestTags: List<String> = emptyList(),
         coverageAppEnvIds: List<String> = emptyList(),
         coverageBranches: List<String> = emptyList(),
         coverageTestResults: List<String> = emptyList(),
+        coverageTestProjectIds: List<String> = emptyList(),
         packageName: String? = null,
         className: String? = null,
         sortBy: String? = null,
@@ -430,19 +433,19 @@ interface MetricsRepository {
 
     suspend fun getPackageCoverage(
         buildId: String,
-        coverageTestTags: List<String> = emptyList(),
         coverageAppEnvIds: List<String> = emptyList(),
         coverageBranches: List<String> = emptyList(),
         coverageTestResults: List<String> = emptyList(),
+        coverageTestProjectIds: List<String> = emptyList(),
     ): List<Map<String, Any?>>
 
     suspend fun getClassCoverage(
         buildId: String,
         packageName: String? = null,
-        coverageTestTags: List<String> = emptyList(),
         coverageAppEnvIds: List<String> = emptyList(),
         coverageBranches: List<String> = emptyList(),
         coverageTestResults: List<String> = emptyList(),
+        coverageTestProjectIds: List<String> = emptyList(),
         sortBy: String? = null,
         sortOrder: SortOrder? = null,
         offset: Int? = null,
@@ -452,19 +455,19 @@ interface MetricsRepository {
     suspend fun getClassCoverageCount(
         buildId: String,
         packageName: String? = null,
-        coverageTestTags: List<String> = emptyList(),
         coverageAppEnvIds: List<String> = emptyList(),
         coverageBranches: List<String> = emptyList(),
         coverageTestResults: List<String> = emptyList(),
+        coverageTestProjectIds: List<String> = emptyList(),
     ): Long
 
     suspend fun getChangesWithCoverage(
         buildId: String,
         baselineBuildId: String? = null,
-        coverageTestTags: List<String> = emptyList(),
         coverageAppEnvIds: List<String> = emptyList(),
         coverageBranches: List<String> = emptyList(),
         coverageTestResults: List<String> = emptyList(),
+        coverageTestProjectIds: List<String> = emptyList(),
         packageName: String? = null,
         className: String? = null,
         offset: Int? = null, limit: Int? = null,
@@ -477,10 +480,10 @@ interface MetricsRepository {
         baselineBuildId: String,
         groupId: String,
         appId: String,
-        coverageTestTags: List<String> = emptyList(),
         coverageAppEnvIds: List<String> = emptyList(),
         coverageBranches: List<String> = emptyList(),
         coverageTestResults: List<String> = emptyList(),
+        coverageTestProjectIds: List<String> = emptyList(),
         changeTypes: List<String> = emptyList(),
         hasImpactedTests: Boolean? = null,
         methodSignature: String? = null,
@@ -496,10 +499,10 @@ interface MetricsRepository {
         baselineBuildId: String,
         groupId: String,
         appId: String,
-        coverageTestTags: List<String> = emptyList(),
         coverageAppEnvIds: List<String> = emptyList(),
         coverageBranches: List<String> = emptyList(),
         coverageTestResults: List<String> = emptyList(),
+        coverageTestProjectIds: List<String> = emptyList(),
         changeTypes: List<String> = emptyList(),
         hasImpactedTests: Boolean? = null,
         methodSignature: String? = null,
@@ -521,6 +524,7 @@ interface MetricsRepository {
         testPathPattern: String? = null,
         testNamePattern: String? = null,
         testRunner: String? = null,
+        testProjectId: String? = null,
 
         packageNamePattern: String? = null,
         methodSignaturePattern: String? = null,
@@ -547,6 +551,7 @@ interface MetricsRepository {
         testPathPattern: String? = null,
         testNamePattern: String? = null,
         testRunner: String? = null,
+        testProjectId: String? = null,
 
         packageNamePattern: String? = null,
         methodSignaturePattern: String? = null,
@@ -567,6 +572,7 @@ interface MetricsRepository {
         testTags: List<String> = emptyList(),
         testPathPattern: String? = null,
         testNamePattern: String? = null,
+        testProjectId: String? = null,
 
         packageNamePattern: String? = null,
         methodSignaturePattern: String? = null,
