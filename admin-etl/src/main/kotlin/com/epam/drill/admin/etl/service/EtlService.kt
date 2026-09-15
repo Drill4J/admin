@@ -44,10 +44,14 @@ interface EtlService {
     suspend fun forceRefresh(groupId: String? = null, snapshotTimestamp: Instant? = null): Instant
 
     /** Force rerun for `[from, to]`: cancels overlapping jobs, schedules and runs new ones. */
-    suspend fun rerunDateRange(groupId: String? = null, from: LocalDate?, to: LocalDate?, workers: Int? = null, withDataDeletion: Boolean = true): List<EtlJobView>
+    suspend fun rerunDateRange(
+        groupId: String? = null,
+        from: LocalDate?,
+        to: LocalDate?,
+        workers: Int? = null,
+        withDataDeletion: Boolean = true
+    ): List<EtlJobView>
 
-    /** Force rerun of the whole history. */
-    suspend fun rerunAllData(groupId: String? = null, workers: Int? = null, withDataDeletion: Boolean = true): List<EtlJobView>
 
     /** Force rerun of the `(today, today)` period. */
     suspend fun rerunToday(groupId: String? = null, withDataDeletion: Boolean = true): List<EtlJobView>
@@ -61,11 +65,15 @@ interface EtlService {
     /** The furthest timestamp processed so far for [groupId] (the minimum across orchestrators), or null. */
     suspend fun getLastProcessedTimestamp(groupId: String): Instant?
 
-    /** Runs ETL for the coverage of a specific test definition within a test session. */
-    suspend fun loadTestDefinitionCoverage(
-        groupId: String, testSessionId: String, testDefinitionId: String,
-        snapshotTimestamp: Instant? = null,
-    )
+    /** Runs ETL for the coverage of a specific test session. */
+    suspend fun loadTestSessionCoverage(
+        groupId: String, testSessionId: String, snapshotTimestamp: Instant? = null,
+    ): List<EtlJobView>
+
+    suspend fun reloadTestSessionCoverage(
+        groupId: String, testSessionId: String,
+        withDataDeletion: Boolean = true
+    ): List<EtlJobView>
 
     /** Returns the list of active ETL jobs for [groupId] within `[from, to]`. */
     suspend fun getActiveJobs(groupId: String?, from: LocalDate?, to: LocalDate?): List<EtlJobView>
