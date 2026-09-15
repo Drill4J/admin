@@ -19,6 +19,7 @@ import com.epam.drill.admin.metrics.config.MetricsDatabaseConfig
 import com.epam.drill.admin.test.MetricsDatabaseTests
 import com.epam.drill.admin.test.withTransaction
 import com.epam.drill.admin.writer.rawdata.config.RawDataWriterDatabaseConfig
+import com.epam.drill.admin.writer.rawdata.route.payload.TestDetails
 import com.epam.drill.admin.writer.rawdata.table.BuildMethodTable
 import com.epam.drill.admin.writer.rawdata.table.BuildTable
 import com.epam.drill.admin.writer.rawdata.table.MethodCoverageTable
@@ -85,6 +86,22 @@ class ImpactedMethodsApiTest : MetricsDatabaseTests({ default, metrics ->
                 parameter("pageSize", 10)
             }.returns { data ->
                 assertTrue(data.isEmpty(), "Expected no records on second page, but got ${data.size}")
+            }
+        }
+
+    @Test
+    fun `given testProjectId filter, impacted methods service should count only tests from matching project`() =
+        havingData {
+            build1 has listOf(method1)
+            test1 of session1.testProjectId("project-a") covers method1 on build1
+            test2 of session2.testProjectId("project-b") covers method1 on build1
+            build2 hasModified method1 comparedTo build1
+        }.expectThat { client ->
+            client.getImpactedMethods(build2, build1) {
+                parameter("testProjectId", "project-a")
+            }.returns { data ->
+                val methodRow = data.find { it["name"] == method1.name }
+                assertEquals(1, (methodRow?.get("impactedTests") as Number?)?.toInt())
             }
         }
 

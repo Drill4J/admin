@@ -496,6 +496,7 @@ class Metrics(
         val testRunner: String? = null,
         val testTaskId: String? = null,
         val testDefinitionId: String? = null,
+        val testProjectId: String? = null,
 
         val coverageBranches: List<String> = emptyList(),
         val coverageAppEnvIds: List<String> = emptyList(),
@@ -532,6 +533,7 @@ class Metrics(
         val testPath: String? = null,
         val testName: String? = null,
         val testTaskId: String? = null,
+        val testProjectId: String? = null,
 
         // TODO: discuss with team — accepted on resource but not passed into service/CoverageCriteria (same on main)
         val onlyBaselineBuildTestsEnabled: Boolean = false,
@@ -1351,6 +1353,7 @@ private suspend fun getImpactedTests(
             testRunner = params.testRunner,
             testTaskId = params.testTaskId,
             testDefinitionId = params.testDefinitionId,
+            testProjectId = params.testProjectId,
         ),
         methodCriteria = MethodCriteria(
             packageName = params.packageName ?: params.packageNamePattern,
@@ -1444,6 +1447,7 @@ private suspend fun getImpactedMethods(
             testPath = params.testPath,
             testName = params.testName,
             testTaskId = params.testTaskId,
+            testProjectId = params.testProjectId,
         ),
         methodCriteria = MethodCriteria(
             packageName = params.packageName,
