@@ -612,7 +612,6 @@ fun Route.getApplications() {
     get<Metrics.Applications> { params ->
         val data = metricsService.getApplications(
             groupId = params.groupId,
-            freshAfter = params.parent.freshAfter.toInstant(),
         )
         this.call.respond(HttpStatusCode.OK, ApiResponse(data))
     }
@@ -1003,14 +1002,12 @@ fun Route.getBuilds() {
             sortOrder = params.sortOrder,
             page = params.page,
             pageSize = params.pageSize,
-            freshAfter = params.parent.freshAfter.toInstant(),
         )
         this.call.respond(
             HttpStatusCode.OK,
-            PagedDataWithFreshnessResponse(
+            PagedDataResponse(
                 data = data.items,
                 paging = Paging(data.page, data.pageSize, data.total),
-                refreshedAt = data.refreshedAt?.toEpochMilli()
             )
         )
     }
@@ -1104,7 +1101,6 @@ fun Route.getCoverageTreemap() {
             testSessionId = params.testSessionId,
             testDefinitionId = params.testDefinitionId,
             includeOtherBuilds = params.includeOtherBuilds,
-            freshAfter = params.parent.freshAfter.toInstant(),
         )
         this.call.respond(HttpStatusCode.OK, ApiResponse(treemap))
     }
@@ -1127,7 +1123,6 @@ fun Route.getChangesCoverageTreemap() {
             includeDeleted = params.includeDeleted,
             includeEqual = params.includeEqual,
             includeOtherBuilds = params.includeOtherBuilds,
-            freshAfter = params.parent.freshAfter.toInstant(),
         )
         this.call.respond(HttpStatusCode.OK, ApiResponse(treemap))
     }
@@ -1147,7 +1142,6 @@ fun Route.getBuildDiffReport() {
             baselineCommitSha = params.baselineCommitSha,
             baselineBuildVersion = params.baselineBuildVersion,
             coverageThreshold = params.coverageThreshold,
-            freshAfter = params.parent.freshAfter.toInstant(),
         )
         this.call.respond(HttpStatusCode.OK, ApiResponse(report))
     }
@@ -1179,14 +1173,12 @@ fun Route.getBuildChanges() {
             sortOrder = params.sortOrder,
             page = params.page,
             pageSize = params.pageSize,
-            freshAfter = params.parent.freshAfter.toInstant(),
         )
         this.call.respond(
             HttpStatusCode.OK,
-            PagedDataWithFreshnessResponse(
+            PagedDataResponse(
                 data = data.items,
                 paging = Paging(data.page, data.pageSize, data.total),
-                refreshedAt = data.refreshedAt?.toEpochMilli()
             )
         )
     }
@@ -1216,14 +1208,12 @@ fun Route.getCoverage() {
             pageSize = params.pageSize,
             testSessionId = params.testSessionId,
             testDefinitionId = params.testDefinitionId,
-            freshAfter = params.parent.freshAfter.toInstant(),
         )
         this.call.respond(
             HttpStatusCode.OK,
-            PagedDataWithFreshnessResponse(
+            PagedDataResponse(
                 data = data.items,
                 paging = Paging(data.page, data.pageSize, data.total),
-                refreshedAt = data.refreshedAt?.toEpochMilli()
             )
         )
     }
@@ -1265,10 +1255,9 @@ fun Route.getCoverageByClass() {
         )
         this.call.respond(
             HttpStatusCode.OK,
-            PagedDataWithFreshnessResponse(
+            PagedDataResponse(
                 data = data.items,
                 paging = Paging(data.page, data.pageSize, data.total),
-                refreshedAt = data.refreshedAt?.toEpochMilli()
             )
         )
     }
@@ -1281,10 +1270,9 @@ fun Route.postImpactedTests() {
         val data = getImpactedTests(call.receive(), metricsService)
         call.respond(
             HttpStatusCode.OK,
-            PagedDataWithFreshnessResponse(
+            PagedDataResponse(
                 data = data.items,
                 paging = Paging(data.page, data.pageSize, data.total),
-                refreshedAt = data.refreshedAt?.toEpochMilli()
             )
         )
     }
@@ -1371,7 +1359,6 @@ private suspend fun getImpactedTests(
         sortOrder = params.sortOrder,
         page = params.page,
         pageSize = params.pageSize,
-        freshAfter = params.parent.freshAfter.toInstant(),
     )
 }
 
@@ -1396,10 +1383,9 @@ fun Route.getImpactedMethods() {
         val data = getImpactedMethods(params, metricsService)
         this.call.respond(
             HttpStatusCode.OK,
-            PagedDataWithFreshnessResponse(
+            PagedDataResponse(
                 data = data.items,
                 paging = Paging(data.page, data.pageSize, data.total),
-                refreshedAt = data.refreshedAt?.toEpochMilli()
             )
         )
     }
@@ -1412,10 +1398,9 @@ fun Route.postImpactedMethods() {
         val data = getImpactedMethods(call.receive(), metricsService)
         this.call.respond(
             HttpStatusCode.OK,
-            PagedDataWithFreshnessResponse(
+            PagedDataResponse(
                 data = data.items,
                 paging = Paging(data.page, data.pageSize, data.total),
-                refreshedAt = data.refreshedAt?.toEpochMilli()
             )
         )
     }
@@ -1462,7 +1447,6 @@ private suspend fun getImpactedMethods(
         sortOrder = params.sortOrder,
         page = params.page,
         pageSize = params.pageSize,
-        freshAfter = params.parent.freshAfter.toInstant(),
     )
 }
 

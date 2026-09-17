@@ -27,7 +27,6 @@ import com.epam.drill.admin.etl.impl.EtlLauncherImpl
 import com.epam.drill.admin.etl.impl.EtlMetadataRepositoryImpl
 import com.epam.drill.admin.etl.impl.EtlOrchestratorImpl
 import com.epam.drill.admin.etl.impl.SemaphoreWorkerPool
-import com.epam.drill.admin.etl.job.DEFAULT_ETL
 import com.epam.drill.admin.etl.job.IncrementalRunEtlJob
 import com.epam.drill.admin.etl.job.RunIdleEtlJobsJob
 import com.epam.drill.admin.etl.job.incrementalRunEtlJobKey
@@ -45,7 +44,9 @@ import org.kodein.di.singleton
 import org.quartz.JobBuilder
 import org.quartz.JobDetail
 
-const val TEST_DEFINITION_COVERAGE_ETL = "testDefinitionCoverage"
+const val DEFAULT_ETL = "incremental"
+const val HISTORICAL_ETL = "historical"
+const val TEST_SESSION_COVERAGE_ETL = "testSessionCoverage"
 
 val etlDIModule
     get() = DI.Module("etlServices") {
@@ -82,14 +83,12 @@ val etlDIModule
                         testSessionsPipeline,
                         testSessionBuildsPipeline,
                         // Coverage extractor group
-                        buildMethodTestSessionCoveragePipeline,
                         buildMethodCoveragePipeline,
-                        methodDailyCoveragePipeline,
+                        methodCoveragePipeline,
                         testSessionBuildsFromCoveragePipeline,
                         // Test-launch coverage extractor group
-                        buildMethodTestSessionCoverageFromTestLaunchesPipeline,
                         buildMethodCoverageFromTestLaunchesPipeline,
-                        methodDailyCoverageFromTestLaunchesPipeline,
+                        methodCoverageFromTestLaunchesPipeline,
                         test2CodeMappingPipeline,
                         testSessionBuildsFromTestLaunchesPipeline,
                     ),
@@ -103,12 +102,46 @@ val etlDIModule
                 )
             }
         }
-        bind<EtlOrchestrator>(tag = TEST_DEFINITION_COVERAGE_ETL) with singleton {
+        bind<EtlOrchestrator>(tag = HISTORICAL_ETL) with singleton {
             val etlConfig = instance<EtlConfig>()
             with(etlConfig) {
                 EtlOrchestratorImpl(
-                    name = TEST_DEFINITION_COVERAGE_ETL,
-                    pipelines = listOf(buildMethodTestDefinitionCoveragePipeline),
+                    name = HISTORICAL_ETL,
+                    pipelines = listOf(
+                        // Reference data
+                        buildsPipeline,
+                        buildMethodsPipeline,
+                        methodsPipeline,
+                        testLaunchesPipeline,
+                        testDefinitionsPipeline,
+                        testSessionsPipeline,
+                        testSessionBuildsPipeline,
+                        // Coverage extractor group
+                        historicalBuildMethodCoveragePipeline,
+                        historicalMethodCoveragePipeline,
+                        historicalTest2CodeMappingPipeline,
+                        historicalTestSessionBuildsPipeline,
+                    ),
+                    metadataRepository = instance(),
+                    jobsRepository = instance(),
+                    metrics = metrics,
+                    consistencyWindow = consistencyWindow,
+                    processingDelay = processingDelay,
+                    bufferSize = bufferSize,
+                    lockLeaseSeconds = lockLeaseSeconds,
+                )
+            }
+        }
+        bind<EtlOrchestrator>(tag = TEST_SESSION_COVERAGE_ETL) with singleton {
+            val etlConfig = instance<EtlConfig>()
+            with(etlConfig) {
+                EtlOrchestratorImpl(
+                    name = TEST_SESSION_COVERAGE_ETL,
+                    pipelines = listOf(
+                        buildMethodTestSessionCoveragePipeline,
+                        buildMethodTestSessionCoverageFromTestLaunchesPipeline,
+                        buildMethodTestDefinitionCoveragePipeline
+                    ),
                     metadataRepository = instance(),
                     jobsRepository = instance(),
                     metrics = metrics,
@@ -131,10 +164,21 @@ val etlDIModule
                 workerPool = instance(),
             )
         }
-        bind<EtlLauncher>(tag = TEST_DEFINITION_COVERAGE_ETL) with singleton {
+        bind<EtlLauncher>(tag = HISTORICAL_ETL) with singleton {
             val etlConfig = instance<EtlConfig>()
             EtlLauncherImpl(
-                orchestrator = instance(tag = TEST_DEFINITION_COVERAGE_ETL),
+                orchestrator = instance(tag = HISTORICAL_ETL),
+                jobsRepository = instance(),
+                lockLeaseSeconds = etlConfig.lockLeaseSeconds,
+                lockRetryDelay = etlConfig.lockRetryDelay * 1000,
+                lockAttempts = etlConfig.lockAttempts,
+                workerPool = instance(),
+            )
+        }
+        bind<EtlLauncher>(tag = TEST_SESSION_COVERAGE_ETL) with singleton {
+            val etlConfig = instance<EtlConfig>()
+            EtlLauncherImpl(
+                orchestrator = instance(tag = TEST_SESSION_COVERAGE_ETL),
                 jobsRepository = instance(),
                 lockLeaseSeconds = etlConfig.lockLeaseSeconds,
                 lockRetryDelay = etlConfig.lockRetryDelay * 1000,
@@ -144,8 +188,9 @@ val etlDIModule
         }
         bind<EtlService>() with singleton {
             EtlServiceImpl(
-                defaultLauncher = instance(tag = DEFAULT_ETL),
-                testDefinitionCoverageLauncher = instance(tag = TEST_DEFINITION_COVERAGE_ETL),
+                incrementalLauncher = instance(tag = DEFAULT_ETL),
+                historicalLauncher = instance(tag = HISTORICAL_ETL),
+                testSessionCoverageLauncher = instance(tag = TEST_SESSION_COVERAGE_ETL),
                 settingsService = instance(),
                 maxWorkers = instance<EtlConfig>().maxWorkers,
             )

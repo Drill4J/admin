@@ -23,7 +23,6 @@ import com.epam.drill.admin.etl.service.EtlService
 import com.epam.drill.admin.metrics.config.MetricsConfig
 import com.epam.drill.admin.metrics.config.MetricsDatabaseConfig.transaction
 import com.epam.drill.admin.metrics.config.MetricsServiceUiLinksConfig
-import com.epam.drill.admin.metrics.config.TestRecommendationsConfig
 import com.epam.drill.admin.metrics.models.BaselineBuild
 import com.epam.drill.admin.metrics.models.Build
 import com.epam.drill.admin.metrics.models.BuildSortField
@@ -48,7 +47,6 @@ import java.time.LocalDateTime
 class MetricsServiceImpl(
     private val metricsRepository: MetricsRepository,
     private val metricsServiceUiLinksConfig: MetricsServiceUiLinksConfig,
-    private val testRecommendationsConfig: TestRecommendationsConfig,
     private val metricsConfig: MetricsConfig,
     private val etlService: EtlService,
 ) : MetricsService {
@@ -59,10 +57,7 @@ class MetricsServiceImpl(
         metricsRepository.getGroups()
     }
 
-    override suspend fun getApplications(groupId: String?, freshAfter: Instant?): List<ApplicationView> {
-        //TODO refresh across all groups if groupId is not provided
-        if (groupId != null)
-            refresh(groupId, freshAfter)
+    override suspend fun getApplications(groupId: String?): List<ApplicationView> {
         return transaction {
             metricsRepository.getApplications(groupId).map {
                 ApplicationView(
@@ -84,9 +79,8 @@ class MetricsServiceImpl(
         sortOrder: SortOrder?,
         page: Int?,
         pageSize: Int?,
-        freshAfter: Instant?,
     ): PagedList<BuildView> {
-        return pagedFreshListOf(groupId, page, pageSize, freshAfter) { offset, limit ->
+        return pagedListOf(page, pageSize) { offset, limit ->
             metricsRepository.getBuilds(
                 groupId, appId,
                 branches, envIds,
@@ -501,13 +495,6 @@ class MetricsServiceImpl(
         buildId: String,
         testDefinitionId: String?,
     ): TestSessionCoverageSummaryView {
-        if (!testDefinitionId.isNullOrBlank()) {
-            etlService.loadTestDefinitionCoverage(
-                groupId = groupId,
-                testSessionId = testSessionId,
-                testDefinitionId = testDefinitionId,
-            )
-        }
         return transaction {
             validateTestSessionBuild(groupId, testSessionId, buildId)
             val row = if (testDefinitionId.isNullOrBlank()) {
@@ -820,7 +807,6 @@ class MetricsServiceImpl(
         testSessionId: String?,
         testDefinitionId: String?,
         includeOtherBuilds: Boolean,
-        freshAfter: Instant?
     ): List<Any> {
         if (!metricsRepository.buildExists(buildId)) {
             throw BuildNotFound("Build info not found for $buildId")
@@ -830,18 +816,10 @@ class MetricsServiceImpl(
             className = classNamePattern
         )
 
-        refresh(parseBuildId(buildId).groupId, freshAfter)
-
         val data = when {
             testDefinitionId != null -> {
                 val resolvedTestSessionId = testSessionId
                     ?: throw IllegalArgumentException("testSessionId is required when testDefinitionId is specified")
-                etlService.loadTestDefinitionCoverage(
-                    groupId = parseBuildId(buildId).groupId,
-                    testSessionId = testSessionId,
-                    testDefinitionId = testDefinitionId,
-                    snapshotTimestamp = freshAfter ?: Instant.now(),
-                )
                 metricsRepository.getMethodsWithCoverageByTestDefinition(
                     buildId = buildId,
                     testSessionId = resolvedTestSessionId,
@@ -896,7 +874,6 @@ class MetricsServiceImpl(
         includeDeleted: Boolean?,
         includeEqual: Boolean?,
         includeOtherBuilds: Boolean,
-        freshAfter: Instant?
     ): List<Any> {
 
         if (!metricsRepository.buildExists(baselineBuildId)) {
@@ -906,8 +883,6 @@ class MetricsServiceImpl(
         if (!metricsRepository.buildExists(buildId)) {
             throw BuildNotFound("Build info not found for $buildId")
         }
-
-        refresh(parseBuildId(buildId).groupId, freshAfter)
 
         val data = metricsRepository.getChangesWithCoverage(
             buildId = buildId,
@@ -939,7 +914,6 @@ class MetricsServiceImpl(
         baselineCommitSha: String?,
         baselineBuildVersion: String?,
         coverageThreshold: Double,
-        freshAfter: Instant?,
     ): Map<String, Any?> {
         return transaction {
 
@@ -962,8 +936,6 @@ class MetricsServiceImpl(
             if (!metricsRepository.buildExists(buildId)) {
                 throw BuildNotFound("Build info not found for $buildId")
             }
-
-            refresh(groupId, freshAfter)
 
             val metrics = metricsRepository.getBuildDiffReport(
                 buildId,
@@ -1069,7 +1041,6 @@ class MetricsServiceImpl(
         sortOrder: SortOrder?,
         page: Int?,
         pageSize: Int?,
-        freshAfter: Instant?
     ): PagedList<BuildChangeView> {
         val validatedSortBy = validateBuildChangeSortBy(sortBy)
         val baselineBuildId = generateBuildId(
@@ -1094,7 +1065,7 @@ class MetricsServiceImpl(
 
         val normalizedChangeTypes = changeTypes.map { it.trim().lowercase() }.filter { it.isNotBlank() }
 
-        return pagedFreshListOf(groupId, page, pageSize, freshAfter) { offset, limit ->
+        return pagedListOf(page, pageSize) { offset, limit ->
             metricsRepository.getBuildChanges(
                 buildId = buildId,
                 baselineBuildId = baselineBuildId,
@@ -1151,17 +1122,12 @@ class MetricsServiceImpl(
         pageSize: Int?,
         testSessionId: String?,
         testDefinitionId: String?,
-        freshAfter: Instant?
     ): PagedList<MethodView> {
         val resolvedBuildId = buildId?.takeIf { it.isNotBlank() }
             ?: generateBuildId(groupId!!, appId!!, instanceId, commitSha, buildVersion)
         if (!metricsRepository.buildExists(resolvedBuildId)) {
             throw BuildNotFound("Build info not found for $resolvedBuildId")
         }
-
-        val resolvedGroupId = groupId?.takeIf { it.isNotBlank() } ?: parseBuildId(resolvedBuildId).groupId
-        val freshness = refresh(resolvedGroupId, freshAfter)
-
         val packageFilter = packageNamePattern?.takeIf { it.isNotBlank() }
         val classFilter = classNamePattern?.takeIf { it.isNotBlank() }
         val methodCriteria = MethodCriteria(packageName = packageFilter, className = classFilter)
@@ -1272,7 +1238,7 @@ class MetricsServiceImpl(
                 }
             }
         }
-        return PagedList(result.page, result.pageSize, result.items, result.total, freshness)
+        return PagedList(result.page, result.pageSize, result.items, result.total)
     }
 
     override suspend fun getCoverageByPackage(
@@ -1426,7 +1392,6 @@ class MetricsServiceImpl(
         sortOrder: SortOrder?,
         page: Int?,
         pageSize: Int?,
-        freshAfter: Instant?
     ): PagedList<TestView> {
         val targetBuildId = build.id.takeIf { metricsRepository.buildExists(it) }
             ?: throw BuildNotFound("Target build info not found for ${build.id}")
@@ -1436,7 +1401,7 @@ class MetricsServiceImpl(
 
         val mappedSortBy = validateImpactedTestsSortBy(sortBy)
 
-        return pagedFreshListOf(build.groupId, page, pageSize, freshAfter) { offset, limit ->
+        return pagedListOf(page, pageSize) { offset, limit ->
             metricsRepository.getImpactedTests(
                 targetBuildId = targetBuildId,
                 baselineBuildId = baselineBuildId,
@@ -1542,7 +1507,6 @@ class MetricsServiceImpl(
         sortOrder: SortOrder?,
         page: Int?,
         pageSize: Int?,
-        freshAfter: Instant?,
     ): PagedList<MethodView> {
         val targetBuildId = build.id.takeIf { metricsRepository.buildExists(it) }
             ?: throw BuildNotFound("Target build info not found for ${build.id}")
@@ -1552,7 +1516,7 @@ class MetricsServiceImpl(
 
         val mappedSortBy = validateImpactedMethodsSortBy(sortBy)
 
-        return pagedFreshListOf(build.groupId, page, pageSize, freshAfter) { offset, limit ->
+        return pagedListOf(page, pageSize) { offset, limit ->
             metricsRepository.getImpactedMethods(
                 targetBuildId = targetBuildId,
                 baselineBuildId = baselineBuildId,
@@ -1952,25 +1916,20 @@ class MetricsServiceImpl(
 
     /**
      * Fetches paged list of items with optional freshness guarantee.
-     * If [freshAfter] is provided, it will trigger a refresh and wait for it to complete before fetching the items.
      */
-    private suspend fun <T> pagedFreshListOf(
-        groupId: String,
+    private suspend fun <T> pagedListOf(
         page: Int?,
         pageSize: Int?,
-        freshAfter: Instant?,
         getItems: suspend (offset: Int, limit: Int) -> List<T>
     ): PagedList<T> {
         val page = page ?: 1
         val pageSize = pageSize ?: metricsConfig.pageSize
-        val freshness = refresh(groupId, freshAfter)
         val items = getItems((page - 1) * pageSize, pageSize)
         return PagedList(
             page, pageSize, items, when {
                 items.size < pageSize -> ((page - 1) * pageSize + items.size).toLong()
                 else -> null
-            },
-            refreshedAt = freshness
+            }
         )
     }
 
