@@ -20,7 +20,7 @@ ALTER TABLE metrics.test_launches
     ADD PRIMARY KEY (group_id, test_project_id, test_launch_id);
 
 ALTER TABLE metrics.build_method_test_definition_coverage
-ADD COLUMN test_project_id VARCHAR;
+ADD COLUMN test_project_id VARCHAR DEFAULT '';
 
 DROP INDEX IF EXISTS metrics.build_method_test_definition_coverage_pk;
 CREATE UNIQUE INDEX IF NOT EXISTS build_method_test_definition_coverage_pk ON metrics.build_method_test_definition_coverage (
@@ -37,7 +37,7 @@ CREATE UNIQUE INDEX IF NOT EXISTS build_method_test_definition_coverage_pk ON me
 );
 
 ALTER TABLE metrics.build_method_test_session_coverage
-ADD COLUMN test_project_id VARCHAR;
+ADD COLUMN test_project_id VARCHAR DEFAULT '';
 
 DROP INDEX IF EXISTS metrics.build_method_test_session_coverage_pk;
 CREATE UNIQUE INDEX IF NOT EXISTS build_method_test_session_coverage_pk ON metrics.build_method_test_session_coverage (
@@ -54,7 +54,7 @@ CREATE UNIQUE INDEX IF NOT EXISTS build_method_test_session_coverage_pk ON metri
 );
 
 ALTER TABLE metrics.build_method_coverage
-ADD COLUMN test_project_id VARCHAR;
+ADD COLUMN test_project_id VARCHAR DEFAULT '';
 
 DROP INDEX IF EXISTS metrics.build_method_coverage_pk;
 CREATE UNIQUE INDEX IF NOT EXISTS build_method_coverage_pk ON metrics.build_method_coverage (
@@ -71,7 +71,7 @@ CREATE UNIQUE INDEX IF NOT EXISTS build_method_coverage_pk ON metrics.build_meth
 );
 
 ALTER TABLE metrics.method_daily_coverage
-ADD COLUMN test_project_id VARCHAR;
+ADD COLUMN test_project_id VARCHAR DEFAULT '';
 
 DROP INDEX IF EXISTS metrics.method_daily_coverage_pk;
 CREATE UNIQUE INDEX IF NOT EXISTS method_daily_coverage_pk ON metrics.method_daily_coverage (
@@ -88,7 +88,7 @@ CREATE UNIQUE INDEX IF NOT EXISTS method_daily_coverage_pk ON metrics.method_dai
 );
 
 ALTER TABLE metrics.test_to_code_mapping
-ADD COLUMN test_project_id VARCHAR;
+ADD COLUMN test_project_id VARCHAR DEFAULT '';
 
 DROP INDEX IF EXISTS metrics.test_to_code_mapping_pk;
 CREATE UNIQUE INDEX IF NOT EXISTS test_to_code_mapping_pk ON metrics.test_to_code_mapping (
