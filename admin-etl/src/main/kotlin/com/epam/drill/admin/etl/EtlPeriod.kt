@@ -29,26 +29,17 @@ data class EtlPeriod(
 ) {
     val isBounded: Boolean get() = from != null || to != null
 
-    /** Inclusive lower bound on `created_at_day` (midnight of [from]), or `null` when unbounded. */
-    val sinceDay: java.time.Instant? get() = from?.atStartOfDay(ZoneOffset.UTC)?.toInstant()
-
-    /** Inclusive upper bound on `created_at_day` (midnight of [to]), or `null` when unbounded. */
-    val untilDay: java.time.Instant? get() = to?.atStartOfDay(ZoneOffset.UTC)?.toInstant()
-
     /**
-     * Extraction lower bound: just before midnight of [from] because extractors filter
-     * with `created_at > :since_timestamp`. `null` when the lower bound is unbounded.
+     * Extraction lower bound (exclusive): midnight of [from] so the whole [from] day is included
      */
     val sinceTimestamp: java.time.Instant?
-        get() = from?.atStartOfDay(ZoneOffset.UTC)?.toInstant()?.minus(1, ChronoUnit.NANOS)
+        get() = from?.atStartOfDay(ZoneOffset.UTC)?.toInstant()
 
     /**
-     * Extraction upper bound (exclusive): midnight of the day after [to] so the whole
-     * [to] day is included (extractors filter with `created_at <= :until_timestamp`).
-     * `null` when the upper bound is unbounded.
+     * Extraction upper bound (inclusive).
      */
     val untilTimestamp: java.time.Instant?
-        get() = to?.plusDays(1)?.atStartOfDay(ZoneOffset.UTC)?.toInstant()
+        get() = to?.plusDays(1)?.atStartOfDay(ZoneOffset.UTC)?.toInstant()?.minusMillis(1)
 
     /** Whether the day ranges of two periods intersect. */
     fun overlaps(other: EtlPeriod): Boolean {
@@ -64,6 +55,8 @@ data class EtlPeriod(
 
     /** Persisted (NOT NULL) upper bound; [SENTINEL_TO] represents an unbounded upper bound. */
     val storedTo: LocalDate get() = to ?: SENTINEL_TO
+
+    val toExclusive: LocalDate? get() = to?.plusDays(1)
 
     companion object {
         val SENTINEL_FROM: LocalDate = LocalDate.of(2000, 1, 1)

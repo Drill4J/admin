@@ -16,7 +16,6 @@ WITH test_launch_coverage AS (
 		c.instance_id,
     	c.method_id,
     	c.created_at,
-    	DATE_TRUNC('day', c.created_at) AS created_at_day,
     	c.probes,
     	m.signature
 	FROM raw_data.test_launches tl
@@ -58,7 +57,7 @@ SELECT
 	c.instance_id,
 	c.method_id,
 	c.created_at,
-	c.created_at_day,
+    DATE_TRUNC('day', c.test_completed_at) AS created_at_day,
 	c.probes,
 	c.signature,
 	b.branch,

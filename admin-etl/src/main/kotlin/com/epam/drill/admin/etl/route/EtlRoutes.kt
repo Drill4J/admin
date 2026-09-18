@@ -17,6 +17,10 @@ package com.epam.drill.admin.etl.route
 
 import com.epam.drill.admin.etl.service.EtlService
 import com.epam.drill.admin.common.config.ApiResponse
+import com.epam.drill.admin.common.route.error
+import com.epam.drill.admin.common.route.ok
+import com.epam.drill.admin.etl.EtlJobStatus
+import com.epam.drill.admin.etl.model.EtlJobView
 import io.ktor.http.HttpStatusCode
 import io.ktor.resources.Resource
 import io.ktor.server.resources.delete
@@ -24,6 +28,7 @@ import io.ktor.server.resources.get
 import io.ktor.server.resources.post as postWithParams
 import io.ktor.server.response.respond
 import io.ktor.server.routing.Route
+import io.ktor.server.routing.RoutingContext
 import org.kodein.di.instance
 import org.kodein.di.ktor.closestDI
 import java.time.Instant
@@ -90,10 +95,11 @@ fun Route.postRefreshMetrics() {
     postWithParams<Sync> { params ->
         when {
             params.groupId != null && params.testSessionId != null -> {
-                etlService.loadTestSessionCoverage(groupId = params.groupId, testSessionId = params.testSessionId)
-                call.respond(
-                    HttpStatusCode.OK,
-                    ApiResponse("Test session ${params.testSessionId} metrics synchronized")
+                val results = etlService.loadTestSessionCoverage(groupId = params.groupId, testSessionId = params.testSessionId)
+                respondResults(
+                    results,
+                    "Test session ${params.testSessionId} loaded",
+                    "Test session ${params.testSessionId} loaded with errors"
                 )
             }
 
@@ -101,7 +107,7 @@ fun Route.postRefreshMetrics() {
                 etlService.forceRefresh(groupId = params.groupId)
                 call.respond(
                     HttpStatusCode.OK,
-                    ApiResponse("Metrics ${params.groupId} synchronized")
+                    ApiResponse("Group ${params.groupId} synchronized")
                 )
             }
         }
@@ -112,24 +118,29 @@ fun Route.postRefreshMetrics() {
         val toDay = params.toDay?.let { LocalDate.parse(it) }
         when {
             params.groupId != null && params.testSessionId != null -> {
-                etlService.reloadTestSessionCoverage(
+                val results = etlService.reloadTestSessionCoverage(
                     groupId = params.groupId,
                     testSessionId = params.testSessionId,
                     withDataDeletion = params.reset
                 )
-                call.respond(
-                    HttpStatusCode.OK,
-                    ApiResponse("Test session ${params.testSessionId} metrics reloaded")
+                respondResults(
+                    results,
+                    "Test session ${params.testSessionId} reloaded",
+                    "Test session ${params.testSessionId} reloaded with errors"
                 )
             }
 
             else -> {
-                etlService.rerunDateRange(
+                val results = etlService.rerunDateRange(
                     groupId = params.groupId, from = fromDay, to = toDay,
                     workers = params.workers,
                     withDataDeletion = params.reset
                 )
-                call.respond(HttpStatusCode.OK, ApiResponse("Metrics ${params.groupId} reloaded"))
+                respondResults(
+                    results,
+                    "Group ${params.groupId} reloaded",
+                    "Group ${params.groupId} reloaded with errors"
+                )
             }
         }
     }
@@ -143,7 +154,7 @@ fun Route.getRefreshStatus() {
             from = params.fromDay?.let { LocalDate.parse(it) },
             to = params.toDay?.let { LocalDate.parse(it) },
         )
-        call.respond(HttpStatusCode.OK, ApiResponse(statuses.associate { it.day.toString() to it.status.name }))
+        call.ok(statuses.associate { it.day.toString() to it.status.name })
     }
 }
 
@@ -151,7 +162,7 @@ fun Route.getLastProcessedTimestamp() {
     val etlService by closestDI().instance<EtlService>()
     get<LastProcessedTimestamp> { params ->
         val timestamp: Instant? = etlService.getLastProcessedTimestamp(groupId = params.groupId)
-        call.respond(HttpStatusCode.OK, ApiResponse(mapOf("lastProcessedTimestamp" to timestamp?.toEpochMilli())))
+        call.ok(mapOf("lastProcessedTimestamp" to timestamp?.toEpochMilli()))
     }
 }
 
@@ -162,7 +173,7 @@ fun Route.getActiveJobs() {
             groupId = params.groupId,
             from = params.fromDay?.let { LocalDate.parse(it) },
             to = params.toDay?.let { LocalDate.parse(it) })
-        call.respond(HttpStatusCode.OK, ApiResponse(jobs))
+        call.ok(jobs)
     }
 }
 
@@ -173,6 +184,17 @@ fun Route.cancelJobs() {
             groupId = params.groupId,
             from = params.fromDay?.let { LocalDate.parse(it) },
             to = params.toDay?.let { LocalDate.parse(it) })
-        call.respond(HttpStatusCode.OK, ApiResponse(jobs))
+        call.ok(jobs)
     }
+}
+
+private suspend fun RoutingContext.respondResults(
+    results: List<EtlJobView>,
+    successMessage: String,
+    failureMessage: String,
+) {
+    if (results.none { it.status == EtlJobStatus.ERROR })
+        call.ok(results, successMessage)
+    else
+        call.error(results, failureMessage)
 }

@@ -104,8 +104,8 @@ abstract class SqlDataLoader<T: EtlRow>(
             UntypedRow(
                 Instant.EPOCH,
                 context.toMap(NamingConvention.UNDERSCORE) + mapOf(
-                    "since_day" to period.sinceTimestamp?.let { Timestamp.from(it) },
-                    "until_day" to period.untilTimestamp?.let { Timestamp.from(it) },
+                    "since_day" to period.from,
+                    "until_day" to period.toExclusive,
                 )
             )
         )
