@@ -56,7 +56,6 @@ abstract class SqlDataExtractor<T : EtlRow>(
     ) {
         val timer = metrics.extractionDuration(name, context, sinceTimestamp)
         val preparedSql = prepareSql(sqlQuery)
-        println("!!! Extraction from ${Date.from(sinceTimestamp)} to ${Date.from(untilTimestamp)}")
         execSuspend(
             sql = preparedSql.getSql(),
             args = preparedSql.getArgs(
