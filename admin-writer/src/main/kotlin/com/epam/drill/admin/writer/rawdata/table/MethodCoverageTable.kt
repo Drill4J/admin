@@ -17,11 +17,11 @@ package com.epam.drill.admin.writer.rawdata.table
 
 import com.epam.drill.admin.writer.rawdata.config.BitString
 import com.epam.drill.admin.writer.rawdata.config.ProbesColumnType
-import org.jetbrains.exposed.dao.id.IntIdTable
+import org.jetbrains.exposed.sql.Table
 import org.jetbrains.exposed.sql.javatime.CurrentDateTime
 import org.jetbrains.exposed.sql.javatime.datetime
 
-object MethodCoverageTable : IntIdTable("raw_data.method_coverage") {
+object MethodCoverageTable : Table("raw_data.method_coverage") {
     val groupId = varchar("group_id", SHORT_TEXT_LENGTH)
     val appId = varchar("app_id", SHORT_TEXT_LENGTH)
     val instanceId = varchar("instance_id", SHORT_TEXT_LENGTH).references(InstanceTable.id)
