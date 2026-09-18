@@ -227,7 +227,7 @@ open class EtlOrchestratorImpl(
                 // Group pipelines by extractor name; pipelines in the same group share one extractor run
                 val extractorGroups = pipelines.groupBy { it.extractor.name }
                 extractorGroups.map { (_, groupedPipelines) ->
-                    async {
+                    this@withContext.async {
                         @Suppress("UNCHECKED_CAST")
                         val typedPipelines = groupedPipelines as List<EtlPipeline<EtlRow, *>>
                         results += runPipelineGroupByExtractor(

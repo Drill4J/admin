@@ -30,8 +30,6 @@ class EtlPeriodTest {
     fun `unbounded period has no bounds and maps to sentinels`() {
         val period = EtlPeriod.UNBOUNDED
         assertFalse(period.isBounded)
-        assertNull(period.sinceDay)
-        assertNull(period.untilDay)
         assertNull(period.sinceTimestamp)
         assertNull(period.untilTimestamp)
         assertEquals(EtlPeriod.SENTINEL_FROM, period.storedFrom)
