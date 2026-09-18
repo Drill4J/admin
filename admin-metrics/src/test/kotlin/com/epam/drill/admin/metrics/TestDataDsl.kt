@@ -67,7 +67,7 @@ fun havingData(testsData: suspend TestDataDsl.() -> Unit): HttpClient {
             val testDataDsl = TestDataDsl(this)
             testsData(testDataDsl)
             testDataDsl.build()
-            refreshMetrics()
+            refreshMetrics(testDataDsl.sessions)
         }
     }
 }
@@ -107,6 +107,7 @@ data class ImpactedMethods(
 
 class TestDataDsl(val client: HttpClient) {
     private val builds = linkedMapOf<InstancePayload, MutableList<SingleMethodPayload>>()
+    val sessions = mutableSetOf<Pair<String, String>>()
 
     suspend fun build() {
         builds.forEach { (b, m) ->
@@ -129,6 +130,7 @@ class TestDataDsl(val client: HttpClient) {
         MethodComparison(this, method, ChangeType.DELETED)
 
     suspend infix fun TestDetails.of(session: SessionPayload): TestSessionMap {
+        sessions.add(session.groupId to session.id)
         return TestSessionMap(this, session = session)
     }
 
@@ -141,10 +143,12 @@ class TestDataDsl(val client: HttpClient) {
     }
 
     suspend infix fun TestDetails.covers(method: SingleMethodPayload): TestCoverageMap {
+        sessions.add(session1.groupId to session1.id)
         return TestCoverageMap(this, session1, TestResult.PASSED, method, IntArray(method.probesCount) { 1 })
     }
 
     suspend infix fun TestDetails.failsOn(method: SingleMethodPayload): TestCoverageMap {
+        sessions.add(session1.groupId to session1.id)
         return TestCoverageMap(this, session1, TestResult.FAILED, method, IntArray(method.probesCount) { 1 })
     }
 
@@ -220,7 +224,7 @@ class TestDataDsl(val client: HttpClient) {
 fun HttpClient.expectThat(checks: suspend ExpectationDsl.(HttpClient) -> Unit) {
     val client = this
     return waitUntilInBlocking(
-        onAssertionFailed = { refreshMetrics() }
+        onAssertionFailed = { refreshMetrics(emptySet()) }
     ) {
         checks(ExpectationDsl(client), client)
     }

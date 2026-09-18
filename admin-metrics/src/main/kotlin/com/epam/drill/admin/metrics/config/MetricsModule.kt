@@ -38,7 +38,6 @@ val metricsDIModule
             MetricsServiceImpl(
                 metricsRepository = instance(),
                 metricsServiceUiLinksConfig = MetricsServiceUiLinksConfig(drillConfig.config("metrics.ui")),
-                testRecommendationsConfig = TestRecommendationsConfig(drillConfig.config("testRecommendations")),
                 metricsConfig = MetricsConfig(drillConfig.config("metrics")),
                 etlService = instance(),
             )
