@@ -1,6 +1,7 @@
 INSERT INTO metrics.test_sessions (
     test_session_id,
     group_id,
+    test_project_id,
     test_task_id,
     session_started_at,
     created_at,
@@ -10,6 +11,7 @@ INSERT INTO metrics.test_sessions (
 VALUES (
     :test_session_id,
     :group_id,
+    :test_project_id,
     :test_task_id,
     :session_started_at,
     :created_at,
@@ -18,6 +20,7 @@ VALUES (
 )
 ON CONFLICT (
     group_id,
+    test_project_id,
     test_session_id
 )
 DO UPDATE

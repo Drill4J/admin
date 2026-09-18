@@ -251,8 +251,25 @@ class ImpactedTestsApiTest : MetricsDatabaseTests({ default, metrics ->
             }.returns { data ->
                 assertTrue(data.isNotEmpty(), "Expected at least one test from task-a")
                 assertTrue(data.all { it["testName"] == "testFromTaskA" }, "All returned tests should belong to task-a")
-                assertTrue(data.all { it["testTaskId"] == "task-a" }, "All returned tests should have testTaskId task-a")
+                assertTrue(data.all { (it["testTaskIds"] as List<String>).contains("task-a") }, "All returned tests should have testTaskId task-a")
                 assertTrue(data.none { it["testName"] == "testFromTaskB" }, "No tests from task-b should be returned")
+            }
+        }
+
+    @Test
+    fun `given testProjectId filter, impacted tests service should return only tests from matching project`() =
+        havingData {
+            build1 has listOf(method1)
+            test1 of session1.testProjectId("project-a") covers method1 on build1
+            test2 of session2.testProjectId("project-b") covers method1 on build1
+            build2 hasModified method1 comparedTo build1
+        }.expectThat { client ->
+            client.postImpactedTests(build2, build1) {
+                put("testProjectId", "project-a")
+            }.returns { data ->
+                assertTrue(data.isNotEmpty(), "Expected at least one test from project-a")
+                assertTrue(data.all { it["testProjectId"] == "project-a" }, "All returned tests should belong to project-a")
+                assertTrue(data.none { it["testProjectId"] == "project-b" }, "No tests from project-b should be returned")
             }
         }
 

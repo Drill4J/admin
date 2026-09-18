@@ -74,6 +74,24 @@ class CoverageApiTest : MetricsDatabaseTests({ default, metrics ->
         }
 
     @Test
+    fun `given testProjectIds filter, coverage should return only matching test project coverage`(): Unit =
+        havingData {
+            build1 has listOf(method1, method2)
+            test1 of session1.testProjectId("project-a") covers method1 with probesOf(1, 1) on build1
+            test2 of session2.testProjectId("project-b") covers method2 with probesOf(1, 1, 1) on build1
+        }.expectThat {
+            client.get("/metrics/coverage") {
+                parameter("groupId", build1.groupId)
+                parameter("appId", build1.appId)
+                parameter("buildVersion", build1.buildVersion)
+                parameter("testProjectIds", "project-a")
+            }.returns { data ->
+                assertTrue(data.any { it["name"] == method1.name && it["coveredProbes"] == 2 })
+                assertTrue(data.any { it["name"] == method2.name && it["coveredProbes"] == 0 })
+            }
+        }
+
+    @Test
     fun `given page and size, coverage service should return methods only for specified page and size`(): Unit =
         havingData {
             val methods = (1..15).map { idx ->

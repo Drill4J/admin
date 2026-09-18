@@ -34,6 +34,7 @@ import mu.KotlinLogging
 import java.time.Instant
 import java.time.LocalDate
 import java.time.temporal.ChronoUnit
+import kotlin.time.Duration.Companion.milliseconds
 
 class EtlLauncherImpl(
     private val orchestrator: EtlOrchestrator,
@@ -88,7 +89,7 @@ class EtlLauncherImpl(
         val deadline = System.currentTimeMillis() + cancelWaitTimeoutMillis
 
         while (settled.size < cancelling.size && System.currentTimeMillis() < deadline) {
-            delay(cancelPollDelayMillis)
+            delay(cancelPollDelayMillis.milliseconds)
             for (row in cancelling) {
                 if (row.job in settled) continue
                 val current = jobsRepository.getActiveJob(row.job)

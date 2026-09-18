@@ -749,6 +749,13 @@ paths:
             type: array
             items:
               type: string
+        - name: testProjectIds
+          in: query
+          required: false
+          schema:
+            type: array
+            items:
+              type: string
         - name: size
           in: query
           required: false
@@ -812,6 +819,13 @@ paths:
             type: array
             items:
               type: string
+        - name: testProjectIds
+          in: query
+          required: false
+          schema:
+            type: array
+            items:
+              type: string
         - name: size
           in: query
           required: false
@@ -864,6 +878,14 @@ paths:
           in: query
           required: false
           description: Optional session result filters (e.g. PASSED, FAILED).
+          schema:
+            type: array
+            items:
+              type: string
+        - name: testProjectIds
+          in: query
+          required: false
+          description: Optional test project identifier filters.
           schema:
             type: array
             items:
@@ -1617,6 +1639,13 @@ paths:
           in: query
           schema:
             type: string
+        - name: testProjectIds
+          in: query
+          required: false
+          schema:
+            type: array
+            items:
+              type: string
       responses:
         '200':
           description: Probe coverage slices (covered / missed) for pie chart
@@ -1654,6 +1683,13 @@ paths:
           in: query
           schema:
             type: string
+        - name: testProjectIds
+          in: query
+          required: false
+          schema:
+            type: array
+            items:
+              type: string
       responses:
         '200':
           description: Method coverage slices (covered / missed) for pie chart
@@ -1771,6 +1807,14 @@ paths:
           in: query
           required: false
           description: Optional session result filters (e.g. PASSED, FAILED).
+          schema:
+            type: array
+            items:
+              type: string
+        - name: testProjectIds
+          in: query
+          required: false
+          description: Optional test project identifier filters.
           schema:
             type: array
             items:
@@ -1916,6 +1960,14 @@ paths:
           description: Optional Git branch filter. When specified, only coverage data from this branch is included.
           schema:
             type: string
+        - name: testProjectIds
+          in: query
+          required: false
+          description: Optional test project identifier filters. When specified, only coverage data from these test projects is included.
+          schema:
+            type: array
+            items:
+              type: string
         - name: packageNamePattern
           in: query
           description: Optional package name pattern filter for narrowing results to specific packages.
@@ -2000,6 +2052,14 @@ paths:
           description: Optional Git branch filter. When specified, only coverage data from this branch is included.
           schema:
             type: string
+        - name: testProjectIds
+          in: query
+          required: false
+          description: Optional test project identifier filters. When specified, only coverage data from these test projects is included.
+          schema:
+            type: array
+            items:
+              type: string
         - name: packageNamePattern
           in: query
           description: Optional package name pattern filter for narrowing results to specific packages.
@@ -2125,6 +2185,14 @@ paths:
             type: array
             items:
               type: string
+        - name: testProjectIds
+          in: query
+          required: false
+          description: Optional test project identifier filters for coverage and impacted-methods join.
+          schema:
+            type: array
+            items:
+              type: string
         - name: changeTypes
           in: query
           description: Optional filter by change type. Supported values are new, modified, deleted, equal.
@@ -2243,6 +2311,14 @@ paths:
           description: Optional Git branch filter. When specified, only coverage data from this branch is included.
           schema:
             type: string
+        - name: testProjectIds
+          in: query
+          required: false
+          description: Optional test project identifier filters. When specified, only coverage data from these test projects is included.
+          schema:
+            type: array
+            items:
+              type: string
         - name: packageName
           in: query
           description: Optional package name filter for narrowing results to specific packages.
@@ -2328,6 +2404,14 @@ paths:
             type: array
             items:
               type: string
+        - name: testProjectIds
+          in: query
+          required: false
+          description: Optional test project identifier filters for coverage.
+          schema:
+            type: array
+            items:
+              type: string
         - name: freshAfter
           in: query
           required: false
@@ -2377,6 +2461,14 @@ paths:
         - name: branches
           in: query
           description: Optional Git branch filters for coverage.
+          schema:
+            type: array
+            items:
+              type: string
+        - name: testProjectIds
+          in: query
+          required: false
+          description: Optional test project identifier filters for coverage.
           schema:
             type: array
             items:
@@ -2551,6 +2643,11 @@ paths:
         - name: testName
           in: query
           description: Optional filter by test name. When specified, only tests with this name are considered for impact counting.
+          schema:
+            type: string
+        - name: testProjectId
+          in: query
+          description: Optional filter by test project ID. When specified, only tests from this test project are considered for impact counting.
           schema:
             type: string
         - name: sortBy
@@ -4144,6 +4241,10 @@ components:
           type: string
           nullable: true
           description: Optional filter by exact test definition ID.
+        testProjectId:
+          type: string
+          nullable: true
+          description: Optional filter by test project ID. When specified, only tests from this test project are included.
         coverageBranches:
           type: array
           items:
@@ -4296,6 +4397,10 @@ components:
           type: string
           nullable: true
           description: Optional filter by test name. When specified, only tests with this name are considered for impact counting.
+        testProjectId:
+          type: string
+          nullable: true
+          description: Optional filter by test project ID. When specified, only test launches from this project are considered for impact counting.
         sortBy:
           type: string
           enum:

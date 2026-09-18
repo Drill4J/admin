@@ -151,3 +151,12 @@ fun SessionPayload.testTaskId(testTaskId: String) = SessionPayload(
     testTaskId = testTaskId,
     startedAt = this.startedAt
 )
+
+fun SessionPayload.testProjectId(testProjectId: String) = SessionPayload(
+    groupId = this.groupId,
+    id = this.id,
+    testTaskId = this.testTaskId,
+    startedAt = this.startedAt,
+    builds = this.builds,
+    testProjectId = testProjectId,
+)
