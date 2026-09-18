@@ -45,12 +45,12 @@ class EtlPeriodTest {
         assertTrue(period.isBounded)
         // since is just before midnight of `from` (extractor filters created_at > since)
         assertEquals(
-            from.atStartOfDay(ZoneOffset.UTC).toInstant().minus(1, ChronoUnit.NANOS),
+            from.atStartOfDay(ZoneOffset.UTC).toInstant(),
             period.sinceTimestamp
         )
         // until is midnight of the day after `to` (extractor filters created_at <= until)
         assertEquals(
-            to.plusDays(1).atStartOfDay(ZoneOffset.UTC).toInstant(),
+            to.plusDays(1).atStartOfDay(ZoneOffset.UTC).toInstant().minusMillis(1),
             period.untilTimestamp
         )
         assertEquals(from, period.storedFrom)
