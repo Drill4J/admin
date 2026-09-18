@@ -48,3 +48,7 @@ suspend fun ApplicationCall.unprocessableEntity(cause: Exception? = null, defaul
 suspend fun ApplicationCall.notFound(cause: Exception) {
     respond(HttpStatusCode.NotFound, MessageResponse(cause.message ?: "Entity not found"))
 }
+
+suspend inline fun <reified T> ApplicationCall.error(data: T, message: String? = null) {
+    respond(HttpStatusCode.InternalServerError, DataResponse(data, message))
+}
