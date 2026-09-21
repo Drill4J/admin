@@ -39,12 +39,14 @@ interface EtlLauncher {
      * Schedules [EtlOrchestrator] runs across date ranges (periods) with the specified number of workers.
      * If a job cannot be scheduled, it will be skipped.
      *
+     * @param etlName the name of the ETL process
      * @param context the [EtlContext] for the job
      * @param period the [EtlPeriod] to cover
      * @param workers the number of workers to use
      * @return a list of [EtlJobResult]s for the scheduled jobs
      */
     suspend fun schedule(
+        etlName: String,
         context: EtlContext,
         period: EtlPeriod,
         workers: Int,
@@ -53,12 +55,14 @@ interface EtlLauncher {
     /**
      * Resume the [EtlOrchestrator] runs across date ranges (periods) that were previously scheduled.
      *
+     * @param etlName the name of the ETL process
      * @param context the [EtlContext] for the job
      * @param period the [EtlPeriod] to cover
      * @param snapshotTimestamp the timestamp of the snapshot to process
      * @param skipIfRunning if true, the job will be skipped if it is already running
      */
     suspend fun resume(
+        etlName: String,
         context: EtlContext,
         period: EtlPeriod,
         snapshotTimestamp: Instant? = null,
@@ -67,8 +71,9 @@ interface EtlLauncher {
 
     /**
      * Cancels all active jobs for [context] overlapping [period].
+     * @param etlName the name of the ETL process
      */
-    suspend fun cancel(context: EtlContext, period: EtlPeriod): List<EtlJobResult>
+    suspend fun cancel(etlName: String, context: EtlContext, period: EtlPeriod): List<EtlJobResult>
 
     /**
      * Force-reruns [period] for [context]: cancels any active jobs overlapping it, schedules up
@@ -77,6 +82,7 @@ interface EtlLauncher {
      * resulting jobs once all of them have finished.
      */
     suspend fun rerun(
+        etlName: String,
         context: EtlContext,
         period: EtlPeriod,
         workers: Int,
