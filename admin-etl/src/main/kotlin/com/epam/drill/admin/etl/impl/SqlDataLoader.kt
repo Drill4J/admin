@@ -100,7 +100,6 @@ abstract class SqlDataLoader<T: EtlRow>(
     override suspend fun deleteAll(context: EtlContext, period: EtlPeriod) {
         logger.debug { "Loader [$name] deleting data for $period" }
         val preparedSql = UntypedPreparedSql.prepareSql(sqlDelete)
-        println("!!! Deleting data from ${period.from} to ${period.toExclusive}")
         val args = preparedSql.getArgs(
             UntypedRow(
                 Instant.EPOCH,
