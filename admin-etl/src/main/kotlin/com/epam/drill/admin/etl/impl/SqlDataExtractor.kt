@@ -29,6 +29,7 @@ import java.sql.ResultSet
 import java.sql.ResultSetMetaData
 import java.time.Instant
 import java.time.LocalDateTime
+import java.time.ZoneId
 import java.time.ZoneOffset
 import java.util.Date
 import kotlin.system.measureTimeMillis
@@ -61,8 +62,8 @@ abstract class SqlDataExtractor<T : EtlRow>(
             args = preparedSql.getArgs(
                 UntypedRow(
                     sinceTimestamp, context.toMap(NamingConvention.UNDERSCORE) + mapOf(
-                        "since_timestamp" to LocalDateTime.ofInstant(sinceTimestamp, ZoneOffset.UTC),
-                        "until_timestamp" to LocalDateTime.ofInstant(untilTimestamp, ZoneOffset.UTC),
+                        "since_timestamp" to LocalDateTime.ofInstant(sinceTimestamp, ZoneId.systemDefault()),
+                        "until_timestamp" to LocalDateTime.ofInstant(untilTimestamp, ZoneId.systemDefault()),
                         "limit" to limit,
                     )
                 )

@@ -20,7 +20,7 @@ import com.zaxxer.hikari.HikariDataSource
 import org.testcontainers.containers.PostgreSQLContainer
 import org.testcontainers.utility.DockerImageName
 
-internal const val POSTGRES_IMAGE = "postgres:14.1"
+internal const val POSTGRES_IMAGE = "postgres:17.11"
 internal const val TEST_DB_NAME = "testdb"
 internal const val TEST_DB_USER = "testuser"
 internal const val TEST_DB_PASSWORD = "testpassword"
