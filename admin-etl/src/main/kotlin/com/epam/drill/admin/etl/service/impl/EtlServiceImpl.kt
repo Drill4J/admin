@@ -33,6 +33,7 @@ class EtlServiceImpl(
     private val incrementalEtlName: String,
     private val historicalEtlName: String,
     private val testSessionCoverageEtlName: String,
+    private val mergedCoverageEtlName: String,
     private val settingsService: SettingsService,
     private val maxWorkers: Int,
 ) : EtlService {
@@ -75,8 +76,7 @@ class EtlServiceImpl(
         }
         val resolvedTo = to?.takeIf { to.isBefore(today) } ?: yesterday
         val historyJobs = if (from == null || from.isBefore(today)) {
-            forEachContextWithPeriodFrom(groupId, from) { context, resolvedFrom ->
-                val period = EtlPeriod(resolvedFrom, resolvedTo)
+            forEachContextWithPeriod(groupId, from, resolvedTo) { context, period ->
                 launcher.rerun(historicalEtlName, context, period, workers ?: maxWorkers, withDataDeletion)
             }.map { it.toJobView() }
         } else
@@ -104,8 +104,8 @@ class EtlServiceImpl(
     override suspend fun runIdleJobs(groupId: String?): List<EtlJobView> {
         val today = LocalDate.now(ZoneId.systemDefault())
         val yesterday = today.minusDays(1)
-        return forEachContextWithPeriodFrom(groupId) { context, from ->
-            launcher.resume(historicalEtlName, context, EtlPeriod(from, yesterday))
+        return forEachContextWithPeriod(groupId, from = null, to = yesterday) { context, period ->
+            launcher.resume(historicalEtlName, context, period)
         }.map { it.toJobView() }
     }
 
@@ -168,11 +168,22 @@ class EtlServiceImpl(
             "Cannot cancel ETL for future dates."
         }
         val today = LocalDate.now(ZoneId.systemDefault())
-        return forEachContextWithPeriodFrom(groupId, from) { context, resolvedFrom ->
-            val resolvedTo = to ?: today
-            val period = EtlPeriod(resolvedFrom, resolvedTo)
+        val resolvedTo = to ?: today
+        return forEachContextWithPeriod(groupId, from, resolvedTo) { context, period ->
             launcher.cancel(historicalEtlName, context, period)
         }.map { it.toJobView() }
+    }
+
+    override suspend fun reloadMergedCoverage(
+        groupId: String,
+        appId: String,
+        from: LocalDate?,
+        to: LocalDate?
+    ): List<EtlJobView> {
+        val context = EtlContext(groupId = groupId, appId = appId)
+        val period = EtlPeriod(from, to)
+        return launcher.rerun(mergedCoverageEtlName, context, period, 1, withDataDeletion = true)
+            .map { it.toJobView() }
     }
 
     private fun EtlJobResult.toJobView(): EtlJobView = EtlJobView(
@@ -195,23 +206,23 @@ class EtlServiceImpl(
         }
     }
 
-    private suspend fun <T> forEachContextWithPeriodFrom(
-        groupId: String?, from: LocalDate? = null, block: suspend (EtlContext, LocalDate) -> List<T>
+    private suspend fun <T> forEachContextWithPeriod(
+        groupId: String?, from: LocalDate? = null, to: LocalDate? = null, block: suspend (EtlContext, EtlPeriod) -> List<T>
     ): List<T> {
         if (groupId != null && from != null) {
-            return block(EtlContext(groupId), from)
+            return block(EtlContext(groupId), EtlPeriod(from, to))
         } else if (groupId != null) {
             val groupSettings = settingsService.getGroupSettings(groupId)
             val historyStart = resolveHistoryStart(groupSettings)
-            return block(EtlContext(groupId), historyStart)
+            return block(EtlContext(groupId), EtlPeriod(historyStart, to))
         } else {
             val list = mutableListOf<T>()
             settingsService.getAllGroupSettings().forEach { (groupId, settings) ->
                 if (from != null) {
-                    list.addAll(block(EtlContext(groupId), from))
+                    list.addAll(block(EtlContext(groupId), EtlPeriod(from, to)))
                 } else {
                     val historyStart = resolveHistoryStart(settings)
-                    list.addAll(block(EtlContext(groupId), historyStart))
+                    list.addAll(block(EtlContext(groupId), EtlPeriod(historyStart, to)))
                 }
             }
             return list

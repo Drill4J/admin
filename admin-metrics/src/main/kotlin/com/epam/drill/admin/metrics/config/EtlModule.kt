@@ -158,19 +158,8 @@ val etlDIModule
                 EtlOrchestratorImpl(
                     name = MERGED_COVERAGE_ETL,
                     pipelines = listOf(
-                        // Reference data
-                        buildsPipeline,
-                        buildMethodsPipeline,
-                        methodsPipeline,
-                        testLaunchesPipeline,
-                        testDefinitionsPipeline,
-                        testSessionsPipeline,
-                        testSessionBuildsPipeline,
-                        // Coverage extractor group
-                        historicalBuildMethodCoveragePipeline,
                         historicalMethodCoveragePipeline,
                         historicalTest2CodeMappingPipeline,
-                        historicalTestSessionBuildsPipeline,
                     ),
                     metadataRepository = instance(),
                     jobsRepository = instance(),
@@ -209,6 +198,7 @@ val etlDIModule
                 incrementalEtlName = DEFAULT_ETL,
                 historicalEtlName = HISTORICAL_ETL,
                 testSessionCoverageEtlName = TEST_SESSION_COVERAGE_ETL,
+                mergedCoverageEtlName = MERGED_COVERAGE_ETL,
                 settingsService = instance(),
                 maxWorkers = instance<EtlConfig>().maxWorkers,
             )

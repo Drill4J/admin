@@ -39,9 +39,9 @@ class DeleteMetricsDataJob(
                     val period = metricsRepository.getInstanceDateRange(groupId, appId, buildId)
                     metricsRepository.deleteAllBuildDataByBuildId(groupId, appId, buildId)
                     period?.let { (startedAt, stoppedAt) ->
-                        val from = startedAt.atZone(ZoneOffset.UTC).toLocalDate()
-                        val to = stoppedAt.atZone(ZoneOffset.UTC).toLocalDate()
-                        etlService.rerunDateRange(groupId, from, to)
+                        val from = startedAt.atZone(ZoneOffset.systemDefault()).toLocalDate()
+                        val to = stoppedAt.atZone(ZoneOffset.systemDefault()).toLocalDate()
+                        etlService.reloadMergedCoverage(groupId, appId, from, to)
                     }
                 }
                 "testSession" -> {

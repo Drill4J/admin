@@ -178,9 +178,9 @@ class EtlLauncherImpl(
     }
 
     /**
-     * Locks [job] via [EtlJobsRepository.lockJob], runs [block] while periodically extending the
-     * lease, then marks the job COMPLETED/IDLE/ERROR based on the outcome. Returns SKIPPED
-     * results (one per pipeline) without invoking [block] if the lock could not be acquired.
+     * Locks [job] and runs [block] while periodically extending the lease,
+     * then marks the job COMPLETED/IDLE/ERROR based on the outcome.
+     * Returns SKIPPED results (one per pipeline) without invoking [block] if the lock could not be acquired.
      */
     private suspend fun executeLocked(
         job: EtlJob,
