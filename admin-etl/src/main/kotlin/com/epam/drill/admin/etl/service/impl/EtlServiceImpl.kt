@@ -28,6 +28,7 @@ import mu.KotlinLogging
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
+
 class EtlServiceImpl(
     private val launcher: EtlLauncher,
     private val incrementalEtlName: String,
@@ -44,7 +45,8 @@ class EtlServiceImpl(
 
     override suspend fun refresh(groupId: String?) {
         forEachContext(groupId) { context ->
-            launcher.resume(incrementalEtlName, context, EtlPeriod.TODAY, skipIfRunning = true).takeIf { it.isNotEmpty() }
+            launcher.resume(incrementalEtlName, context, EtlPeriod.TODAY, skipIfRunning = true)
+                .takeIf { it.isNotEmpty() }
                 ?: launcher.schedule(incrementalEtlName, context, EtlPeriod.FROM_TODAY, 1).map {
                     launcher.run(it, skipIfRunning = true)
                 }
@@ -132,11 +134,10 @@ class EtlServiceImpl(
             context,
             EtlPeriod.UNBOUNDED,
             snapshotTimestamp,
-            skipIfRunning = false
-        )
-            .takeIf { it.isNotEmpty() }
+            skipIfRunning = true
+        ).takeIf { it.isNotEmpty() }
             ?: launcher.schedule(testSessionCoverageEtlName, context, EtlPeriod.UNBOUNDED, 1).map {
-                launcher.run(it, skipIfRunning = false)
+                launcher.run(it, skipIfRunning = true)
             }).map { it.toJobView() }
     }
 
@@ -207,7 +208,10 @@ class EtlServiceImpl(
     }
 
     private suspend fun <T> forEachContextWithPeriod(
-        groupId: String?, from: LocalDate? = null, to: LocalDate? = null, block: suspend (EtlContext, EtlPeriod) -> List<T>
+        groupId: String?,
+        from: LocalDate? = null,
+        to: LocalDate? = null,
+        block: suspend (EtlContext, EtlPeriod) -> List<T>
     ): List<T> {
         if (groupId != null && from != null) {
             return block(EtlContext(groupId), EtlPeriod(from, to))

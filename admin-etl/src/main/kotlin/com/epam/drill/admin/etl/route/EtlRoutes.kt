@@ -17,6 +17,7 @@ package com.epam.drill.admin.etl.route
 
 import com.epam.drill.admin.etl.service.EtlService
 import com.epam.drill.admin.common.config.ApiResponse
+import com.epam.drill.admin.common.model.MessageResponse
 import com.epam.drill.admin.common.route.error
 import com.epam.drill.admin.common.route.ok
 import com.epam.drill.admin.etl.EtlJobStatus
@@ -95,7 +96,8 @@ fun Route.postRefreshMetrics() {
     postWithParams<Sync> { params ->
         when {
             params.groupId != null && params.testSessionId != null -> {
-                val results = etlService.loadTestSessionCoverage(groupId = params.groupId, testSessionId = params.testSessionId)
+                val results =
+                    etlService.loadTestSessionCoverage(groupId = params.groupId, testSessionId = params.testSessionId)
                 respondResults(
                     results,
                     "Test session ${params.testSessionId} loaded",
@@ -192,9 +194,19 @@ private suspend fun RoutingContext.respondResults(
     results: List<EtlJobView>,
     successMessage: String,
     failureMessage: String,
+    alreadyRunningMessage: String = "Job is running. Check the status later.",
 ) {
-    if (results.none { it.status == EtlJobStatus.ERROR })
-        call.ok(results, successMessage)
-    else
-        call.error(results, failureMessage)
+    when {
+        results.any { it.status == EtlJobStatus.ERROR } -> {
+            call.error(results, failureMessage)
+        }
+
+        results.any { it.status == EtlJobStatus.RUNNING } -> {
+            call.respond(HttpStatusCode.Accepted, MessageResponse(alreadyRunningMessage))
+        }
+
+        else -> {
+            call.ok(results, successMessage)
+        }
+    }
 }
