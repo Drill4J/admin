@@ -45,7 +45,7 @@ import org.jetbrains.exposed.sql.update
 import org.jetbrains.exposed.sql.updateReturning
 import java.time.Instant
 import java.time.LocalDate
-import java.time.ZoneOffset
+import java.time.ZoneId
 
 class EtlJobsRepositoryImpl(
     private val database: Database,
@@ -270,8 +270,8 @@ class EtlJobsRepositoryImpl(
         }
         if (covering.isEmpty()) return EtlDailyStatus.UNLOADED
         val coveredJob = covering.first()
-        val startOfNextDay = day.plusDays(1).atStartOfDay().toInstant(ZoneOffset.UTC)
-        val startOfCurrentDay = day.atStartOfDay().toInstant(ZoneOffset.UTC)
+        val startOfNextDay = day.plusDays(1).atStartOfDay(ZoneId.systemDefault()).toInstant()
+        val startOfCurrentDay = day.atStartOfDay(ZoneId.systemDefault()).toInstant()
         //job is extracting data for the first day of the period
         if (coveredJob.processedUntilTimestamp == null && day == coveredJob.job.period.from) {
             return EtlDailyStatus.RUNNING

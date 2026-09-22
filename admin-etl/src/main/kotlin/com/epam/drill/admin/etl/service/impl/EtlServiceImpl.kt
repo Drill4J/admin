@@ -27,8 +27,7 @@ import com.epam.drill.admin.writer.rawdata.views.GroupSettingsView
 import mu.KotlinLogging
 import java.time.Instant
 import java.time.LocalDate
-import java.time.ZoneOffset.UTC
-
+import java.time.ZoneId
 class EtlServiceImpl(
     private val incrementalLauncher: EtlLauncher,
     private val historicalLauncher: EtlLauncher,
@@ -68,7 +67,7 @@ class EtlServiceImpl(
         workers: Int?,
         withDataDeletion: Boolean
     ): List<EtlJobView> {
-        val today = LocalDate.now(UTC)
+        val today = LocalDate.now(ZoneId.systemDefault())
         val yesterday = today.minusDays(1)
         check(to?.isBefore(today.plusDays(1)) ?: true) {
             "Cannot rerun ETL for future dates."
@@ -98,7 +97,7 @@ class EtlServiceImpl(
     }
 
     override suspend fun runIdleJobs(groupId: String?): List<EtlJobView> {
-        val today = LocalDate.now(UTC)
+        val today = LocalDate.now(ZoneId.systemDefault())
         val yesterday = today.minusDays(1)
         return forEachContextWithPeriodFrom(groupId) { context, from ->
             historicalLauncher.resume(context, EtlPeriod(from, yesterday))
@@ -107,7 +106,7 @@ class EtlServiceImpl(
 
     override suspend fun getDailyStatuses(groupId: String, from: LocalDate?, to: LocalDate?): List<EtlDailyStatusRow> {
         val context = EtlContext(groupId)
-        val today = LocalDate.now(UTC)
+        val today = LocalDate.now(ZoneId.systemDefault())
         val resolvedFrom = from ?: resolveHistoryStart(settingsService.getGroupSettings(groupId))
         val resolvedTo = to ?: today
         val period = EtlPeriod(resolvedFrom, resolvedTo)
@@ -169,7 +168,7 @@ class EtlServiceImpl(
         check(to?.isBefore(LocalDate.now().plusDays(1)) ?: true) {
             "Cannot cancel ETL for future dates."
         }
-        val today = LocalDate.now(UTC)
+        val today = LocalDate.now(ZoneId.systemDefault())
         return forEachContextWithPeriodFrom(groupId, from) { context, resolvedFrom ->
             val resolvedTo = to ?: today
             val period = EtlPeriod(resolvedFrom, resolvedTo)
