@@ -191,26 +191,19 @@ class EtlJobsRepositoryImpl(
     }
 
     override suspend fun getActiveJobs(
-        etlName: String,
+        etlName: String?,
         context: EtlContext?,
         period: EtlPeriod,
     ): List<EtlJobResult> = newSuspendedTransaction(db = database) {
         jobsTable.selectAll()
-            .andWhere {
-                sameEtl(etlName) and
-                    (context?.let { sameContext(it) } ?: Op.TRUE) and
-                        activeStatus() }
+            .andWhere { sameEtl(etlName) and sameContext(context) and activeStatus() }
             .map(::mapJobResult)
     }
 
     override suspend fun countRunningJobs(etlName: String?, context: EtlContext?): Long =
         newSuspendedTransaction(db = database) {
             jobsTable.selectAll()
-                .andWhere {
-                    (etlName?.let { sameEtl(it) } ?: Op.TRUE) and
-                            (context?.let { sameContext(it) } ?: Op.TRUE) and
-                            (jobsTable.status eq EtlJobStatus.RUNNING.name)
-                }
+                .andWhere { sameEtl(etlName) and sameContext(context) and (jobsTable.status eq EtlJobStatus.RUNNING.name) }
                 .count()
         }
 
@@ -221,26 +214,17 @@ class EtlJobsRepositoryImpl(
             .singleOrNull()
     }
 
-    override suspend fun getDailyStatuses(
-        etlName: String,
-        context: EtlContext,
-        period: EtlPeriod,
-    ): List<EtlDailyStatusRow> {
-        require(period.from != null && period.to != null) { "getDailyStatuses requires a bounded period" }
-        val jobs = newSuspendedTransaction(db = database) {
+    override suspend fun getJobs(etlName: String?, context: EtlContext, period: EtlPeriod): List<EtlJobResult> {
+         return newSuspendedTransaction(db = database) {
             jobsTable.selectAll()
                 .andWhere { sameEtl(etlName) and sameContext(context) and overlaps(period) }
                 .orderBy(jobsTable.startedAt, SortOrder.DESC)
                 .map(::mapJobResult)
         }
-        val days = generateSequence(period.from) { it.plusDays(1) }
-            .takeWhile { !it.isAfter(period.to) }
-            .toList()
-        return days.map { day -> EtlDailyStatusRow(day, dayStatus(day, jobs)) }
     }
 
     override suspend fun getLastProcessedTimestamp(
-        etlName: String,
+        etlName: String?,
         context: EtlContext,
     ): Instant? = newSuspendedTransaction(db = database) {
         jobsTable.selectAll()
@@ -259,46 +243,6 @@ class EtlJobsRepositoryImpl(
                 it[jobsTable.processedUntilTimestamp] = processedUntilTimestamp
                 it[updatedAt] = CurrentDateTime
             }
-        }
-    }
-
-    private fun dayStatus(day: LocalDate, jobs: List<EtlJobResult>): EtlDailyStatus {
-        val covering = jobs.filter { jobProgress ->
-            val from = jobProgress.job.period.from ?: LocalDate.MIN
-            val to = jobProgress.job.period.to ?: LocalDate.MAX
-            !day.isBefore(from) && !day.isAfter(to)
-        }
-        if (covering.isEmpty()) return EtlDailyStatus.UNLOADED
-        val coveredJob = covering.first()
-        val startOfNextDay = day.plusDays(1).atStartOfDay(ZoneId.systemDefault()).toInstant()
-        val startOfCurrentDay = day.atStartOfDay(ZoneId.systemDefault()).toInstant()
-        //job is extracting data for the first day of the period
-        if (coveredJob.processedUntilTimestamp == null && day == coveredJob.job.period.from) {
-            return EtlDailyStatus.RUNNING
-        }
-        //job has already processed data for the day
-        if (coveredJob.processedUntilTimestamp?.isAfter(startOfNextDay) ?: false) {
-            return EtlDailyStatus.COMPLETED
-        }
-        //job has not yet processed data for the day
-        if (coveredJob.processedUntilTimestamp?.isBefore(startOfCurrentDay) ?: true) {
-            return when (coveredJob.status) {
-                EtlJobStatus.RUNNING -> EtlDailyStatus.SCHEDULED
-                EtlJobStatus.IDLE -> EtlDailyStatus.SCHEDULED
-                EtlJobStatus.CANCELLING -> EtlDailyStatus.SCHEDULED
-                EtlJobStatus.ERROR -> EtlDailyStatus.FAILED
-                EtlJobStatus.COMPLETED -> EtlDailyStatus.UNLOADED
-                EtlJobStatus.CANCELLED -> EtlDailyStatus.UNLOADED
-            }
-        }
-        //job is processing data for the day
-        return when (coveredJob.status) {
-            EtlJobStatus.RUNNING -> EtlDailyStatus.RUNNING
-            EtlJobStatus.IDLE -> EtlDailyStatus.COMPLETED
-            EtlJobStatus.CANCELLING -> EtlDailyStatus.RUNNING
-            EtlJobStatus.ERROR -> EtlDailyStatus.FAILED
-            EtlJobStatus.COMPLETED -> EtlDailyStatus.COMPLETED
-            EtlJobStatus.CANCELLED -> EtlDailyStatus.UNLOADED
         }
     }
 
@@ -328,14 +272,17 @@ class EtlJobsRepositoryImpl(
         )
     }
 
-    private fun sameEtl(etlName: String): Op<Boolean> = jobsTable.etlName eq etlName
+    private fun sameEtl(etlName: String?): Op<Boolean> = etlName?.let {
+        jobsTable.etlName eq etlName
+    } ?: Op.TRUE
 
-    private fun sameContext(context: EtlContext): Op<Boolean> =
+    private fun sameContext(context: EtlContext?): Op<Boolean> = context?.let {
         (jobsTable.groupId eq context.groupId) and
                 (jobsTable.appId eq context.appId.orEmpty()) and
                 (jobsTable.buildId eq context.buildId.orEmpty()) and
                 (jobsTable.testSessionId eq context.testSessionId.orEmpty()) and
                 (jobsTable.testDefinitionId eq context.testDefinitionId.orEmpty())
+    } ?: Op.TRUE
 
     private fun sameJob(job: EtlJob): Op<Boolean> =
         sameEtl(job.etlName) and sameContext(job.context) and (jobsTable.period eq job.period.toDateRangeValue())
