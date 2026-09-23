@@ -46,7 +46,6 @@ class BuildRepositoryImpl : BuildRepository {
             it[committedAt] = build.commitDate
             it[commitAuthor] = build.commitAuthor
             it[commitMessage] = build.commitMessage
-            it[updatedAt] = org.jetbrains.exposed.sql.javatime.CurrentDateTime
         }
     }
 
@@ -73,7 +72,6 @@ class BuildRepositoryImpl : BuildRepository {
             it[agentVersion] = build.agentVersion
             it[agentEnv] = build.agentEnv
             it[agentParams] = build.agentParams
-            it[updatedAt] = org.jetbrains.exposed.sql.javatime.CurrentDateTime
         }
     }
 

@@ -17,6 +17,7 @@ package com.epam.drill.admin.etl
 
 import org.junit.jupiter.api.Test
 import java.time.LocalDate
+import java.time.ZoneId
 import java.time.ZoneOffset
 import java.time.temporal.ChronoUnit
 import kotlin.test.assertEquals
@@ -45,12 +46,12 @@ class EtlPeriodTest {
         assertTrue(period.isBounded)
         // since is just before midnight of `from` (extractor filters created_at > since)
         assertEquals(
-            from.atStartOfDay(ZoneOffset.UTC).toInstant(),
+            from.atStartOfDay(ZoneId.systemDefault()).toInstant(),
             period.sinceTimestamp
         )
         // until is midnight of the day after `to` (extractor filters created_at <= until)
         assertEquals(
-            to.plusDays(1).atStartOfDay(ZoneOffset.UTC).toInstant().minusMillis(1),
+            to.plusDays(1).atStartOfDay(ZoneId.systemDefault()).toInstant().minusMillis(1),
             period.untilTimestamp
         )
         assertEquals(from, period.storedFrom)

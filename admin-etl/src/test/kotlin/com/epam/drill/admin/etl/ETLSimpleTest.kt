@@ -27,6 +27,7 @@ import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import java.time.Instant
 import java.time.LocalDate
+import java.time.ZoneId
 import java.time.ZoneOffset
 import java.util.concurrent.atomic.AtomicInteger
 import kotlin.test.assertEquals
@@ -288,7 +289,7 @@ class ETLSimpleTest {
 
         // A bounded period (today..today) has a non-null untilTimestamp, so once the
         // worker reaches it without errors, the job is reported as COMPLETED.
-        val yesterday = LocalDate.now(ZoneOffset.UTC).minusDays(1)
+        val yesterday = LocalDate.now(ZoneId.systemDefault()).minusDays(1)
         val period = EtlPeriod(from = yesterday, to = yesterday)
 
         addNewRecords(3)

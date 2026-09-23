@@ -16,9 +16,7 @@
 package com.epam.drill.admin.etl
 
 import java.time.LocalDate
-import java.time.ZoneOffset
-import java.time.ZoneOffset.UTC
-import java.time.temporal.ChronoUnit
+import java.time.ZoneId
 
 /**
  * A bounded or unbounded day range (time-of-day is ignored) used to scope an ETL rerun.
@@ -33,13 +31,13 @@ data class EtlPeriod(
      * Extraction lower bound (exclusive): midnight of [from] so the whole [from] day is included
      */
     val sinceTimestamp: java.time.Instant?
-        get() = from?.atStartOfDay(ZoneOffset.UTC)?.toInstant()
+        get() = from?.atStartOfDay(ZoneId.systemDefault())?.toInstant()
 
     /**
      * Extraction upper bound (inclusive).
      */
     val untilTimestamp: java.time.Instant?
-        get() = to?.plusDays(1)?.atStartOfDay(ZoneOffset.UTC)?.toInstant()?.minusMillis(1)
+        get() = to?.plusDays(1)?.atStartOfDay(ZoneId.systemDefault())?.toInstant()?.minusMillis(1)
 
     /** Whether the day ranges of two periods intersect. */
     fun overlaps(other: EtlPeriod): Boolean {
@@ -63,11 +61,11 @@ data class EtlPeriod(
         val SENTINEL_TO: LocalDate = LocalDate.of(2099, 12, 31)
         val UNBOUNDED = EtlPeriod()
         val FROM_TODAY: EtlPeriod
-            get() = EtlPeriod(from = LocalDate.now(UTC))
+            get() = EtlPeriod(from = LocalDate.now(ZoneId.systemDefault()))
         val BEFORE_TODAY: EtlPeriod
-            get() = EtlPeriod(to = LocalDate.now(UTC).minusDays(1))
+            get() = EtlPeriod(to = LocalDate.now(ZoneId.systemDefault()).minusDays(1))
         val TODAY: EtlPeriod
-            get() = EtlPeriod(to = LocalDate.now(UTC), from = LocalDate.now(UTC))
+            get() = EtlPeriod(to = LocalDate.now(ZoneId.systemDefault()), from = LocalDate.now(ZoneId.systemDefault()))
 
         /** Rebuilds an [EtlPeriod] from persisted sentinel-aware bounds. */
         fun fromStored(from: LocalDate, to: LocalDate): EtlPeriod {
