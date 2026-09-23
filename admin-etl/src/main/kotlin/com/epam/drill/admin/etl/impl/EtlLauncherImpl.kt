@@ -16,6 +16,7 @@
 package com.epam.drill.admin.etl.impl
 
 import com.epam.drill.admin.etl.EtlContext
+import com.epam.drill.admin.etl.EtlDailyStatus
 import com.epam.drill.admin.etl.EtlDailyStatusRow
 import com.epam.drill.admin.etl.EtlJob
 import com.epam.drill.admin.etl.EtlJobResult
@@ -33,6 +34,7 @@ import kotlinx.coroutines.delay
 import mu.KotlinLogging
 import java.time.Instant
 import java.time.LocalDate
+import java.time.ZoneId
 import java.time.temporal.ChronoUnit
 import kotlin.time.Duration.Companion.milliseconds
 
@@ -135,14 +137,19 @@ class EtlLauncherImpl(
     }
 
     override suspend fun getActiveJobs(context: EtlContext?, period: EtlPeriod): List<EtlJobResult> =
-        orchestrators.keys.flatMap { etlName -> jobsRepository.getActiveJobs(etlName, context, period) }
+        jobsRepository.getActiveJobs(etlName = null, context, period)
 
-    override suspend fun getDailyStatuses(context: EtlContext, period: EtlPeriod): List<EtlDailyStatusRow> =
-        orchestrators.keys.flatMap { etlName -> jobsRepository.getDailyStatuses(etlName, context, period) }
+    override suspend fun getDailyStatuses(context: EtlContext, period: EtlPeriod): List<EtlDailyStatusRow> {
+        val jobs = jobsRepository.getJobs(etlName = null, context, period)
+
+        val days = generateSequence(period.from) { it.plusDays(1) }
+            .takeWhile { !it.isAfter(period.to) }
+            .toList()
+        return days.map { day -> EtlDailyStatusRow(day, mapDayStatus(day, jobs)) }
+    }
 
     override suspend fun getLastProcessedTimestamp(context: EtlContext): Instant? =
-        orchestrators.keys.mapNotNull { etlName -> jobsRepository.getLastProcessedTimestamp(etlName, context) }
-            .maxOrNull()
+       jobsRepository.getLastProcessedTimestamp(etlName = null, context)
 
     private fun getOrchestrator(etlName: String): EtlOrchestrator {
         return orchestrators[etlName] ?: throw IllegalArgumentException("No orchestrator registered for ETL [$etlName]")
@@ -229,5 +236,45 @@ class EtlLauncherImpl(
             throw LockAcquisitionException("ETL [${job.etlName}] for ${job.period} is still running after $attempts attempts")
         }
         return null
+    }
+
+    private fun mapDayStatus(day: LocalDate, jobs: List<EtlJobResult>): EtlDailyStatus {
+        val covering = jobs.filter { jobProgress ->
+            val from = jobProgress.job.period.from ?: LocalDate.MIN
+            val to = jobProgress.job.period.to ?: LocalDate.MAX
+            !day.isBefore(from) && !day.isAfter(to)
+        }
+        if (covering.isEmpty()) return EtlDailyStatus.UNLOADED
+        val coveredJob = covering.first()
+        val startOfNextDay = day.plusDays(1).atStartOfDay(ZoneId.systemDefault()).toInstant()
+        val startOfCurrentDay = day.atStartOfDay(ZoneId.systemDefault()).toInstant()
+        //job is extracting data for the first day of the period
+        if (coveredJob.processedUntilTimestamp == null && day == coveredJob.job.period.from) {
+            return EtlDailyStatus.RUNNING
+        }
+        //job has already processed data for the day
+        if (coveredJob.processedUntilTimestamp?.isAfter(startOfNextDay) ?: false) {
+            return EtlDailyStatus.COMPLETED
+        }
+        //job has not yet processed data for the day
+        if (coveredJob.processedUntilTimestamp?.isBefore(startOfCurrentDay) ?: true) {
+            return when (coveredJob.status) {
+                EtlJobStatus.RUNNING -> EtlDailyStatus.SCHEDULED
+                EtlJobStatus.IDLE -> EtlDailyStatus.SCHEDULED
+                EtlJobStatus.CANCELLING -> EtlDailyStatus.SCHEDULED
+                EtlJobStatus.ERROR -> EtlDailyStatus.FAILED
+                EtlJobStatus.COMPLETED -> EtlDailyStatus.UNLOADED
+                EtlJobStatus.CANCELLED -> EtlDailyStatus.UNLOADED
+            }
+        }
+        //job is processing data for the day
+        return when (coveredJob.status) {
+            EtlJobStatus.RUNNING -> EtlDailyStatus.RUNNING
+            EtlJobStatus.IDLE -> EtlDailyStatus.COMPLETED
+            EtlJobStatus.CANCELLING -> EtlDailyStatus.RUNNING
+            EtlJobStatus.ERROR -> EtlDailyStatus.FAILED
+            EtlJobStatus.COMPLETED -> EtlDailyStatus.COMPLETED
+            EtlJobStatus.CANCELLED -> EtlDailyStatus.UNLOADED
+        }
     }
 }

@@ -41,8 +41,8 @@ class SimpleEtlJobsRepository : EtlJobsRepository {
     private val jobs = mutableMapOf<EtlJob, JobState>()
     private val mutex = Mutex()
 
-    private fun matchesEtlAndContext(job: EtlJob, etlName: String, context: EtlContext?) =
-        job.etlName == etlName && job.context == context
+    private fun matchesEtlAndContext(job: EtlJob, etlName: String?, context: EtlContext?) =
+        (etlName == null || job.etlName == etlName) && job.context == context
 
     private fun toResult(job: EtlJob, state: JobState): EtlJobResult = EtlJobResult(
         job = job,
@@ -196,7 +196,7 @@ class SimpleEtlJobsRepository : EtlJobsRepository {
         toResult(job, updated)
     }
 
-    override suspend fun getActiveJobs(etlName: String, context: EtlContext?, period: EtlPeriod): List<EtlJobResult> = mutex.withLock {
+    override suspend fun getActiveJobs(etlName: String?, context: EtlContext?, period: EtlPeriod): List<EtlJobResult> = mutex.withLock {
         jobs.filter { (job, state) ->
             matchesEtlAndContext(job, etlName, context) &&
                     job.period.overlaps(period) &&
@@ -218,34 +218,16 @@ class SimpleEtlJobsRepository : EtlJobsRepository {
         }?.let { (j, state) -> toResult(j, state) }
     }
 
-    override suspend fun getDailyStatuses(
-        etlName: String,
-        context: EtlContext,
-        period: EtlPeriod,
-    ): List<EtlDailyStatusRow> = mutex.withLock {
+    override suspend fun getJobs(etlName: String?, context: EtlContext, period: EtlPeriod): List<EtlJobResult> = mutex.withLock {
         val from = requireNotNull(period.from) { "getDailyStatuses requires a bounded period" }
         val to = requireNotNull(period.to) { "getDailyStatuses requires a bounded period" }
-        val matching = jobs.entries.filter { (job, _) -> matchesEtlAndContext(job, etlName, context) }
-        generateSequence(from) { it.plusDays(1) }.takeWhile { !it.isAfter(to) }.map { day ->
-            val covering = matching.filter { (job, _) ->
-                val jf = job.period.from ?: LocalDate.MIN
-                val jt = job.period.to ?: LocalDate.MAX
-                !day.isBefore(jf) && !day.isAfter(jt)
-            }
-            val status = when {
-                covering.isEmpty() -> EtlDailyStatus.UNLOADED
-                covering.any { it.value.status == EtlJobStatus.RUNNING || it.value.status == EtlJobStatus.CANCELLING } -> EtlDailyStatus.RUNNING
-                covering.any { it.value.status == EtlJobStatus.ERROR || it.value.status == EtlJobStatus.CANCELLED } -> EtlDailyStatus.FAILED
-                covering.any { it.value.status == EtlJobStatus.COMPLETED } -> EtlDailyStatus.COMPLETED
-                covering.any { it.value.status == EtlJobStatus.IDLE } -> EtlDailyStatus.SCHEDULED
-                else -> EtlDailyStatus.UNLOADED
-            }
-            EtlDailyStatusRow(day, status)
-        }.toList()
+        return jobs.entries.filter { (job, _) -> matchesEtlAndContext(job, etlName, context) }
+            .filter { (job, _) -> job.period.overlaps(EtlPeriod(from, to)) }
+            .map { (job, state) -> toResult(job, state) }
     }
 
     override suspend fun getLastProcessedTimestamp(
-        etlName: String,
+        etlName: String?,
         context: EtlContext,
     ): Instant? = mutex.withLock {
         jobs.entries

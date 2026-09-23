@@ -117,7 +117,7 @@ interface EtlJobsRepository {
 
     /** Returns active ([EtlJobStatus.IDLE]/[EtlJobStatus.RUNNING]) jobs matching [etlName]/[context]/[period]. */
     suspend fun getActiveJobs(
-        etlName: String,
+        etlName: String?,
         context: EtlContext?,
         period: EtlPeriod,
     ): List<EtlJobResult>
@@ -135,18 +135,18 @@ interface EtlJobsRepository {
      * Returns per-day statuses for [period] derived from jobs matching [etlName]/[context].
      * Days with no covering job are reported as [EtlDailyStatus.UNLOADED].
      */
-    suspend fun getDailyStatuses(
-        etlName: String,
+    suspend fun getJobs(
+        etlName: String?,
         context: EtlContext,
         period: EtlPeriod,
-    ): List<EtlDailyStatusRow>
+    ): List<EtlJobResult>
 
     /**
      * Returns the furthest `processed_until_timestamp` reached by any (non-canceled) job for
      * [etlName]/[context], or null if no job has recorded progress yet.
      */
     suspend fun getLastProcessedTimestamp(
-        etlName: String,
+        etlName: String?,
         context: EtlContext,
     ): Instant?
 
