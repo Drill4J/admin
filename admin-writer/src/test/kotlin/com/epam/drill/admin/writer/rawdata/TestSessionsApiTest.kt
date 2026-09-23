@@ -37,6 +37,7 @@ class TestSessionsApiTest : DatabaseTests({ RawDataWriterDatabaseConfig.init(it)
     fun `given new test session, put test sessions service should save test session in database and return OK`() =
         withRollback {
             val testGroup = "test-group"
+            val testProjectId = "test-project-id"
             val testSession = "test-session-1"
             val timeBeforeTest = LocalDateTime.now()
             val app = drillApplication(rawDataServicesDIModule) {
@@ -49,7 +50,8 @@ class TestSessionsApiTest : DatabaseTests({ RawDataWriterDatabaseConfig.init(it)
                     """
                 {
                     "id": "$testSession",
-                    "groupId": "$testGroup",                    
+                    "groupId": "$testGroup",
+                    "testProjectId": "$testProjectId",
                     "testTaskId": "test-task-1",
                     "startedAt": "2025-01-01T00:00:00+01:00"
                 }
@@ -69,6 +71,7 @@ class TestSessionsApiTest : DatabaseTests({ RawDataWriterDatabaseConfig.init(it)
             waitUntilInTransaction {
                 val savedTestSessions = TestSessionTable.selectAll()
                     .filter { it[TestSessionTable.groupId] == testGroup }
+                    .filter { it[TestSessionTable.testProjectId] == testProjectId }
                     .filter { it[TestSessionTable.id].value == testSession }
                 assertEquals(1, savedTestSessions.size)
                 savedTestSessions.forEach {
@@ -82,6 +85,7 @@ class TestSessionsApiTest : DatabaseTests({ RawDataWriterDatabaseConfig.init(it)
     @Test
     fun `given new test session with builds, put test sessions service should save session builds in database and return OK`() = withRollback {
         val testGroup = "test-group"
+        val testProjectId = "test-project-id"
         val testSession = "test-session-2"
         val timeBeforeTest = LocalDateTime.now()
         val app = drillApplication(rawDataServicesDIModule) {
@@ -95,6 +99,7 @@ class TestSessionsApiTest : DatabaseTests({ RawDataWriterDatabaseConfig.init(it)
                 {
                     "id": "$testSession",
                     "groupId": "$testGroup",
+                    "testProjectId": "$testProjectId",
                     "testTaskId": "test-task-2",
                     "startedAt": "2025-01-01T00:00:00+01:00",
                     "builds": [

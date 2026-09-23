@@ -1,6 +1,7 @@
 SELECT
     tl.id AS test_launch_id,
     tl.group_id,
+    tl.test_project_id,
     tl.test_definition_id,
     tl.test_session_id,
     tl.result AS test_result,

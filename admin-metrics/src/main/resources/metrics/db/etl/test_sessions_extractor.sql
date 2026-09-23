@@ -1,6 +1,7 @@
 SELECT
     ts.id AS test_session_id,
     ts.group_id,
+    ts.test_project_id,
     ts.test_task_id,
     ts.started_at AS session_started_at,
     ts.created_by,

@@ -1,6 +1,7 @@
 INSERT INTO metrics.test_launches (
     test_launch_id,
     group_id,
+    test_project_id,
     test_definition_id,
     test_session_id,
     test_result,
@@ -16,6 +17,7 @@ INSERT INTO metrics.test_launches (
 VALUES (
     :test_launch_id,
     :group_id,
+    :test_project_id,
     :test_definition_id,
     :test_session_id,
     :test_result,
@@ -30,6 +32,7 @@ VALUES (
 )
 ON CONFLICT (
     group_id,
+    test_project_id,
     test_launch_id
 )
 DO UPDATE

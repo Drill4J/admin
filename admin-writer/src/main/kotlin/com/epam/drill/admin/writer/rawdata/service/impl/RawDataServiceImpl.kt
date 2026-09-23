@@ -229,6 +229,7 @@ class RawDataServiceImpl(
             TestLaunch(
                 groupId = testsPayload.groupId,
                 id = test.testLaunchId,
+                testProjectId = "",
                 testDefinitionId = test.testDefinitionId,
                 testSessionId = testsPayload.sessionId,
                 result = test.result.toString(),
@@ -240,6 +241,7 @@ class RawDataServiceImpl(
             TestDefinition(
                 groupId = testsPayload.groupId,
                 id = test.testDefinitionId,
+                testProjectId = "",
                 type = "placeholder", // TODO replace once it's implemented on autotest agent
                 runner = test.details.runner,
                 name = test.details.testName,
@@ -254,6 +256,7 @@ class RawDataServiceImpl(
         testDefinitionsPayload.definitions.map { definition ->
             TestDefinition(
                 groupId = testDefinitionsPayload.groupId,
+                testProjectId = testDefinitionsPayload.testProjectId ?: "",
                 id = definition.id,
                 type = definition.type,
                 runner = definition.runner,
@@ -269,6 +272,7 @@ class RawDataServiceImpl(
         testLaunchesPayload.launches.map { launch ->
             TestLaunch(
                 groupId = testLaunchesPayload.groupId,
+                testProjectId = testLaunchesPayload.testProjectId ?: "",
                 id = launch.id,
                 testDefinitionId = launch.testDefinitionId,
                 testSessionId = testLaunchesPayload.testSessionId,
@@ -282,6 +286,7 @@ class RawDataServiceImpl(
         val testSession = TestSession(
             id = sessionPayload.id,
             groupId = sessionPayload.groupId,
+            testProjectId = sessionPayload.testProjectId ?: "",
             testTaskId = sessionPayload.testTaskId,
             startedAt = sessionPayload.startedAt.toLocalDateTime(TimeZone.UTC).toJavaLocalDateTime(),
             createdBy = username

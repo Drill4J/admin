@@ -94,6 +94,15 @@ class EtlConfig(private val config: ApplicationConfig, val metrics: EtlMeter) {
 
     /**
      * Upper bound on the number of ETL workers (jobs) that may be running concurrently.
+     *
+     * Each worker processes all extractor groups of its orchestrator in parallel.
+     * Active extractor groups keep JDBC connections occupied while running,
+     * with additional short-term connection usage from other operations.
+     *
+     * Safe upper bound:
+     *   maxWorkers < maxPoolSize / extractor groups per orchestrator
+     *
+     * Raising maxWorkers beyond this limit causes connection pool exhaustion.
      */
     val maxWorkers : Int
         get() = config.propertyOrNull("maxWorkers")?.getString()?.toIntOrNull() ?: 4

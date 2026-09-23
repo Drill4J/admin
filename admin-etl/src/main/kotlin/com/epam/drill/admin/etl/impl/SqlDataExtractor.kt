@@ -28,6 +28,9 @@ import org.jetbrains.exposed.sql.transactions.experimental.newSuspendedTransacti
 import java.sql.ResultSet
 import java.sql.ResultSetMetaData
 import java.time.Instant
+import java.time.LocalDateTime
+import java.time.ZoneOffset
+import java.util.Date
 import kotlin.system.measureTimeMillis
 import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.toJavaDuration
@@ -58,8 +61,8 @@ abstract class SqlDataExtractor<T : EtlRow>(
             args = preparedSql.getArgs(
                 UntypedRow(
                     sinceTimestamp, context.toMap(NamingConvention.UNDERSCORE) + mapOf(
-                        "since_timestamp" to java.sql.Timestamp.from(sinceTimestamp),
-                        "until_timestamp" to java.sql.Timestamp.from(untilTimestamp),
+                        "since_timestamp" to LocalDateTime.ofInstant(sinceTimestamp, ZoneOffset.UTC),
+                        "until_timestamp" to LocalDateTime.ofInstant(untilTimestamp, ZoneOffset.UTC),
                         "limit" to limit,
                     )
                 )

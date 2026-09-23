@@ -1,6 +1,7 @@
 INSERT INTO metrics.test_definitions (
     test_definition_id,
     group_id,
+    test_project_id,
     test_path,
     test_name,
     test_runner,
@@ -14,6 +15,7 @@ INSERT INTO metrics.test_definitions (
 VALUES (
     :test_definition_id,
     :group_id,
+    :test_project_id,
     :test_path,
     :test_name,
     :test_runner,
@@ -26,6 +28,7 @@ VALUES (
 )
 ON CONFLICT (
     group_id,
+    test_project_id,
     test_definition_id
 )
 DO UPDATE
