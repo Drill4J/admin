@@ -26,7 +26,7 @@ import org.quartz.DisallowConcurrentExecution
 import org.quartz.Job
 import org.quartz.JobExecutionContext
 import java.time.Instant
-import java.time.ZoneOffset.UTC
+import java.time.ZoneOffset
 
 @DisallowConcurrentExecution
 class MetricsDataRetentionPolicyJob(
@@ -45,10 +45,11 @@ class MetricsDataRetentionPolicyJob(
                     groupSettings?.metricsPeriodDays != null
                 }.mapValues { (_, groupSettings) ->
                     groupSettings?.metricsPeriodDays?.let {
-                        Instant.now().atZone(UTC).toLocalDate().minusDays(it.toLong()).atStartOfDay().toInstant(UTC)
+                        Instant.now().atZone(ZoneOffset.systemDefault()).toLocalDate()
+                            .minusDays(it.toLong()).atStartOfDay(ZoneOffset.systemDefault()).toInstant()
                     } ?: Instant.EPOCH
                 }.map { (groupId, initTimestamp) ->
-                    async {
+                    this@runBlocking.async {
                         logger.info { "Deleting all metrics data for groupId [$groupId] older than $initTimestamp..." }
                         metricsRepository.deleteAllBuildDataCreatedBefore(groupId, initTimestamp)
                         metricsRepository.deleteAllTestDataCreatedBefore(groupId, initTimestamp)

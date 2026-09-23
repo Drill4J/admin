@@ -38,8 +38,10 @@ import com.epam.drill.admin.writer.rawdata.config.settingsServicesDIModule
 import io.ktor.server.application.Application
 import io.ktor.server.config.ApplicationConfig
 import org.kodein.di.DI
+import org.kodein.di.allInstances
 import org.kodein.di.bind
 import org.kodein.di.instance
+import org.kodein.di.ktor.closestDI
 import org.kodein.di.singleton
 import org.quartz.JobBuilder
 import org.quartz.JobDetail
@@ -47,6 +49,7 @@ import org.quartz.JobDetail
 const val DEFAULT_ETL = "incremental"
 const val HISTORICAL_ETL = "historical"
 const val TEST_SESSION_COVERAGE_ETL = "testSessionCoverage"
+const val MERGED_COVERAGE_ETL = "merged_coverage"
 
 val etlDIModule
     get() = DI.Module("etlServices") {
@@ -149,36 +152,39 @@ val etlDIModule
                 )
             }
         }
+        bind<EtlOrchestrator>(tag = MERGED_COVERAGE_ETL) with singleton {
+            val etlConfig = instance<EtlConfig>()
+            with(etlConfig) {
+                EtlOrchestratorImpl(
+                    name = MERGED_COVERAGE_ETL,
+                    pipelines = listOf(
+                        historicalMethodCoveragePipeline,
+                        historicalTest2CodeMappingPipeline,
+                    ),
+                    metadataRepository = instance(),
+                    jobsRepository = instance(),
+                    metrics = metrics,
+                    consistencyWindow = consistencyWindow,
+                    processingDelay = processingDelay,
+                    bufferSize = bufferSize,
+                    lockLeaseSeconds = lockLeaseSeconds,
+                )
+            }
+        }
+
         bind<EtlWorkerPool>() with singleton {
             val etlConfig = instance<EtlConfig>()
             SemaphoreWorkerPool(maxWorkers = etlConfig.maxWorkers)
         }
-        bind<EtlLauncher>(tag = DEFAULT_ETL) with singleton {
+        bind<EtlLauncher>() with singleton {
             val etlConfig = instance<EtlConfig>()
             EtlLauncherImpl(
-                orchestrator = instance(tag = DEFAULT_ETL),
-                jobsRepository = instance(),
-                lockLeaseSeconds = etlConfig.lockLeaseSeconds,
-                lockRetryDelay = etlConfig.lockRetryDelay * 1000,
-                lockAttempts = etlConfig.lockAttempts,
-                workerPool = instance(),
-            )
-        }
-        bind<EtlLauncher>(tag = HISTORICAL_ETL) with singleton {
-            val etlConfig = instance<EtlConfig>()
-            EtlLauncherImpl(
-                orchestrator = instance(tag = HISTORICAL_ETL),
-                jobsRepository = instance(),
-                lockLeaseSeconds = etlConfig.lockLeaseSeconds,
-                lockRetryDelay = etlConfig.lockRetryDelay * 1000,
-                lockAttempts = etlConfig.lockAttempts,
-                workerPool = instance(),
-            )
-        }
-        bind<EtlLauncher>(tag = TEST_SESSION_COVERAGE_ETL) with singleton {
-            val etlConfig = instance<EtlConfig>()
-            EtlLauncherImpl(
-                orchestrator = instance(tag = TEST_SESSION_COVERAGE_ETL),
+                orchestrators = setOf(
+                    instance<EtlOrchestrator>(tag = DEFAULT_ETL),
+                    instance<EtlOrchestrator>(tag = HISTORICAL_ETL),
+                    instance<EtlOrchestrator>(tag = TEST_SESSION_COVERAGE_ETL),
+                    instance<EtlOrchestrator>(tag = MERGED_COVERAGE_ETL)
+                ),
                 jobsRepository = instance(),
                 lockLeaseSeconds = etlConfig.lockLeaseSeconds,
                 lockRetryDelay = etlConfig.lockRetryDelay * 1000,
@@ -188,9 +194,11 @@ val etlDIModule
         }
         bind<EtlService>() with singleton {
             EtlServiceImpl(
-                incrementalLauncher = instance(tag = DEFAULT_ETL),
-                historicalLauncher = instance(tag = HISTORICAL_ETL),
-                testSessionCoverageLauncher = instance(tag = TEST_SESSION_COVERAGE_ETL),
+                launcher = instance(),
+                incrementalEtlName = DEFAULT_ETL,
+                historicalEtlName = HISTORICAL_ETL,
+                testSessionCoverageEtlName = TEST_SESSION_COVERAGE_ETL,
+                mergedCoverageEtlName = MERGED_COVERAGE_ETL,
                 settingsService = instance(),
                 maxWorkers = instance<EtlConfig>().maxWorkers,
             )

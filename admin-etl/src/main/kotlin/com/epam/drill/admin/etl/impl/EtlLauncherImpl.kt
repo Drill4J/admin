@@ -37,7 +37,7 @@ import java.time.temporal.ChronoUnit
 import kotlin.time.Duration.Companion.milliseconds
 
 class EtlLauncherImpl(
-    private val orchestrator: EtlOrchestrator,
+    orchestrators: Set<EtlOrchestrator>,
     private val jobsRepository: EtlJobsRepository,
     private val lockLeaseSeconds: Long = 180,
     private val lockRetryDelay: Long = 10000L,
@@ -47,7 +47,7 @@ class EtlLauncherImpl(
     private val cancelPollDelayMillis: Long = 500L,
 ) : EtlLauncher {
     private val logger = KotlinLogging.logger {}
-    private val etlName get() = orchestrator.name
+    private val orchestrators: Map<String, EtlOrchestrator> = orchestrators.associateBy { it.name }
 
     override suspend fun run(
         job: EtlJob,
@@ -55,33 +55,36 @@ class EtlLauncherImpl(
         skipIfRunning: Boolean
     ): EtlJobResult {
         return executeLocked(job, skipIfRunning) { workerId ->
-            orchestrator.run(job, workerId, snapshotTimestamp)
+            getOrchestrator(job.etlName).run(job, workerId, snapshotTimestamp)
         }
     }
 
-
-    override suspend fun schedule(context: EtlContext, period: EtlPeriod, workers: Int): List<EtlJob> {
+    override suspend fun schedule(etlName: String, context: EtlContext, period: EtlPeriod, workers: Int): List<EtlJob> {
+        checkOrchestrator(etlName)
         val chunks = partition(period, workers)
         return chunks.mapNotNull { jobsRepository.scheduleJob(etlName, context, it) }
     }
 
     override suspend fun resume(
+        etlName: String,
         context: EtlContext,
         period: EtlPeriod,
         snapshotTimestamp: Instant?,
         skipIfRunning: Boolean
     ): List<EtlJobResult> = coroutineScope {
+        checkOrchestrator(etlName)
         val resumable = jobsRepository.findResumable(etlName, context, period)
         resumable.map { job ->
             async {
                 executeLocked(job, skipIfRunning) { workerId ->
-                    orchestrator.run(job, workerId, snapshotTimestamp)
+                    getOrchestrator(etlName).run(job, workerId, snapshotTimestamp)
                 }
             }
         }.awaitAll()
     }
 
-    override suspend fun cancel(context: EtlContext, period: EtlPeriod): List<EtlJobResult> {
+    override suspend fun cancel(etlName: String, context: EtlContext, period: EtlPeriod): List<EtlJobResult> {
+        checkOrchestrator(etlName)
         val cancelling = jobsRepository.cancelJobs(etlName, context, period)
         if (cancelling.isEmpty()) return emptyList()
 
@@ -95,7 +98,6 @@ class EtlLauncherImpl(
                 val current = jobsRepository.getActiveJob(row.job)
                 when {
                     current == null -> {
-                        // Row is no longer active — worker already reached a terminal status
                         settled[row.job] = row.copy(status = EtlJobStatus.CANCELLED)
                     }
                     current.status == EtlJobStatus.CANCELLED -> {
@@ -115,31 +117,40 @@ class EtlLauncherImpl(
     }
 
     override suspend fun rerun(
+        etlName: String,
         context: EtlContext,
         period: EtlPeriod,
         workers: Int,
         withDataDeletion: Boolean,
     ): List<EtlJobResult> = coroutineScope {
-        cancel(context, period)
-        schedule(context, period, workers).map { job ->
+        checkOrchestrator(etlName)
+        cancel(etlName, context, period)
+        schedule(etlName, context, period, workers).map { job ->
             async {
                 executeLocked(job, skipIfRunning = false) { workerId ->
-                    orchestrator.rerun(job, workerId, withDataDeletion)
+                    getOrchestrator(etlName).rerun(job, workerId, withDataDeletion)
                 }
             }
         }.awaitAll()
     }
 
     override suspend fun getActiveJobs(context: EtlContext?, period: EtlPeriod): List<EtlJobResult> =
-        jobsRepository.getActiveJobs(etlName, context, period)
+        orchestrators.keys.flatMap { etlName -> jobsRepository.getActiveJobs(etlName, context, period) }
 
     override suspend fun getDailyStatuses(context: EtlContext, period: EtlPeriod): List<EtlDailyStatusRow> =
-        jobsRepository.getDailyStatuses(etlName, context, period)
+        orchestrators.keys.flatMap { etlName -> jobsRepository.getDailyStatuses(etlName, context, period) }
 
     override suspend fun getLastProcessedTimestamp(context: EtlContext): Instant? =
-        jobsRepository.getLastProcessedTimestamp(etlName, context)
+        orchestrators.keys.mapNotNull { etlName -> jobsRepository.getLastProcessedTimestamp(etlName, context) }
+            .maxOrNull()
 
+    private fun getOrchestrator(etlName: String): EtlOrchestrator {
+        return orchestrators[etlName] ?: throw IllegalArgumentException("No orchestrator registered for ETL [$etlName]")
+    }
 
+    private fun checkOrchestrator(etlName: String) {
+        getOrchestrator(etlName)
+    }
     /**
      * The simplest partitioning strategy: splits a bounded [period] into up to [workers]
      * roughly equal day-range chunks. If the period is unbounded or [workers] <= 1, returns a single chunk.
@@ -167,9 +178,9 @@ class EtlLauncherImpl(
     }
 
     /**
-     * Locks [job] via [EtlJobsRepository.lockJob], runs [block] while periodically extending the
-     * lease, then marks the job COMPLETED/IDLE/ERROR based on the outcome. Returns SKIPPED
-     * results (one per pipeline) without invoking [block] if the lock could not be acquired.
+     * Locks [job] and runs [block] while periodically extending the lease,
+     * then marks the job COMPLETED/IDLE/ERROR based on the outcome.
+     * Returns SKIPPED results (one per pipeline) without invoking [block] if the lock could not be acquired.
      */
     private suspend fun executeLocked(
         job: EtlJob,
@@ -201,22 +212,21 @@ class EtlLauncherImpl(
                 }
                 if (skipIfRunning && activeJob.status == EtlJobStatus.RUNNING) {
                     logger.info {
-                        "ETL [$etlName] for ${job.period} is already running by [${activeJob?.workerId}], skipping..."
+                        "ETL [${job.etlName}] for ${job.period} is already running by [${activeJob?.workerId}], skipping..."
                     }
                     return activeJob
                 }
                 attempts++
                 if (attempts % 10 == 0) {
-                    //log every 10 attempts
                     logger.info {
-                        "ETL [$etlName] for ${job.period} is still running, waiting for lock..."
+                        "ETL [${job.etlName}] for ${job.period} is still running, waiting for lock..."
                     }
                 }
-                delay(lockRetryDelay)
+                delay(lockRetryDelay.milliseconds)
             }
         } while (!locked && attempts < lockAttempts)
         if (!locked) {
-            throw LockAcquisitionException("ETL [$etlName] for ${job.period} is still running after $attempts attempts")
+            throw LockAcquisitionException("ETL [${job.etlName}] for ${job.period} is still running after $attempts attempts")
         }
         return null
     }

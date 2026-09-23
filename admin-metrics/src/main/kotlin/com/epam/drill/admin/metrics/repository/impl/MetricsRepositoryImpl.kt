@@ -27,7 +27,8 @@ import com.epam.drill.admin.metrics.views.TestImpactStatus
 import java.sql.Timestamp
 import java.time.Instant
 import java.time.LocalDateTime
-import java.time.ZoneOffset.UTC
+import java.time.ZoneId
+import java.time.ZoneOffset
 
 class MetricsRepositoryImpl : MetricsRepository {
 
@@ -2881,7 +2882,10 @@ class MetricsRepositoryImpl : MetricsRepository {
             val firstStartedAt = result.firstOrNull()?.get("first_instance_created_at") as? LocalDateTime
             val lastStoppedAt = result.firstOrNull()?.get("last_instance_heartbeat_at") as? LocalDateTime
             if (firstStartedAt != null && lastStoppedAt != null) {
-                Pair(firstStartedAt.toInstant(UTC), lastStoppedAt.toInstant(UTC))
+                Pair(
+                    firstStartedAt.atZone(ZoneId.systemDefault()).toInstant(),
+                    lastStoppedAt.atZone(ZoneId.systemDefault()).toInstant()
+                )
             } else {
                 null
             }

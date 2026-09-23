@@ -80,4 +80,6 @@ interface EtlService {
 
     /** Cancels all active ETL jobs for [groupId] within `[from, to]`. */
     suspend fun cancelJobs(groupId: String?, from: LocalDate?, to: LocalDate?): List<EtlJobView>
+
+    suspend fun reloadMergedCoverage(groupId: String, appId: String, from: LocalDate?, to: LocalDate?): List<EtlJobView>
 }

@@ -292,7 +292,7 @@ class RawDataServiceImpl(
             groupId = sessionPayload.groupId,
             testProjectId = sessionPayload.testProjectId ?: "",
             testTaskId = sessionPayload.testTaskId,
-            startedAt = sessionPayload.startedAt.toLocalDateTime(TimeZone.UTC).toJavaLocalDateTime(),
+            startedAt = sessionPayload.startedAt.toLocalDateTime(TimeZone.currentSystemDefault()).toJavaLocalDateTime(),
             createdBy = username
         )
         transaction {

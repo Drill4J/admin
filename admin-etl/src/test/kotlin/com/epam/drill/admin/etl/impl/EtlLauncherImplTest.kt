@@ -36,6 +36,7 @@ import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
+import kotlin.time.Duration.Companion.milliseconds
 
 class EtlLauncherImplTest {
 
@@ -96,7 +97,7 @@ class EtlLauncherImplTest {
     fun `run acquires lock, delegates to orchestrator and completes the job`() = runBlocking {
         val jobsRepository = SimpleEtlJobsRepository()
         val orchestrator = TestEtlOrchestrator(jobsRepository)
-        val launcher = EtlLauncherImpl(orchestrator, jobsRepository)
+        val launcher = EtlLauncherImpl(setOf(orchestrator), jobsRepository)
 
         val period = EtlPeriod.UNBOUNDED
         val job = jobsRepository.scheduleJob(orchestrator.name, context, period)
@@ -115,7 +116,7 @@ class EtlLauncherImplTest {
     fun `run skips already running job and returns its status without invoking orchestrator`() = runBlocking {
         val jobsRepository = SimpleEtlJobsRepository()
         val orchestrator = TestEtlOrchestrator(jobsRepository)
-        val launcher = EtlLauncherImpl(orchestrator, jobsRepository)
+        val launcher = EtlLauncherImpl(setOf(orchestrator), jobsRepository)
 
         val period = EtlPeriod.UNBOUNDED
         val job = jobsRepository.scheduleJob(orchestrator.name, context, period)
@@ -134,7 +135,7 @@ class EtlLauncherImplTest {
     fun `run retries acquiring the lock until it is released and then succeeds`() = runBlocking {
         val jobsRepository = SimpleEtlJobsRepository()
         val orchestrator = TestEtlOrchestrator(jobsRepository)
-        val launcher = EtlLauncherImpl(orchestrator, jobsRepository, lockRetryDelay = 20L)
+        val launcher = EtlLauncherImpl(setOf(orchestrator), jobsRepository, lockRetryDelay = 20L)
 
         val period = EtlPeriod.UNBOUNDED
         val job = jobsRepository.scheduleJob(orchestrator.name, context, period)
@@ -143,7 +144,7 @@ class EtlLauncherImplTest {
 
         coroutineScope {
             launch {
-                delay(60L)
+                delay(60L.milliseconds)
                 jobsRepository.markIdle(job, "other-worker", Instant.now())
             }
             val result = launcher.run(job, skipIfRunning = false)
@@ -157,7 +158,7 @@ class EtlLauncherImplTest {
     fun `run throws when the lock cannot be acquired after all retry attempts`() = runBlocking {
         val jobsRepository = SimpleEtlJobsRepository()
         val orchestrator = TestEtlOrchestrator(jobsRepository)
-        val launcher = EtlLauncherImpl(orchestrator, jobsRepository, lockRetryDelay = 1L)
+        val launcher = EtlLauncherImpl(setOf(orchestrator), jobsRepository, lockRetryDelay = 1L)
 
         val period = EtlPeriod.UNBOUNDED
         val job = jobsRepository.scheduleJob(orchestrator.name, context, period)
@@ -174,13 +175,13 @@ class EtlLauncherImplTest {
     fun `schedule splits a bounded period into up to workers chunks covering it fully`() = runBlocking {
         val jobsRepository = SimpleEtlJobsRepository()
         val orchestrator = TestEtlOrchestrator(jobsRepository)
-        val launcher = EtlLauncherImpl(orchestrator, jobsRepository)
+        val launcher = EtlLauncherImpl(setOf(orchestrator), jobsRepository)
 
         val from = LocalDate.of(2024, 1, 1)
         val to = from.plusDays(9) // 10 days total
         val period = EtlPeriod(from, to)
 
-        val jobs = launcher.schedule(context, period, workers = 3)
+        val jobs = launcher.schedule(orchestrator.name, context, period, workers = 3)
 
         assertEquals(3, jobs.size)
         // chunks must be contiguous and cover the whole period without gaps or overlaps
@@ -196,9 +197,9 @@ class EtlLauncherImplTest {
     fun `schedule returns a single job for an unbounded period regardless of worker count`() = runBlocking {
         val jobsRepository = SimpleEtlJobsRepository()
         val orchestrator = TestEtlOrchestrator(jobsRepository)
-        val launcher = EtlLauncherImpl(orchestrator, jobsRepository)
+        val launcher = EtlLauncherImpl(setOf(orchestrator), jobsRepository)
 
-        val jobs = launcher.schedule(context, EtlPeriod.UNBOUNDED, workers = 5)
+        val jobs = launcher.schedule(orchestrator.name, context, EtlPeriod.UNBOUNDED, workers = 5)
 
         assertEquals(1, jobs.size)
         assertEquals(EtlPeriod.UNBOUNDED, jobs.single().period)
@@ -208,7 +209,7 @@ class EtlLauncherImplTest {
     fun `schedule skip a chunk overlaps an already active job`(): Unit = runBlocking {
         val jobsRepository = SimpleEtlJobsRepository()
         val orchestrator = TestEtlOrchestrator(jobsRepository)
-        val launcher = EtlLauncherImpl(orchestrator, jobsRepository)
+        val launcher = EtlLauncherImpl(setOf(orchestrator), jobsRepository)
 
         val from = LocalDate.of(2024, 1, 1)
         val to = from.plusDays(3) // 4 days -> 2 chunks of 2 days with workers=2
@@ -217,7 +218,7 @@ class EtlLauncherImplTest {
         // Pre-schedule a job overlapping the first chunk to force the exclude-constraint failure
         jobsRepository.scheduleJob(orchestrator.name, context, EtlPeriod(from, from))
 
-        val jobs = launcher.schedule(context, period, workers = 2)
+        val jobs = launcher.schedule(orchestrator.name, context, period, workers = 2)
         assertEquals(1, jobs.size)
     }
 
@@ -225,14 +226,14 @@ class EtlLauncherImplTest {
     fun `resume runs all resumable jobs and returns their results`() = runBlocking {
         val jobsRepository = SimpleEtlJobsRepository()
         val orchestrator = TestEtlOrchestrator(jobsRepository)
-        val launcher = EtlLauncherImpl(orchestrator, jobsRepository)
+        val launcher = EtlLauncherImpl(setOf(orchestrator), jobsRepository)
 
         val from = LocalDate.of(2024, 1, 1)
         val period = EtlPeriod(from, from.plusDays(5))
-        val jobs = launcher.schedule(context, period, workers = 2)
+        val jobs = launcher.schedule(orchestrator.name, context, period, workers = 2)
         assertEquals(2, jobs.size)
 
-        val results = launcher.resume(context, period)
+        val results = launcher.resume(orchestrator.name, context, period)
 
         assertEquals(2, results.size)
         assertTrue(results.all { it.status == EtlJobStatus.COMPLETED })
@@ -243,9 +244,9 @@ class EtlLauncherImplTest {
     fun `resume returns empty list when there is nothing to resume`() = runBlocking {
         val jobsRepository = SimpleEtlJobsRepository()
         val orchestrator = TestEtlOrchestrator(jobsRepository)
-        val launcher = EtlLauncherImpl(orchestrator, jobsRepository)
+        val launcher = EtlLauncherImpl(setOf(orchestrator), jobsRepository)
 
-        val results = launcher.resume(context, EtlPeriod.UNBOUNDED)
+        val results = launcher.resume(orchestrator.name, context, EtlPeriod.UNBOUNDED)
 
         assertTrue(results.isEmpty())
         assertTrue(orchestrator.runCalls.isEmpty())
@@ -256,7 +257,7 @@ class EtlLauncherImplTest {
         val jobsRepository = SimpleEtlJobsRepository()
         val orchestrator = TestEtlOrchestrator(jobsRepository)
         val launcher = EtlLauncherImpl(
-            orchestrator, jobsRepository,
+            setOf(orchestrator), jobsRepository,
             cancelWaitTimeoutMillis = 2000L,
             cancelPollDelayMillis = 10L,
         )
@@ -268,7 +269,7 @@ class EtlLauncherImplTest {
         jobsRepository.lockJob(job, "dead-worker", leaseSeconds = 0)
 
         val cancelStart = System.currentTimeMillis()
-        val results = launcher.cancel(context, period)
+        val results = launcher.cancel(orchestrator.name, context, period)
         val elapsed = System.currentTimeMillis() - cancelStart
 
         assertEquals(1, results.size)
@@ -282,7 +283,7 @@ class EtlLauncherImplTest {
         val jobsRepository = SimpleEtlJobsRepository()
         val orchestrator = TestEtlOrchestrator(jobsRepository)
         val launcher = EtlLauncherImpl(
-            orchestrator, jobsRepository,
+            setOf(orchestrator), jobsRepository,
             cancelWaitTimeoutMillis = 150L,
             cancelPollDelayMillis = 10L,
         )
@@ -294,7 +295,7 @@ class EtlLauncherImplTest {
         jobsRepository.lockJob(job, "stuck-worker", leaseSeconds = 3600)
 
         assertFailsWith<IllegalStateException> {
-            launcher.cancel(context, period)
+            launcher.cancel(orchestrator.name, context, period)
         }
     }
 
@@ -303,7 +304,7 @@ class EtlLauncherImplTest {
         val jobsRepository = SimpleEtlJobsRepository()
         val orchestrator = TestEtlOrchestrator(jobsRepository)
         val launcher = EtlLauncherImpl(
-            orchestrator, jobsRepository,
+            setOf(orchestrator), jobsRepository,
             cancelWaitTimeoutMillis = 2000L,
             cancelPollDelayMillis = 10L,
         )
@@ -316,13 +317,13 @@ class EtlLauncherImplTest {
         coroutineScope {
             // Slow worker ack — cancel is stuck in the CANCELLING wait window.
             launch {
-                delay(200L)
+                delay(200L.milliseconds)
                 jobsRepository.markCancelled(job, "worker-1")
             }
-            val cancelJob = launch { launcher.cancel(context, period) }
+            val cancelJob = launch { launcher.cancel(orchestrator.name, context, period) }
 
             // Give cancel a moment to flip the row to CANCELLING.
-            delay(50L)
+            delay(50L.milliseconds)
 
             val overlap = jobsRepository.scheduleJob(orchestrator.name, context, period)
             assertNull(overlap, "scheduleJob must fail while an overlapping row is CANCELLING")
@@ -340,7 +341,7 @@ class EtlLauncherImplTest {
         val jobsRepository = SimpleEtlJobsRepository()
         val orchestrator = TestEtlOrchestrator(jobsRepository)
         val launcher = EtlLauncherImpl(
-            orchestrator, jobsRepository,
+            setOf(orchestrator), jobsRepository,
             cancelWaitTimeoutMillis = 500L,
             cancelPollDelayMillis = 10L,
         )
@@ -354,7 +355,7 @@ class EtlLauncherImplTest {
             ?: error("Failed to schedule job")
         jobsRepository.lockJob(existingJob, "stale-worker", leaseSeconds = 0)
 
-        val results = launcher.rerun(context, period, workers = 1, withDataDeletion = true)
+        val results = launcher.rerun(orchestrator.name, context, period, workers = 1, withDataDeletion = true)
 
         assertEquals(1, results.size)
         assertEquals(EtlJobStatus.COMPLETED, results.single().status)
