@@ -347,8 +347,8 @@ paths:
         Pattern values are regular expressions.
 
         **Note:** Newly created rules are automatically applied during subsequent ETL cycles for new data only.
-        If you need the rule to take effect for already loaded data, trigger an ETL refresh from scratch
-        by calling `POST /api/metrics/refresh?reset=true`.
+        If you need the rule to take effect for already loaded data, trigger an ETL reload from scratch
+        by calling `POST /api/metrics/reload?reset=true`.
       operationId: postMethodIgnoreRules
       tags:
         - data-management
@@ -378,8 +378,8 @@ paths:
         from coverage analysis and metrics computation.
 
         **Note:** Changes to ignore rules (creation or deletion) are automatically applied during subsequent ETL cycles
-        for new data only. If you need updated rules to take effect for already loaded data, trigger an ETL refresh
-        from scratch by calling `POST /api/metrics/refresh?reset=true`.
+        for new data only. If you need updated rules to take effect for already loaded data, trigger an ETL reload
+        from scratch by calling `POST /api/metrics/reload?reset=true`.
       operationId: getAllMethodIgnoreRules
       tags:
         - data-management
@@ -425,7 +425,7 @@ paths:
         Removes a specific method ignore rule by its unique identifier.
 
         **Note:** After deleting a rule, previously excluded methods will only reappear in metrics after
-        an ETL refresh from scratch. Trigger it by calling `POST /api/metrics/refresh?reset=true`.
+        an ETL reload from scratch. Trigger it by calling `POST /api/metrics/reload?reset=true`.
       operationId: deleteMethodIgnoreRuleById
       tags:
         - data-management
@@ -2619,34 +2619,61 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ListDataResponse'
-  /api/metrics/refresh:
+  /api/metrics/sync:
     post:
-      summary: Refresh metrics
+      summary: Synchronize metrics
       description: |
-        Triggers an immediate ETL (Extract-Transform-Load) job to refresh computed metrics data.
-      operationId: refreshMetrics
+        Triggers an immediate incremental ETL (Extract-Transform-Load) job to synchronize computed metrics data
+        with newly ingested raw data. Requires the ADMIN role.
+      operationId: syncMetrics
       tags:
         - metrics
       security:
         - apiKeyAuth: [ ]
       parameters:
         - name: groupId
-          description: Group ID to refresh metrics for. If not provided, refreshes metrics for all groups.
+          description: Group ID to synchronize metrics for. If not provided, synchronizes metrics for all groups.
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Metrics were synchronized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+  /api/metrics/reload:
+    post:
+      summary: Reload metrics
+      description: |
+        Triggers a full or day-scoped ETL (Extract-Transform-Load) rerun to reload computed metrics data.
+        Requires the ADMIN role.
+      operationId: reloadMetrics
+      tags:
+        - metrics
+      security:
+        - apiKeyAuth: [ ]
+      parameters:
+        - name: groupId
+          description: Group ID to reload metrics for. If not provided, reloads metrics for all groups.
           in: query
           required: false
           schema:
             type: string
         - name: reset
-          description: If true, clears existing computed data and rerun the ETL process from scratch.
+          description: If true, clears existing computed data before rerunning the ETL process.
           in: query
           required: false
           schema:
             type: boolean
         - name: fromDay
           description: >
-            Inclusive start day (ISO-8601 date, e.g. 2024-01-31) of a day-scoped rerun. When provided, the ETL
-            process reprocesses only records whose day falls in the [fromDay, toDay] range, keeping its own
-            watermark independent of the incremental run.
+            Inclusive start day (ISO-8601 date, e.g. 2024-01-31) of a day-scoped rerun. When provided (together with
+            toDay), the ETL process reprocesses only records whose day falls in the [fromDay, toDay] range, keeping
+            its own watermark independent of the incremental run. When omitted (together with toDay), all data is
+            reprocessed.
           in: query
           required: false
           schema:
@@ -2662,7 +2689,7 @@ paths:
             format: date
         - name: workers
           description: >
-            Number of workers to split the ETL refresh job into. Each worker will be processed in parallel. 
+            Number of workers to split the ETL reload job into. Each worker will be processed in parallel.
             Defaults to the maximum number of workers.
           in: query
           required: false
@@ -2670,55 +2697,17 @@ paths:
             type: integer
       responses:
         '200':
-          description: Metrics were refreshed
+          description: Metrics have reset and refreshed successfully
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/MessageResponse'
-    delete:
-      summary: Cancel refresh metrics jobs
-      description: |
-        Cancels all currently running ETL jobs.
-      operationId: cancelRunningETLJobs
-      tags:
-        - metrics
-      security:
-        - apiKeyAuth: [ ]
-      parameters:
-        - name: groupId
-          description: Group ID to cancel refresh metrics for. If not provided, refreshes metrics for all groups.
-          in: query
-          required: false
-          schema:
-            type: string
-        - name: fromDay
-          description: >
-            Inclusive start day (ISO-8601 date, e.g. 2024-01-31).
-          in: query
-          required: false
-          schema:
-            type: string
-            format: date
-        - name: toDay
-          description: >
-            Inclusive end day (ISO-8601 date, e.g. 2024-02-29).
-          in: query
-          required: false
-          schema:
-            type: string
-            format: date
-      responses:
-        '200':
-          description: Metrics were cancelled
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/MessageResponse'
+  /api/metrics/jobs:
     get:
       summary: Get active ETL jobs
       description: |
         Retrieves a list of currently active (running) ETL jobs for an application group. Optionally filter by day range
-        to see jobs processing specific date ranges.
+        to see jobs processing specific date ranges. Requires the ADMIN role.
       operationId: getActiveEtlJobs
       tags:
         - metrics
@@ -2752,13 +2741,51 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/DataResponse'
-  /api/metrics/refresh/status:
+    delete:
+      summary: Cancel ETL jobs
+      description: |
+        Cancels all currently running ETL jobs, optionally filtered by group and day range. Requires the ADMIN role.
+      operationId: cancelEtlJobs
+      tags:
+        - metrics
+      security:
+        - apiKeyAuth: [ ]
+      parameters:
+        - name: groupId
+          description: Group ID to cancel jobs for. If not provided, cancels jobs for all groups.
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: fromDay
+          description: >
+            Inclusive start day (ISO-8601 date, e.g. 2024-01-31) to filter jobs to cancel by day range.
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date
+        - name: toDay
+          description: >
+            Inclusive end day (ISO-8601 date, e.g. 2024-02-29) to filter jobs to cancel by day range. Used together with fromDay.
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date
+      responses:
+        '200':
+          description: List of cancelled ETL jobs
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DataResponse'
+  /api/metrics/jobs/status:
     get:
       summary: Get refresh status
       description: |
-        Retrieves the current status of the metrics ETL (Extract-Transform-Load) refresh process for a specific
-        application group. Returns information about whether a refresh is currently in progress, the last
-        successful refresh timestamp, and any error details if the last refresh failed.
+        Retrieves the daily status of the metrics ETL (Extract-Transform-Load) refresh process for a specific
+        application group, optionally filtered by day range. Available to USER and ADMIN roles.
       operationId: metricsRefreshStatus
       tags:
         - metrics
@@ -2792,12 +2819,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/DataResponse'
-  /api/metrics/refresh/last-processed-timestamp:
+  /api/metrics/jobs/last-processed-timestamp:
     get:
       summary: Get last processed timestamp
       description: |
         Retrieves the timestamp of the last successfully processed record during ETL refresh for a specific application group.
-        This indicates how recent the computed metrics data is.
+        This indicates how recent the computed metrics data is. Available to USER and ADMIN roles.
       operationId: getLastProcessedTimestamp
       tags:
         - metrics

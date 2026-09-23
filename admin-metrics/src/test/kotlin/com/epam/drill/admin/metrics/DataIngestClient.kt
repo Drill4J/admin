@@ -141,7 +141,7 @@ suspend fun HttpClient.putTestSession(payload: SessionPayload): HttpResponse {
 }
 
 suspend fun HttpClient.refreshMetrics() {
-    post("/metrics/refresh") {
+    post("/metrics/reload") {
         parameter("reset", "true")
     }.assertSuccessStatus()
 }

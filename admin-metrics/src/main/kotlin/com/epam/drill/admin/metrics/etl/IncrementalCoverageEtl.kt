@@ -27,10 +27,10 @@ import com.epam.drill.admin.metrics.config.fromResource
 import com.epam.drill.admin.writer.rawdata.config.RawDataWriterDatabaseConfig
 import org.postgresql.util.PGobject
 
-val EtlConfig.coverageExtractor
+val EtlConfig.globalCoverageExtractor
     get() = UntypedSqlDataExtractor(
         name = "coverage",
-        sqlQuery = fromResource("/metrics/db/etl/coverage_extractor.sql"),
+        sqlQuery = fromResource("/metrics/db/etl/global_coverage_extractor.sql"),
         database = RawDataWriterDatabaseConfig.database,
         fetchSize = fetchSize,
         extractionLimit = extractionLimit,
@@ -84,7 +84,7 @@ val EtlConfig.buildMethodCoverageLoader
         metrics = metrics,
     )
 
-val EtlConfig.methodDailyCoverageLoader
+val EtlConfig.methodCoverageLoader
     get() = UntypedSqlDataLoader(
         name = "method_daily_coverage",
         sqlUpsert = fromResource("/metrics/db/etl/method_daily_coverage_loader.sql"),
@@ -120,13 +120,16 @@ val EtlConfig.hasTestSessionAndDefinitionFilter
         predicate = { it["test_session_id"] != null && it["test_definition_id"] != null },
     )
 
-val EtlConfig.buildMethodCoverageAggregator
-    get() = UntypedAggregationTransformer(
-        name = "build_method_coverage_aggregator",
-        bufferSize = transformationBufferSize,
-        loggingFrequency = loggingFrequency,
+val EtlConfig.testPassedFilter
+    get() = UntypedFilterTransformer(
+        name = "test_passed_filter",
         metrics = metrics,
-        groupKeys = listOf(
+        predicate = { it["test_definition_id"] != null && it["test_result"] == "PASSED" },
+    )
+
+val EtlConfig.buildMethodCoverageAggregator
+    get() = coverageAggregator(
+        "build_method_coverage_aggregator", listOf(
             "group_id",
             "app_id",
             "build_id",
@@ -136,22 +139,12 @@ val EtlConfig.buildMethodCoverageAggregator
             "test_tag",
             "test_task_id",
             "created_at_day"
-        ),
-        aggregate = { current, next ->
-            val map = HashMap<String, Any?>(current)
-            map["probes"] = mergeProbes(current["probes"], next["probes"])
-            map["created_at_day"] = next["created_at_day"]
-            UntypedRow(next.timestamp, map)
-        },
+        )
     )
 
 val EtlConfig.buildMethodTestSessionCoverageAggregator
-    get() = UntypedAggregationTransformer(
-        name = "build_method_test_session_coverage_aggregator",
-        bufferSize = transformationBufferSize,
-        loggingFrequency = loggingFrequency,
-        metrics = metrics,
-        groupKeys = listOf(
+    get() = coverageAggregator(
+        "build_method_test_session_coverage_aggregator", listOf(
             "group_id",
             "app_id",
             "build_id",
@@ -161,22 +154,12 @@ val EtlConfig.buildMethodTestSessionCoverageAggregator
             "test_result",
             "test_tag",
             "created_at_day"
-        ),
-        aggregate = { current, next ->
-            val map = HashMap<String, Any?>(current)
-            map["probes"] = mergeProbes(current["probes"], next["probes"])
-            map["created_at_day"] = next["created_at_day"]
-            UntypedRow(next.timestamp, map)
-        },
+        )
     )
 
-val EtlConfig.methodDailyCoverageAggregator
-    get() = UntypedAggregationTransformer(
-        name = "method_daily_coverage_aggregator",
-        bufferSize = transformationBufferSize,
-        loggingFrequency = loggingFrequency,
-        metrics = metrics,
-        groupKeys = listOf(
+val EtlConfig.methodCoverageAggregator
+    get() = coverageAggregator(
+        "method_daily_coverage_aggregator", listOf(
             "group_id",
             "app_id",
             "method_id",
@@ -186,36 +169,50 @@ val EtlConfig.methodDailyCoverageAggregator
             "test_result",
             "test_tag",
             "test_task_id"
+        )
+    )
+
+val EtlConfig.test2CodeCoverageAggregator
+    get() = UntypedAggregationTransformer(
+        name = "test_to_code_coverage_aggregator",
+        bufferSize = transformationBufferSize,
+        loggingFrequency = loggingFrequency,
+        metrics = metrics,
+        groupKeys = listOf(
+            "group_id",
+            "app_id",
+            "signature",
+            "test_definition_id",
+            "branch",
+            "app_env_id",
+            "test_task_id",
+            "created_at_day"
         ),
-        aggregate = { current, next ->
-            val map = HashMap<String, Any?>(current)
-            map["probes"] = mergeProbes(current["probes"], next["probes"])
-            UntypedRow(next.timestamp, map)
-        },
+        aggregate = { current, next -> next },
     )
 
 val EtlConfig.buildMethodTestSessionCoveragePipeline
     get() = pipeline("build_method_test_session_coverage")
-        .extractWith(coverageExtractor)
+        .extractWith(globalCoverageExtractor)
         .transformWith(hasTestSessionFilter)
         .transformWith(buildMethodTestSessionCoverageAggregator)
         .loadWith(buildMethodTestSessionCoverageLoader)
 
 val EtlConfig.buildMethodCoveragePipeline
     get() = pipeline("build_method_coverage")
-        .extractWith(coverageExtractor)
+        .extractWith(globalCoverageExtractor)
         .transformWith(buildMethodCoverageAggregator)
         .loadWith(buildMethodCoverageLoader)
 
-val EtlConfig.methodDailyCoveragePipeline
+val EtlConfig.methodCoveragePipeline
     get() = pipeline("method_daily_coverage")
-        .extractWith(coverageExtractor)
-        .transformWith(methodDailyCoverageAggregator)
-        .loadWith(methodDailyCoverageLoader)
+        .extractWith(globalCoverageExtractor)
+        .transformWith(methodCoverageAggregator)
+        .loadWith(methodCoverageLoader)
 
 val EtlConfig.testSessionBuildsFromCoveragePipeline
     get() = pipeline("test_session_builds_from_coverage")
-        .extractWith(coverageExtractor)
+        .extractWith(globalCoverageExtractor)
         .transformWith(hasTestSessionFilter)
         .transformWith(testSessionBuildsAggregator)
         .loadWith(testSessionBuildsLoader)
@@ -239,26 +236,17 @@ val EtlConfig.buildMethodCoverageFromTestLaunchesPipeline
         .transformWith(buildMethodCoverageAggregator)
         .loadWith(buildMethodCoverageLoader)
 
-val EtlConfig.methodDailyCoverageFromTestLaunchesPipeline
+val EtlConfig.methodCoverageFromTestLaunchesPipeline
     get() = pipeline("method_daily_coverage_from_test_launches")
         .extractWith(testLaunchCoverageExtractor)
-        .transformWith(methodDailyCoverageAggregator)
-        .loadWith(methodDailyCoverageLoader)
+        .transformWith(methodCoverageAggregator)
+        .loadWith(methodCoverageLoader)
 
 val EtlConfig.test2CodeMappingPipeline
     get() = pipeline("test_to_code_mapping")
         .extractWith(testLaunchCoverageExtractor)
-        .filter { it["test_definition_id"] != null && it["test_result"] == "PASSED" }
-        .aggregateBy(
-            "group_id",
-            "app_id",
-            "signature",
-            "test_definition_id",
-            "branch",
-            "app_env_id",
-            "test_task_id",
-            "created_at_day"
-        ) { current, next -> next }
+        .transformWith(testPassedFilter)
+        .transformWith(test2CodeCoverageAggregator)
         .loadWith(test2CodeMappingLoader)
 
 val EtlConfig.testSessionBuildsFromTestLaunchesPipeline
@@ -288,4 +276,19 @@ internal fun mergeProbes(current: Any?, next: Any?): PGobject {
         type = "varbit"
         value = mergedProbes
     }
+}
+
+internal fun EtlConfig.coverageAggregator(name: String, groupKeys: List<String>): UntypedAggregationTransformer {
+    return UntypedAggregationTransformer(
+        name = name,
+        bufferSize = transformationBufferSize,
+        loggingFrequency = loggingFrequency,
+        metrics = metrics,
+        groupKeys = groupKeys,
+        aggregate = { current, next ->
+            val map = HashMap<String, Any?>(current)
+            map["probes"] = mergeProbes(current["probes"], next["probes"])
+            UntypedRow(next.timestamp, map)
+        },
+    )
 }

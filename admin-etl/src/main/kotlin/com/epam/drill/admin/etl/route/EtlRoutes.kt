@@ -31,8 +31,8 @@ import java.time.LocalDate
 import kotlin.getValue
 
 
-@Resource("/refresh")
-class Refresh(
+@Resource("/jobs")
+class Jobs(
     val groupId: String? = null,
     val reset: Boolean = false,
     val fromDay: String? = null,
@@ -40,14 +40,28 @@ class Refresh(
     val workers: Int? = null,
 )
 
-@Resource("/refresh/status")
+@Resource("/sync")
+class Sync(
+    val groupId: String? = null,
+)
+
+@Resource("/reload")
+class Reload(
+    val groupId: String? = null,
+    val reset: Boolean = false,
+    val fromDay: String? = null,
+    val toDay: String? = null,
+    val workers: Int? = null,
+)
+
+@Resource("/jobs/status")
 class DailyStatuses(
     val groupId: String,
     val fromDay: String? = null,
     val toDay: String? = null,
 )
 
-@Resource("/refresh/last-processed-timestamp")
+@Resource("/jobs/last-processed-timestamp")
 class LastProcessedTimestamp(
     val groupId: String,
 )
@@ -73,21 +87,31 @@ fun Route.etlManagementWriteRoutes() {
 fun Route.postRefreshMetrics() {
     val etlService by closestDI().instance<EtlService>()
 
-    postWithParams<Refresh> { params ->
+    postWithParams<Sync> { params ->
+        etlService.forceRefresh(groupId = params.groupId)
+        call.respond(HttpStatusCode.OK, ApiResponse("Metrics synchronized successfully"))
+    }
+
+    postWithParams<Reload> { params ->
         val fromDay = params.fromDay?.let { LocalDate.parse(it) }
         val toDay = params.toDay?.let { LocalDate.parse(it) }
         when {
-            params.reset && fromDay == null && toDay == null -> {
-                etlService.rerunAllData(groupId = params.groupId, workers = params.workers)
+            fromDay == null && toDay == null -> {
+                etlService.rerunAllData(
+                    groupId = params.groupId,
+                    workers = params.workers,
+                    withDataDeletion = params.reset
+                )
                 call.respond(HttpStatusCode.OK, ApiResponse("Metrics have reset and refreshed successfully"))
             }
-            params.reset -> {
-                etlService.rerunDateRange(groupId = params.groupId, from = fromDay, to = toDay, workers = params.workers)
-                call.respond(HttpStatusCode.OK, ApiResponse("Metrics have reset and refreshed successfully"))
-            }
+
             else -> {
-                etlService.forceRefresh(groupId = params.groupId)
-                call.respond(HttpStatusCode.OK, ApiResponse("Metrics refreshed successfully"))
+                etlService.rerunDateRange(
+                    groupId = params.groupId, from = fromDay, to = toDay,
+                    workers = params.workers,
+                    withDataDeletion = params.reset
+                )
+                call.respond(HttpStatusCode.OK, ApiResponse("Metrics have reset and refreshed successfully"))
             }
         }
     }
@@ -115,7 +139,7 @@ fun Route.getLastProcessedTimestamp() {
 
 fun Route.getActiveJobs() {
     val etlService by closestDI().instance<EtlService>()
-    get<Refresh> { params ->
+    get<Jobs> { params ->
         val jobs = etlService.getActiveJobs(
             groupId = params.groupId,
             from = params.fromDay?.let { LocalDate.parse(it) },
@@ -126,7 +150,7 @@ fun Route.getActiveJobs() {
 
 fun Route.cancelJobs() {
     val etlService by closestDI().instance<EtlService>()
-    delete<Refresh> { params ->
+    delete<Jobs> { params ->
         val jobs = etlService.cancelJobs(
             groupId = params.groupId,
             from = params.fromDay?.let { LocalDate.parse(it) },

@@ -44,13 +44,13 @@ interface EtlService {
     suspend fun forceRefresh(groupId: String? = null, snapshotTimestamp: Instant? = null): Instant
 
     /** Force rerun for `[from, to]`: cancels overlapping jobs, schedules and runs new ones. */
-    suspend fun rerunDateRange(groupId: String? = null, from: LocalDate?, to: LocalDate?, workers: Int? = null): List<EtlJobView>
+    suspend fun rerunDateRange(groupId: String? = null, from: LocalDate?, to: LocalDate?, workers: Int? = null, withDataDeletion: Boolean = true): List<EtlJobView>
 
     /** Force rerun of the whole history. */
-    suspend fun rerunAllData(groupId: String? = null, workers: Int? = null): List<EtlJobView>
+    suspend fun rerunAllData(groupId: String? = null, workers: Int? = null, withDataDeletion: Boolean = true): List<EtlJobView>
 
     /** Force rerun of the `(today, today)` period. */
-    suspend fun rerunToday(groupId: String? = null): List<EtlJobView>
+    suspend fun rerunToday(groupId: String? = null, withDataDeletion: Boolean = true): List<EtlJobView>
 
     /** Resumes/(re)starts idle or expired-lease jobs, bounded by the available worker budget. */
     suspend fun runIdleJobs(groupId: String? = null): List<EtlJobView>
@@ -61,12 +61,15 @@ interface EtlService {
     /** The furthest timestamp processed so far for [groupId] (the minimum across orchestrators), or null. */
     suspend fun getLastProcessedTimestamp(groupId: String): Instant?
 
+    /** Runs ETL for the coverage of a specific test definition within a test session. */
     suspend fun loadTestDefinitionCoverage(
         groupId: String, testSessionId: String, testDefinitionId: String,
         snapshotTimestamp: Instant? = null,
     )
 
+    /** Returns the list of active ETL jobs for [groupId] within `[from, to]`. */
     suspend fun getActiveJobs(groupId: String?, from: LocalDate?, to: LocalDate?): List<EtlJobView>
 
+    /** Cancels all active ETL jobs for [groupId] within `[from, to]`. */
     suspend fun cancelJobs(groupId: String?, from: LocalDate?, to: LocalDate?): List<EtlJobView>
 }
