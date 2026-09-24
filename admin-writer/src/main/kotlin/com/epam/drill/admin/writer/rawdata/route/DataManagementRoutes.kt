@@ -85,6 +85,7 @@ class MethodIgnoreRulesRoute(
 
 fun Route.dataManagementRoutes() {
     route("/data-management") {
+        deleteAppData()
         deleteBuildData()
         deleteTestSessionData()
     }
@@ -104,6 +105,19 @@ fun Route.dataManagementWriteRoutes() {
     route("/data-management") {
         postMethodIgnoreRules()
         deleteMethodIgnoreRule()
+    }
+}
+
+fun Route.deleteAppData() {
+    val dataManagementService by closestDI().instance<DataManagementService>()
+
+    delete<Groups.Id.Apps.Id> { params ->
+        dataManagementService.deleteAppData(
+            groupId = params.parent.parent.groupId,
+            appId = params.appId,
+            user = call.principal<User>()
+        )
+        call.ok("App data deleted successfully")
     }
 }
 

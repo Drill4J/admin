@@ -24,6 +24,7 @@ import com.epam.drill.admin.metrics.models.SortOrder
 import com.epam.drill.admin.metrics.repository.MetricsRepository
 import com.epam.drill.admin.metrics.util.sqlSortDirection
 import com.epam.drill.admin.metrics.views.TestImpactStatus
+import org.jetbrains.exposed.sql.Transaction
 import java.sql.Timestamp
 import java.time.Instant
 import java.time.LocalDateTime
@@ -3036,83 +3037,48 @@ class MetricsRepositoryImpl : MetricsRepository {
         executeUpdate("DELETE FROM metrics.method_daily_coverage WHERE created_at_day < ?", timestamp)
     }
 
+    override suspend fun deleteAllAppDataByAppId(
+        groupId: String,
+        appId: String,
+    ) = transaction {
+        deleteBuildMethodTestDefinitionCoverage(groupId, appId = appId, buildId = null, testProjectId = null, testSessionId = null)
+        deleteBuildMethodTestSessionCoverage(groupId, appId = appId, buildId = null, testProjectId = null, testSessionId = null)
+        deleteBuildMethodCoverage(groupId, appId = appId, buildId = null, testProjectId = null)
+        deleteMethodCoverage(groupId, appId = appId, testProjectId = null)
+        deleteTestToCodeMapping(groupId, appId = appId, testProjectId = null)
+        deleteTestSessionBuilds(groupId, appId = appId, buildId = null, testProjectId = null, testSessionId = null)
+        deleteBuildMethods(groupId, appId = appId, buildId = null)
+        deleteBuilds(groupId, appId = appId, buildId = null)
+        deleteMethods(groupId, appId = appId)
+    }
+
     override suspend fun deleteAllBuildDataByBuildId(
         groupId: String,
         appId: String,
         buildId: String
     ) = transaction {
-        executeUpdate(
-            "DELETE FROM metrics.build_method_test_definition_coverage WHERE group_id = ? AND app_id = ? AND build_id = ?",
-            groupId,
-            appId,
-            buildId
-        )
-        executeUpdate(
-            "DELETE FROM metrics.build_method_test_session_coverage WHERE group_id = ? AND app_id = ? AND build_id = ?",
-            groupId,
-            appId,
-            buildId
-        )
-        executeUpdate(
-            "DELETE FROM metrics.build_method_coverage WHERE group_id = ? AND app_id = ? AND build_id = ?",
-            groupId,
-            appId,
-            buildId
-        )
+        deleteBuildMethodTestDefinitionCoverage(groupId, appId = appId, buildId = buildId, testProjectId = null, testSessionId = null)
+        deleteBuildMethodTestSessionCoverage(groupId, appId = appId, buildId = buildId, testProjectId = null, testSessionId = null)
+        deleteBuildMethodCoverage(groupId, appId = appId, buildId = buildId, testProjectId = null)
         // deleting from metrics.method_daily_coverage is impossible because the table does not reference build_id
         // deleting from metrics.test_to_code_mapping is impossible because the table does not reference build_id
-        executeUpdate(
-            "DELETE FROM metrics.test_session_builds WHERE group_id = ? AND app_id = ? AND build_id = ?",
-            groupId,
-            appId,
-            buildId
-        )
-        executeUpdate(
-            "DELETE FROM metrics.build_methods WHERE group_id = ? AND app_id = ? AND build_id = ?",
-            groupId,
-            appId,
-            buildId
-        )
-        executeUpdate(
-            "DELETE FROM metrics.builds WHERE group_id = ? AND app_id = ? AND build_id = ?",
-            groupId,
-            appId,
-            buildId
-        )
+        deleteTestSessionBuilds(groupId, appId = appId, buildId = buildId, testProjectId = null, testSessionId = null)
+        deleteBuildMethods(groupId, appId = appId, buildId = buildId)
+        deleteBuilds(groupId, appId = appId, buildId = buildId)
     }
 
     override suspend fun deleteAllTestDataByTestSessionId(
         groupId: String,
         testSessionId: String
     ) = transaction {
-        executeUpdate(
-            "DELETE FROM metrics.build_method_test_definition_coverage WHERE group_id = ? AND test_session_id = ?",
-            groupId,
-            testSessionId
-        )
-        executeUpdate(
-            "DELETE FROM metrics.build_method_test_session_coverage WHERE group_id = ? AND test_session_id = ?",
-            groupId,
-            testSessionId
-        )
+        deleteBuildMethodTestDefinitionCoverage(groupId, appId = null, buildId = null, testProjectId = null, testSessionId = testSessionId)
+        deleteBuildMethodTestSessionCoverage(groupId, appId = null, buildId = null, testProjectId = null, testSessionId = testSessionId)
         // deleting from metrics.build_method_coverage is impossible because the table does not reference test_session_id
         // deleting from metrics.method_daily_coverage is impossible because the table does not linked to test_session_id
         // deleting from metrics.test_to_code_mapping is impossible because the table does not reference test_session_id
-        executeUpdate(
-            "DELETE FROM metrics.test_launches WHERE group_id = ? AND test_session_id = ?",
-            groupId,
-            testSessionId
-        )
-        executeUpdate(
-            "DELETE FROM metrics.test_session_builds WHERE group_id = ? AND test_session_id = ?",
-            groupId,
-            testSessionId
-        )
-        executeUpdate(
-            "DELETE FROM metrics.test_sessions WHERE group_id = ? AND test_session_id = ?",
-            groupId,
-            testSessionId
-        )
+        deleteTestLaunches(groupId, testProjectId = null, testSessionId = testSessionId)
+        deleteTestSessionBuilds(groupId, appId = null, buildId = null, testProjectId = null, testSessionId = testSessionId)
+        deleteTestSessions(groupId, testProjectId = null, testSessionId = testSessionId)
     }
 
     override suspend fun deleteAllOrphanReferences(groupId: String, timestamp: Instant) = transaction {
@@ -3159,6 +3125,160 @@ class MetricsRepositoryImpl : MetricsRepository {
                 """.trimIndent(),
             groupId, timestamp
         )
+    }
+
+    private fun Transaction.deleteBuildMethodTestDefinitionCoverage(
+        groupId: String,
+        appId: String?,
+        buildId: String?,
+        testProjectId: String?,
+        testSessionId: String?
+    ) {
+        executeUpdate {
+            append("DELETE FROM metrics.build_method_test_definition_coverage WHERE group_id = ?", groupId)
+            appendOptional(" AND app_id = ?", appId)
+            appendOptional(" AND build_id = ?", buildId)
+            appendOptional(" AND test_project_id = ?", testProjectId)
+            appendOptional(" AND test_session_id = ?", testSessionId)
+        }
+    }
+
+    private fun Transaction.deleteBuildMethodTestSessionCoverage(
+        groupId: String,
+        appId: String?,
+        buildId: String?,
+        testProjectId: String?,
+        testSessionId: String?
+    ) {
+        executeUpdate {
+            append("DELETE FROM metrics.build_method_test_session_coverage WHERE group_id = ?", groupId)
+            appendOptional(" AND app_id = ?", appId)
+            appendOptional(" AND build_id = ?", buildId)
+            appendOptional(" AND test_project_id = ?", testProjectId)
+            appendOptional(" AND test_session_id = ?", testSessionId)
+        }
+    }
+
+    private fun Transaction.deleteBuildMethodCoverage(
+        groupId: String,
+        appId: String?,
+        buildId: String?,
+        testProjectId: String?,
+    ) {
+        executeUpdate {
+            append("DELETE FROM metrics.build_method_coverage WHERE group_id = ?", groupId)
+            appendOptional(" AND app_id = ?", appId)
+            appendOptional(" AND build_id = ?", buildId)
+            appendOptional(" AND test_project_id = ?", testProjectId)
+        }
+    }
+
+    private fun Transaction.deleteMethodCoverage(
+        groupId: String,
+        appId: String?,
+        testProjectId: String?,
+    ) {
+        executeUpdate {
+            append("DELETE FROM metrics.method_daily_coverage WHERE group_id = ?", groupId)
+            appendOptional(" AND app_id = ?", appId)
+            appendOptional(" AND test_project_id = ?", testProjectId)
+        }
+    }
+
+    private fun Transaction.deleteTestToCodeMapping(
+        groupId: String,
+        appId: String?,
+        testProjectId: String?,
+    ) {
+        executeUpdate {
+            append("DELETE FROM metrics.test_to_code_mapping WHERE group_id = ?", groupId)
+            appendOptional(" AND app_id = ?", appId)
+            appendOptional(" AND test_project_id = ?", testProjectId)
+        }
+    }
+
+    private fun Transaction.deleteTestSessionBuilds(
+        groupId: String,
+        appId: String?,
+        buildId: String?,
+        testProjectId: String?,
+        testSessionId: String?
+    ) {
+        executeUpdate {
+            append("DELETE FROM metrics.test_session_builds WHERE group_id = ?", groupId)
+            appendOptional(" AND app_id = ?", appId)
+            appendOptional(" AND build_id = ?", buildId)
+            appendOptional(" AND test_session_id IN (SELECT test_session_id FROM metrics.test_sessions WHERE test_project_id = ?)", testProjectId)
+            appendOptional(" AND test_session_id = ?", testSessionId)
+        }
+    }
+
+    fun Transaction.deleteBuildMethods(
+        groupId: String,
+        appId: String?,
+        buildId: String?
+    ) {
+        executeUpdate {
+            append("DELETE FROM metrics.build_methods WHERE group_id = ?", groupId)
+            appendOptional(" AND app_id = ?", appId)
+            appendOptional(" AND build_id = ?", buildId)
+        }
+    }
+
+    fun Transaction.deleteBuilds(
+        groupId: String,
+        appId: String?,
+        buildId: String?
+    ) {
+        executeUpdate {
+            append("DELETE FROM metrics.builds WHERE group_id = ?", groupId)
+            appendOptional(" AND app_id = ?", appId)
+            appendOptional(" AND build_id = ?", buildId)
+        }
+    }
+
+    fun Transaction.deleteMethods(
+        groupId: String,
+        appId: String?,
+    ) {
+        executeUpdate {
+            append("DELETE FROM metrics.methods WHERE group_id = ?", groupId)
+            appendOptional(" AND app_id = ?", appId)
+        }
+    }
+
+    private fun Transaction.deleteTestSessions(
+        groupId: String,
+        testProjectId: String?,
+        testSessionId: String?
+    ) {
+        executeUpdate {
+            append("DELETE FROM metrics.test_sessions WHERE group_id = ?", groupId)
+            appendOptional(" AND test_project_id = ?", testProjectId)
+            appendOptional(" AND test_session_id = ?", testSessionId)
+        }
+    }
+
+    private fun Transaction.deleteTestLaunches(
+        groupId: String,
+        testProjectId: String?,
+        testSessionId: String?
+    ) {
+        executeUpdate {
+            append("DELETE FROM metrics.test_launches WHERE group_id = ?", groupId)
+            appendOptional(" AND test_project_id = ?", testProjectId)
+            appendOptional(" AND test_session_id = ?", testSessionId)
+        }
+    }
+
+    private fun Transaction.deleteTestDefinitions(
+        groupId: String,
+        testProjectId: String?,
+    ) {
+        executeUpdate {
+            append("DELETE FROM metrics.test_definitions WHERE group_id = ?", groupId)
+            appendOptional(" AND test_project_id = ?", testProjectId)
+        }
     }
 }
 

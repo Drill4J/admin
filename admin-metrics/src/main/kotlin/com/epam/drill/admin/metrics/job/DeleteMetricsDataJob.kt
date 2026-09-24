@@ -44,6 +44,10 @@ class DeleteMetricsDataJob(
                         etlService.reloadMergedCoverage(groupId, appId, from, to)
                     }
                 }
+                "app" -> {
+                    val appId = context.mergedJobDataMap.getString("appId")
+                    metricsRepository.deleteAllAppDataByAppId(groupId, appId)
+                }
                 "testSession" -> {
                     val testSessionId = context.mergedJobDataMap.getString("testSessionId")
                     metricsRepository.deleteAllTestDataByTestSessionId(groupId, testSessionId)

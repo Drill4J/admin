@@ -19,6 +19,7 @@ import com.epam.drill.admin.common.exception.InvalidParameters
 import com.epam.drill.admin.common.principal.User
 import com.epam.drill.admin.common.scheduler.DrillScheduler
 import com.epam.drill.admin.common.scheduler.deleteMetricsDataJobKey
+import com.epam.drill.admin.common.scheduler.getAppDataDeletionDataMap
 import com.epam.drill.admin.common.scheduler.getBuildDataDeletionDataMap
 import com.epam.drill.admin.common.scheduler.getTestDataDeletionDataMap
 import com.epam.drill.admin.writer.rawdata.config.RawDataWriterDatabaseConfig.transaction
@@ -60,6 +61,20 @@ class DataManagementServiceImpl(
             testSessionBuildRepository.deleteAllByBuildId(groupId, appId, buildId)
             buildRepository.deleteByBuildId(groupId, appId, buildId)
             scheduler.triggerJob(deleteMetricsDataJobKey, getBuildDataDeletionDataMap(groupId, appId, buildId))
+        }
+    }
+
+    override suspend fun deleteAppData(groupId: String, appId: String, user: User?) {
+        transaction {
+            if (!buildRepository.existsByGroupIdAndAppId(groupId, appId)) {
+                throw InvalidParameters("App not found for groupId=$groupId, appId=$appId")
+            }
+            coverageRepository.deleteAllByAppId(groupId, appId)
+            instanceRepository.deleteAllByAppId(groupId, appId)
+            methodRepository.deleteAllByAppId(groupId, appId)
+            testSessionBuildRepository.deleteAllByAppId(groupId, appId)
+            buildRepository.deleteAllByAppId(groupId, appId)
+            scheduler.triggerJob(deleteMetricsDataJobKey, getAppDataDeletionDataMap(groupId, appId))
         }
     }
 

@@ -87,9 +87,21 @@ class BuildRepositoryImpl : BuildRepository {
         BuildTable.deleteWhere { (BuildTable.groupId eq groupId) and (BuildTable.updatedAt less createdBefore.atStartOfDay()) }
     }
 
+    override suspend fun existsByGroupIdAndAppId(groupId: String, appId: String): Boolean {
+        return BuildTable.selectAll().where {
+            (BuildTable.groupId eq groupId) and (BuildTable.appId eq appId)
+        }.any()
+    }
+
     override suspend fun deleteByBuildId(groupId: String, appId: String, buildId: String) {
         BuildTable.deleteWhere {
             (BuildTable.groupId eq groupId) and (BuildTable.appId eq appId) and (BuildTable.id eq buildId)
+        }
+    }
+
+    override suspend fun deleteAllByAppId(groupId: String, appId: String) {
+        BuildTable.deleteWhere {
+            (BuildTable.groupId eq groupId) and (BuildTable.appId eq appId)
         }
     }
 

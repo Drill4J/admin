@@ -22,6 +22,7 @@ interface MethodRepository {
     suspend fun createMany(data: List<Method>)
     suspend fun deleteAllCreatedBefore(groupId: String, createdBefore: LocalDate)
     suspend fun deleteAllByBuildId(groupId: String, appId: String, buildId: String)
+    suspend fun deleteAllByAppId(groupId: String, appId: String)
     suspend fun countByBuildId(groupId: String, appId: String, buildId: String): Int
     suspend fun getBodyChecksumsByBuildId(groupId: String, appId: String, buildId: String): List<String>
 }

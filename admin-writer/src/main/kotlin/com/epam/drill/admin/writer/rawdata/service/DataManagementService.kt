@@ -29,6 +29,13 @@ interface DataManagementService {
      */
     suspend fun deleteBuildData(groupId: String, appId: String, buildId: String, user: User?)
     /**
+     * Deletes all data for a specific application within a group, including all builds, coverage, methods, and instances.
+     * @param groupId The ID of the group.
+     * @param appId The ID of the application.
+     * @param user The user performing the deletion (optional).
+     */
+    suspend fun deleteAppData(groupId: String, appId: String, user: User?)
+    /**
      * Deletes all test session data including coverage, test launches associated with the specified test session.
      * @param groupId The ID of the group.
      * @param testSessionId The ID of the test session to delete data for.
