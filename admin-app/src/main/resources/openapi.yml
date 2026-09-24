@@ -524,7 +524,7 @@ paths:
         '200':
           description: Group deleted
           content:
-            application\json:
+            application/json:
               schema:
                 $ref: '#/components/schemas/MessageResponse'
   /api/data-management/groups/{groupId}/apps/{appId}:
@@ -556,7 +556,7 @@ paths:
         '200':
           description: App deleted
           content:
-            application\json:
+            application/json:
               schema:
                 $ref: '#/components/schemas/MessageResponse'
   /api/data-management/groups/{groupId}/apps/{appId}/builds/{buildId}:
