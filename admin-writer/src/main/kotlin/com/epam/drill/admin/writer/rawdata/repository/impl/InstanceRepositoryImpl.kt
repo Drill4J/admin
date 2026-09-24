@@ -79,4 +79,8 @@ class InstanceRepositoryImpl : InstanceRepository {
             (InstanceTable.groupId eq groupId) and (InstanceTable.appId eq appId)
         }
     }
+
+    override suspend fun deleteAllByGroupId(groupId: String) {
+        InstanceTable.deleteWhere { InstanceTable.groupId eq groupId }
+    }
 }

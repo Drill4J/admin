@@ -84,6 +84,11 @@ class MethodRepositoryImpl : MethodRepository {
         }
     }
 
+    override suspend fun deleteAllByGroupId(groupId: String) {
+        BuildMethodTable.deleteWhere { BuildMethodTable.groupId eq groupId }
+        MethodTable.deleteWhere { MethodTable.groupId eq groupId }
+    }
+
     override suspend fun countByBuildId(groupId: String, appId: String, buildId: String): Int {
         return BuildMethodTable.select(BuildMethodTable.methodId).where {
             (BuildMethodTable.groupId eq groupId) and

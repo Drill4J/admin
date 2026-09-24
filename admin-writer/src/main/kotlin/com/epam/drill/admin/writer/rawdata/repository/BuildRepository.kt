@@ -27,6 +27,7 @@ interface BuildRepository {
     suspend fun existsByGroupIdAndAppId(groupId: String, appId: String): Boolean
     suspend fun deleteByBuildId(groupId: String, appId: String, buildId: String)
     suspend fun deleteAllByAppId(groupId: String, appId: String)
+    suspend fun deleteAllByGroupId(groupId: String)
     suspend fun getById(groupId: String, appId: String, buildId: String): Build?
     suspend fun getStatus(groupId: String, appId: String, buildId: String): BuildValidationStatus?
     suspend fun saveBuildFinalization(

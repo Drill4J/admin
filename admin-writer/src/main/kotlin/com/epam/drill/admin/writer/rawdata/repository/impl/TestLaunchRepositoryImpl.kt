@@ -55,4 +55,8 @@ class TestLaunchRepositoryImpl: TestLaunchRepository {
             (TestLaunchTable.testProjectId eq testProjectId)
         }
     }
+
+    override suspend fun deleteAllByGroupId(groupId: String) {
+        TestLaunchTable.deleteWhere { TestLaunchTable.groupId eq groupId }
+    }
 }

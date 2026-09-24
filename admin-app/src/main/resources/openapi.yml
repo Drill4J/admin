@@ -501,6 +501,32 @@ paths:
               schema:
                 $ref: '#/components/schemas/RawMethodPageDataResponse'
   # Data Management Endpoints
+  /api/data-management/groups/{groupId}:
+    delete:
+      summary: Delete all group data (all builds, coverage, tests, methods, instances, metrics)
+      description: |
+        Permanently deletes all data associated with a specific group, including all builds,
+        code coverage records, test metadata, method metadata, instance deployments, and computed metrics.
+        Returns 400 if no builds exist for the given groupId.
+      operationId: deleteGroup
+      tags:
+        - data-management
+      security:
+        - apiKeyAuth: [ ]
+      parameters:
+        - name: groupId
+          in: path
+          required: true
+          description: Unique identifier for the application group.
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Group deleted
+          content:
+            application\json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
   /api/data-management/groups/{groupId}/apps/{appId}:
     delete:
       summary: Delete all app data (all builds, coverage, methods, instances, metrics)

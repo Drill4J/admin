@@ -105,6 +105,10 @@ class BuildRepositoryImpl : BuildRepository {
         }
     }
 
+    override suspend fun deleteAllByGroupId(groupId: String) {
+        BuildTable.deleteWhere { BuildTable.groupId eq groupId }
+    }
+
     override suspend fun getById(groupId: String, appId: String, buildId: String): Build? {
         return BuildTable.selectAll().where {
             (BuildTable.groupId eq groupId) and (BuildTable.appId eq appId) and (BuildTable.id eq buildId)

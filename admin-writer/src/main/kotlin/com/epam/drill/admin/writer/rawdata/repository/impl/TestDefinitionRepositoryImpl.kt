@@ -54,4 +54,8 @@ class TestDefinitionRepositoryImpl : TestDefinitionRepository {
     override suspend fun deleteAllByTestProjectId(groupId: String, testProjectId: String) {
         TestDefinitionTable.deleteWhere { (TestDefinitionTable.groupId eq groupId) and (TestDefinitionTable.testProjectId eq testProjectId) }
     }
+
+    override suspend fun deleteAllByGroupId(groupId: String) {
+        TestDefinitionTable.deleteWhere { TestDefinitionTable.groupId eq groupId }
+    }
 }

@@ -43,5 +43,10 @@ fun getTestProjectDataDeletionDataMap(groupId: String, testProjectId: String) = 
     put("testProjectId", testProjectId)
 }
 
+fun getGroupDataDeletionDataMap(groupId: String) = JobDataMap().apply {
+    put("dataType", "group")
+    put("groupId", groupId)
+}
+
 val deleteMetricsDataJobKey: JobKey
     get() = JobKey.jobKey("metricsDeletionDataJob", "drill")

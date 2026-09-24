@@ -75,6 +75,10 @@ class CoverageRepositoryImpl : CoverageRepository {
         }
     }
 
+    override suspend fun deleteAllByGroupId(groupId: String) {
+        MethodCoverageTable.deleteWhere { MethodCoverageTable.groupId eq groupId }
+    }
+
     override suspend fun deleteAllByTestProjectId(groupId: String, testProjectId: String) {
         MethodCoverageTable.deleteWhere {
             (MethodCoverageTable.groupId eq groupId) and

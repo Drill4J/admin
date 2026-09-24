@@ -25,4 +25,5 @@ interface TestSessionRepository {
     suspend fun deleteAllCreatedBefore(groupId: String, createdBefore: LocalDate)
     suspend fun deleteByTestSessionId(groupId: String, testSessionId: String)
     suspend fun deleteAllByTestProjectId(groupId: String, testProjectId: String)
+    suspend fun deleteAllByGroupId(groupId: String)
 }

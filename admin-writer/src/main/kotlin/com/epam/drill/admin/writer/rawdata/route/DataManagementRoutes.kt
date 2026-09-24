@@ -96,6 +96,7 @@ class MethodIgnoreRulesRoute(
 
 fun Route.dataManagementRoutes() {
     route("/data-management") {
+        deleteGroupData()
         deleteAppData()
         deleteBuildData()
         deleteTestProjectData()
@@ -117,6 +118,18 @@ fun Route.dataManagementWriteRoutes() {
     route("/data-management") {
         postMethodIgnoreRules()
         deleteMethodIgnoreRule()
+    }
+}
+
+fun Route.deleteGroupData() {
+    val dataManagementService by closestDI().instance<DataManagementService>()
+
+    delete<Groups.Id> { params ->
+        dataManagementService.deleteGroupData(
+            groupId = params.groupId,
+            user = call.principal<User>()
+        )
+        call.ok("Group data deleted successfully")
     }
 }
 

@@ -70,6 +70,10 @@ class TestSessionBuildRepositoryImpl : TestSessionBuildRepository {
         }
     }
 
+    override suspend fun deleteAllByGroupId(groupId: String) {
+        TestSessionBuildTable.deleteWhere { TestSessionBuildTable.groupId eq groupId }
+    }
+
     override suspend fun deleteAllByTestProjectId(groupId: String, testProjectId: String) {
         TestSessionBuildTable.deleteWhere {
             (TestSessionBuildTable.groupId eq groupId) and

@@ -3096,6 +3096,21 @@ class MetricsRepositoryImpl : MetricsRepository {
         deleteTestDefinitions(groupId, testProjectId = testProjectId)
     }
 
+    override suspend fun deleteAllGroupDataByGroupId(groupId: String) = transaction {
+        deleteBuildMethodTestDefinitionCoverage(groupId, appId = null, buildId = null, testProjectId = null, testSessionId = null)
+        deleteBuildMethodTestSessionCoverage(groupId, appId = null, buildId = null, testProjectId = null, testSessionId = null)
+        deleteBuildMethodCoverage(groupId, appId = null, buildId = null, testProjectId = null)
+        deleteMethodCoverage(groupId, appId = null, testProjectId = null)
+        deleteTestToCodeMapping(groupId, appId = null, testProjectId = null)
+        deleteTestLaunches(groupId, testProjectId = null, testSessionId = null)
+        deleteTestSessionBuilds(groupId, appId = null, buildId = null, testProjectId = null, testSessionId = null)
+        deleteTestSessions(groupId, testProjectId = null, testSessionId = null)
+        deleteTestDefinitions(groupId, testProjectId = null)
+        deleteBuildMethods(groupId, appId = null, buildId = null)
+        deleteBuilds(groupId, appId = null, buildId = null)
+        deleteMethods(groupId, appId = null)
+    }
+
     override suspend fun deleteAllOrphanReferences(groupId: String, timestamp: Instant) = transaction {
         val timestamp = Timestamp.from(timestamp)
         executeUpdate(

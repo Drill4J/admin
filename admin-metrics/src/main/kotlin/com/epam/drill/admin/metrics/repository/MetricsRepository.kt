@@ -608,4 +608,5 @@ interface MetricsRepository {
     suspend fun deleteAllBuildDataByBuildId(groupId: String, appId: String, buildId: String)
     suspend fun deleteAllTestDataByTestSessionId(groupId: String, testSessionId: String)
     suspend fun deleteAllTestDataByTestProjectId(groupId: String, testProjectId: String)
+    suspend fun deleteAllGroupDataByGroupId(groupId: String)
 }
