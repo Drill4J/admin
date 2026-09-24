@@ -18,6 +18,7 @@ package com.epam.drill.admin.writer.rawdata.repository.impl
 import com.epam.drill.admin.writer.rawdata.repository.TestSessionBuildRepository
 import com.epam.drill.admin.writer.rawdata.table.BuildTable
 import com.epam.drill.admin.writer.rawdata.table.TestSessionBuildTable
+import com.epam.drill.admin.writer.rawdata.table.TestSessionTable
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.inSubQuery
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.less
@@ -66,6 +67,18 @@ class TestSessionBuildRepositoryImpl : TestSessionBuildRepository {
         TestSessionBuildTable.deleteWhere {
             (TestSessionBuildTable.groupId eq groupId) and
             (TestSessionBuildTable.testSessionId eq testSessionId)
+        }
+    }
+
+    override suspend fun deleteAllByTestProjectId(groupId: String, testProjectId: String) {
+        TestSessionBuildTable.deleteWhere {
+            (TestSessionBuildTable.groupId eq groupId) and
+            (TestSessionBuildTable.testSessionId inSubQuery TestSessionTable
+                .select(TestSessionTable.id)
+                .where {
+                    (TestSessionTable.groupId eq groupId) and
+                    (TestSessionTable.testProjectId eq testProjectId)
+                })
         }
     }
 }

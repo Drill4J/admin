@@ -570,6 +570,38 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/MessageResponse'
+  /api/data-management/groups/{groupId}/tests/{testProjectId}:
+    delete:
+      summary: Delete test project data with all associated data (coverage, test launches, test sessions, test definitions)
+      description: |
+        Permanently deletes a specific test project and all its associated data, including test session records
+        and code coverage data collected during the project. Use this endpoint to clean up
+        invalid or obsolete test projects.
+      operationId: deleteTestProject
+      tags:
+        - data-management
+      security:
+        - apiKeyAuth: [ ]
+      parameters:
+        - name: groupId
+          in: path
+          required: true
+          description: Unique identifier for the application group containing the test project.
+          schema:
+            type: string
+        - name: testProjectId
+          in: path
+          required: true
+          description: Unique identifier of the test project to delete.
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Test Project deleted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
   /api/data-management/groups/{groupId}/tests/sessions/{testSessionId}:
     delete:
       summary: Delete test session data with all associated data (coverage, test launches)

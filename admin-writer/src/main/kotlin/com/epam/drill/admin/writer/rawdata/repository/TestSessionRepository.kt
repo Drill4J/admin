@@ -20,7 +20,9 @@ import java.time.LocalDate
 
 interface TestSessionRepository {
     suspend fun existsById(groupId: String, testSessionId: String): Boolean
+    suspend fun existsByGroupIdAndTestProjectId(groupId: String, testProjectId: String): Boolean
     suspend fun create(session: TestSession)
     suspend fun deleteAllCreatedBefore(groupId: String, createdBefore: LocalDate)
     suspend fun deleteByTestSessionId(groupId: String, testSessionId: String)
+    suspend fun deleteAllByTestProjectId(groupId: String, testProjectId: String)
 }

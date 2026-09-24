@@ -35,6 +35,15 @@ interface DataManagementService {
      * @param user The user performing the deletion (optional).
      */
     suspend fun deleteAppData(groupId: String, appId: String, user: User?)
+
+    /**
+     * Deletes all test project data including coverage, test launches associated with the specified test project.
+     * @param groupId The ID of the group.
+     * @param testProjectId The ID of the test project to delete data for.
+     * @param user The user performing the deletion (optional).
+     */
+    suspend fun deleteTestProjectData(groupId: String, testProjectId: String, user: User?)
+
     /**
      * Deletes all test session data including coverage, test launches associated with the specified test session.
      * @param groupId The ID of the group.

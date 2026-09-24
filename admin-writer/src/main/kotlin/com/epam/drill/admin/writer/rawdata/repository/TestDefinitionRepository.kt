@@ -21,4 +21,6 @@ import java.time.LocalDate
 interface TestDefinitionRepository {
     suspend fun createMany(testDefinitionList: List<TestDefinition>)
     suspend fun deleteAllCreatedBefore(groupId: String, createdBefore: LocalDate)
+
+    suspend fun deleteAllByTestProjectId(groupId: String, testProjectId: String)
 }

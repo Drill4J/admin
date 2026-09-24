@@ -22,4 +22,5 @@ interface TestLaunchRepository {
     suspend fun createMany(testLaunchList: List<TestLaunch>)
     suspend fun deleteAllCreatedBefore(groupId: String, createdBefore: LocalDate)
     suspend fun deleteAllByTestSessionId(groupId: String, testSessionId: String)
+    suspend fun deleteAllByTestProjectId(groupId: String, testProjectId: String)
 }

@@ -27,6 +27,7 @@ import io.ktor.server.resources.get
 import io.ktor.server.resources.post
 import io.ktor.server.resources.put
 import io.ktor.server.routing.Route
+import io.ktor.server.routing.delete
 import io.ktor.server.routing.route
 import org.kodein.di.instance
 import org.kodein.di.ktor.closestDI
@@ -63,6 +64,16 @@ class Groups() {
         }
         @Resource("/tests")
         class Tests(val parent: Groups.Id) {
+
+            @Resource("/{testProjectId}")
+            class Id(val parent: Tests, val testProjectId: String) {
+                @Resource("/sessions")
+                class Sessions(val parent: Tests) {
+                    @Resource("/{testSessionId}")
+                    class Id(val parent: Sessions, val testSessionId: String)
+                }
+            }
+            @Deprecated("Use /{testProjectId}/sessions instead")
             @Resource("/sessions")
             class Sessions(val parent: Tests) {
                 @Resource("/{testSessionId}")
@@ -87,6 +98,7 @@ fun Route.dataManagementRoutes() {
     route("/data-management") {
         deleteAppData()
         deleteBuildData()
+        deleteTestProjectData()
         deleteTestSessionData()
     }
 }
@@ -132,6 +144,19 @@ fun Route.deleteBuildData() {
             user = call.principal<User>()
         )
         call.ok("Build data deleted successfully")
+    }
+}
+
+fun Route.deleteTestProjectData() {
+    val dataManagementService by closestDI().instance<DataManagementService>()
+
+    delete<Groups.Id.Tests.Id> { params ->
+        dataManagementService.deleteTestProjectData(
+            groupId = params.parent.parent.groupId,
+            testProjectId = params.testProjectId,
+            user = call.principal<User>()
+        )
+        call.ok("Test project data deleted successfully")
     }
 }
 

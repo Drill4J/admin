@@ -52,6 +52,10 @@ class DeleteMetricsDataJob(
                     val testSessionId = context.mergedJobDataMap.getString("testSessionId")
                     metricsRepository.deleteAllTestDataByTestSessionId(groupId, testSessionId)
                 }
+                "testProject" -> {
+                    val testProjectId = context.mergedJobDataMap.getString("testProjectId")
+                    metricsRepository.deleteAllTestDataByTestProjectId(groupId, testProjectId)
+                }
                 else -> throw IllegalArgumentException("Unknown dataType: $dataType")
             }
         }

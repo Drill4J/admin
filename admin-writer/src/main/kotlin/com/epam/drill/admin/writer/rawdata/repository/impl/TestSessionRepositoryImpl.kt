@@ -51,9 +51,22 @@ class TestSessionRepositoryImpl : TestSessionRepository {
         TestSessionTable.deleteWhere { (TestSessionTable.groupId eq groupId) and (TestSessionTable.createdAt less createdBefore.atStartOfDay()) }
     }
 
+    override suspend fun existsByGroupIdAndTestProjectId(groupId: String, testProjectId: String): Boolean {
+        return TestSessionTable.selectAll().where {
+            (TestSessionTable.groupId eq groupId) and
+                    (TestSessionTable.testProjectId eq testProjectId)
+        }.any()
+    }
+
     override suspend fun deleteByTestSessionId(groupId: String, testSessionId: String) {
         TestSessionTable.deleteWhere {
             (TestSessionTable.groupId eq groupId) and (TestSessionTable.id eq testSessionId)
+        }
+    }
+
+    override suspend fun deleteAllByTestProjectId(groupId: String, testProjectId: String) {
+        TestSessionTable.deleteWhere {
+            (TestSessionTable.groupId eq groupId) and (TestSessionTable.testProjectId eq testProjectId)
         }
     }
 }

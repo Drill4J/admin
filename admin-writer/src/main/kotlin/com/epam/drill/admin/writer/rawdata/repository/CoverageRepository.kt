@@ -24,4 +24,5 @@ interface CoverageRepository {
     suspend fun deleteAllByBuildId(groupId: String, appId: String, buildId: String)
     suspend fun deleteAllByAppId(groupId: String, appId: String)
     suspend fun deleteAllByTestSessionId(groupId: String, testSessionId: String)
+    suspend fun deleteAllByTestProjectId(groupId: String, testProjectId: String)
 }
