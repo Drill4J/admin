@@ -635,7 +635,7 @@ paths:
         Permanently deletes a specific test session and all its associated data, including test launch records
         and code coverage data collected during the session. Use this endpoint to clean up
         invalid or obsolete test sessions.
-      operationId: deleteTestSession
+      operationId: deleteTestSessionByProjectId
       tags:
         - data-management
       security:
