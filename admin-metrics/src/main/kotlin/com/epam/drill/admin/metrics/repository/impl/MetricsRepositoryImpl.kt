@@ -3069,16 +3069,17 @@ class MetricsRepositoryImpl : MetricsRepository {
 
     override suspend fun deleteAllTestDataByTestSessionId(
         groupId: String,
+        testProjectId: String?,
         testSessionId: String
     ) = transaction {
-        deleteBuildMethodTestDefinitionCoverage(groupId, appId = null, buildId = null, testProjectId = null, testSessionId = testSessionId)
-        deleteBuildMethodTestSessionCoverage(groupId, appId = null, buildId = null, testProjectId = null, testSessionId = testSessionId)
+        deleteBuildMethodTestDefinitionCoverage(groupId, appId = null, buildId = null, testProjectId = testProjectId, testSessionId = testSessionId)
+        deleteBuildMethodTestSessionCoverage(groupId, appId = null, buildId = null, testProjectId = testProjectId, testSessionId = testSessionId)
         // deleting from metrics.build_method_coverage is impossible because the table does not reference test_session_id
         // deleting from metrics.method_daily_coverage is impossible because the table does not linked to test_session_id
         // deleting from metrics.test_to_code_mapping is impossible because the table does not reference test_session_id
-        deleteTestLaunches(groupId, testProjectId = null, testSessionId = testSessionId)
-        deleteTestSessionBuilds(groupId, appId = null, buildId = null, testProjectId = null, testSessionId = testSessionId)
-        deleteTestSessions(groupId, testProjectId = null, testSessionId = testSessionId)
+        deleteTestLaunches(groupId, testProjectId = testProjectId, testSessionId = testSessionId)
+        deleteTestSessionBuilds(groupId, appId = null, buildId = null, testProjectId = testProjectId, testSessionId = testSessionId)
+        deleteTestSessions(groupId, testProjectId = testProjectId, testSessionId = testSessionId)
     }
 
     override suspend fun deleteAllTestDataByTestProjectId(

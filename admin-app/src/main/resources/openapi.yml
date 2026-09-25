@@ -628,6 +628,44 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/MessageResponse'
+  /api/data-management/groups/{groupId}/tests/{testProjectId}/sessions/{testSessionId}:
+    delete:
+      summary: Delete test session data with all associated data by test project and test session (coverage, test launches)
+      description: |
+        Permanently deletes a specific test session and all its associated data, including test launch records
+        and code coverage data collected during the session. Use this endpoint to clean up
+        invalid or obsolete test sessions.
+      operationId: deleteTestSession
+      tags:
+        - data-management
+      security:
+        - apiKeyAuth: [ ]
+      parameters:
+        - name: groupId
+          in: path
+          required: true
+          description: Unique identifier for the application group containing the test session.
+          schema:
+            type: string
+        - name: testProjectId
+          in: path
+          required: true
+          description: Unique identifier of the test project to delete.
+          schema:
+            type: string
+        - name: testSessionId
+          in: path
+          required: true
+          description: Unique identifier of the test session to delete.
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Test Session deleted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
   /api/data-management/groups/{groupId}/tests/sessions/{testSessionId}:
     delete:
       summary: Delete test session data with all associated data (coverage, test launches)

@@ -68,7 +68,7 @@ class Groups() {
             @Resource("/{testProjectId}")
             class Id(val parent: Tests, val testProjectId: String) {
                 @Resource("/sessions")
-                class Sessions(val parent: Tests) {
+                class Sessions(val parent: Tests.Id) {
                     @Resource("/{testSessionId}")
                     class Id(val parent: Sessions, val testSessionId: String)
                 }
@@ -176,9 +176,20 @@ fun Route.deleteTestProjectData() {
 fun Route.deleteTestSessionData() {
     val dataManagementService by closestDI().instance<DataManagementService>()
 
+    delete<Groups.Id.Tests.Id.Sessions.Id> { params ->
+        dataManagementService.deleteTestSessionData(
+            groupId = params.parent.parent.parent.parent.groupId,
+            testProjectId = params.parent.parent.testProjectId,
+            testSessionId = params.testSessionId,
+            user = call.principal<User>()
+        )
+        call.ok("Test session data deleted successfully")
+    }
+
     delete<Groups.Id.Tests.Sessions.Id> { params ->
         dataManagementService.deleteTestSessionData(
             groupId = params.parent.parent.parent.groupId,
+            testProjectId = null,
             testSessionId = params.testSessionId,
             user = call.principal<User>()
         )

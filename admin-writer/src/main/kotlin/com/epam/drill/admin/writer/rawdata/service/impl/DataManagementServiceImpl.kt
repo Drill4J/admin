@@ -22,7 +22,7 @@ import com.epam.drill.admin.common.scheduler.deleteMetricsDataJobKey
 import com.epam.drill.admin.common.scheduler.getAppDataDeletionDataMap
 import com.epam.drill.admin.common.scheduler.getGroupDataDeletionDataMap
 import com.epam.drill.admin.common.scheduler.getBuildDataDeletionDataMap
-import com.epam.drill.admin.common.scheduler.getTestDataDeletionDataMap
+import com.epam.drill.admin.common.scheduler.getTestSessionDataDeletionDataMap
 import com.epam.drill.admin.common.scheduler.getTestProjectDataDeletionDataMap
 import com.epam.drill.admin.writer.rawdata.config.RawDataWriterDatabaseConfig.transaction
 import com.epam.drill.admin.writer.rawdata.entity.MethodIgnoreRule
@@ -104,16 +104,21 @@ class DataManagementServiceImpl(
         }
     }
 
-    override suspend fun deleteTestSessionData(groupId: String, testSessionId: String, user: User?) {
+    override suspend fun deleteTestSessionData(
+        groupId: String,
+        testProjectId: String?,
+        testSessionId: String,
+        user: User?
+    ) {
         transaction {
             if (!testSessionRepository.existsById(groupId, testSessionId)) {
                 throw InvalidParameters("Test Session not found for $testSessionId")
             }
             coverageRepository.deleteAllByTestSessionId(groupId, testSessionId)
-            testLaunchRepository.deleteAllByTestSessionId(groupId, testSessionId)
+            testLaunchRepository.deleteAllByTestSessionId(groupId, testProjectId, testSessionId)
             testSessionBuildRepository.deleteAllByTestSessionId(groupId, testSessionId)
-            testSessionRepository.deleteByTestSessionId(groupId, testSessionId)
-            scheduler.triggerJob(deleteMetricsDataJobKey, getTestDataDeletionDataMap(groupId, testSessionId))
+            testSessionRepository.deleteByTestSessionId(groupId, testProjectId, testSessionId)
+            scheduler.triggerJob(deleteMetricsDataJobKey, getTestSessionDataDeletionDataMap(groupId, testProjectId, testSessionId))
         }
     }
 

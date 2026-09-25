@@ -54,10 +54,11 @@ interface DataManagementService {
     /**
      * Deletes all test session data including coverage, test launches associated with the specified test session.
      * @param groupId The ID of the group.
+     * @param testProjectId The ID of the test project (optional).
      * @param testSessionId The ID of the test session to delete data for.
      * @param user The user performing the deletion (optional).
      */
-    suspend fun deleteTestSessionData(groupId: String, testSessionId: String, user: User?)
+    suspend fun deleteTestSessionData(groupId: String, testProjectId: String?, testSessionId: String, user: User?)
 
     suspend fun saveMethodIgnoreRule(rulePayload: MethodIgnoreRulePayload)
     suspend fun getAllMethodIgnoreRules(

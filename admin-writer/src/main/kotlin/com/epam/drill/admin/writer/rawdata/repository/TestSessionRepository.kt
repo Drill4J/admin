@@ -23,7 +23,7 @@ interface TestSessionRepository {
     suspend fun existsByGroupIdAndTestProjectId(groupId: String, testProjectId: String): Boolean
     suspend fun create(session: TestSession)
     suspend fun deleteAllCreatedBefore(groupId: String, createdBefore: LocalDate)
-    suspend fun deleteByTestSessionId(groupId: String, testSessionId: String)
+    suspend fun deleteByTestSessionId(groupId: String, testProjectId: String?, testSessionId: String)
     suspend fun deleteAllByTestProjectId(groupId: String, testProjectId: String)
     suspend fun deleteAllByGroupId(groupId: String)
 }

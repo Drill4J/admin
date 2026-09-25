@@ -31,9 +31,10 @@ fun getAppDataDeletionDataMap(groupId: String, appId: String) = JobDataMap().app
     put("appId", appId)
 }
 
-fun getTestDataDeletionDataMap(groupId: String, testSessionId: String) = JobDataMap().apply {
+fun getTestSessionDataDeletionDataMap(groupId: String, testProjectId: String?, testSessionId: String) = JobDataMap().apply {
     put("dataType", "testSession")
     put("groupId", groupId)
+    testProjectId?.let { put("testProjectId", it) }
     put("testSessionId", testSessionId)
 }
 

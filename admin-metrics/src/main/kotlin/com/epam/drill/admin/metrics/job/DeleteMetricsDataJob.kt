@@ -49,8 +49,9 @@ class DeleteMetricsDataJob(
                     metricsRepository.deleteAllAppDataByAppId(groupId, appId)
                 }
                 "testSession" -> {
+                    val testProjectId = context.mergedJobDataMap.getString("testProjectId")
                     val testSessionId = context.mergedJobDataMap.getString("testSessionId")
-                    metricsRepository.deleteAllTestDataByTestSessionId(groupId, testSessionId)
+                    metricsRepository.deleteAllTestDataByTestSessionId(groupId, testProjectId, testSessionId)
                 }
                 "testProject" -> {
                     val testProjectId = context.mergedJobDataMap.getString("testProjectId")
