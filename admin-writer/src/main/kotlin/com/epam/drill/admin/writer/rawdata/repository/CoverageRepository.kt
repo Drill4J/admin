@@ -22,5 +22,8 @@ interface CoverageRepository {
     suspend fun createMany(data: List<Coverage>)
     suspend fun deleteAllCreatedBefore(groupId: String, createdBefore: LocalDate)
     suspend fun deleteAllByBuildId(groupId: String, appId: String, buildId: String)
+    suspend fun deleteAllByAppId(groupId: String, appId: String)
     suspend fun deleteAllByTestSessionId(groupId: String, testSessionId: String)
+    suspend fun deleteAllByTestProjectId(groupId: String, testProjectId: String)
+    suspend fun deleteAllByGroupId(groupId: String)
 }

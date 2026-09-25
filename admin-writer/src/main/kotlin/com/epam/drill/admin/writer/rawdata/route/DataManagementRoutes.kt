@@ -27,6 +27,7 @@ import io.ktor.server.resources.get
 import io.ktor.server.resources.post
 import io.ktor.server.resources.put
 import io.ktor.server.routing.Route
+import io.ktor.server.routing.delete
 import io.ktor.server.routing.route
 import org.kodein.di.instance
 import org.kodein.di.ktor.closestDI
@@ -63,6 +64,16 @@ class Groups() {
         }
         @Resource("/tests")
         class Tests(val parent: Groups.Id) {
+
+            @Resource("/{testProjectId}")
+            class Id(val parent: Tests, val testProjectId: String) {
+                @Resource("/sessions")
+                class Sessions(val parent: Tests.Id) {
+                    @Resource("/{testSessionId}")
+                    class Id(val parent: Sessions, val testSessionId: String)
+                }
+            }
+            @Deprecated("Use /{testProjectId}/sessions instead")
             @Resource("/sessions")
             class Sessions(val parent: Tests) {
                 @Resource("/{testSessionId}")
@@ -85,7 +96,10 @@ class MethodIgnoreRulesRoute(
 
 fun Route.dataManagementRoutes() {
     route("/data-management") {
+        deleteGroupData()
+        deleteAppData()
         deleteBuildData()
+        deleteTestProjectData()
         deleteTestSessionData()
     }
 }
@@ -107,6 +121,31 @@ fun Route.dataManagementWriteRoutes() {
     }
 }
 
+fun Route.deleteGroupData() {
+    val dataManagementService by closestDI().instance<DataManagementService>()
+
+    delete<Groups.Id> { params ->
+        dataManagementService.deleteGroupData(
+            groupId = params.groupId,
+            user = call.principal<User>()
+        )
+        call.ok("Group data deleted successfully")
+    }
+}
+
+fun Route.deleteAppData() {
+    val dataManagementService by closestDI().instance<DataManagementService>()
+
+    delete<Groups.Id.Apps.Id> { params ->
+        dataManagementService.deleteAppData(
+            groupId = params.parent.parent.groupId,
+            appId = params.appId,
+            user = call.principal<User>()
+        )
+        call.ok("App data deleted successfully")
+    }
+}
+
 fun Route.deleteBuildData() {
     val dataManagementService by closestDI().instance<DataManagementService>()
 
@@ -121,12 +160,36 @@ fun Route.deleteBuildData() {
     }
 }
 
+fun Route.deleteTestProjectData() {
+    val dataManagementService by closestDI().instance<DataManagementService>()
+
+    delete<Groups.Id.Tests.Id> { params ->
+        dataManagementService.deleteTestProjectData(
+            groupId = params.parent.parent.groupId,
+            testProjectId = params.testProjectId,
+            user = call.principal<User>()
+        )
+        call.ok("Test project data deleted successfully")
+    }
+}
+
 fun Route.deleteTestSessionData() {
     val dataManagementService by closestDI().instance<DataManagementService>()
+
+    delete<Groups.Id.Tests.Id.Sessions.Id> { params ->
+        dataManagementService.deleteTestSessionData(
+            groupId = params.parent.parent.parent.parent.groupId,
+            testProjectId = params.parent.parent.testProjectId,
+            testSessionId = params.testSessionId,
+            user = call.principal<User>()
+        )
+        call.ok("Test session data deleted successfully")
+    }
 
     delete<Groups.Id.Tests.Sessions.Id> { params ->
         dataManagementService.deleteTestSessionData(
             groupId = params.parent.parent.parent.groupId,
+            testProjectId = null,
             testSessionId = params.testSessionId,
             user = call.principal<User>()
         )

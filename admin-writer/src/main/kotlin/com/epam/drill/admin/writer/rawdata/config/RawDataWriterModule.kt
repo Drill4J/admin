@@ -205,6 +205,7 @@ val dataManagementServicesDIModule
                 testSessionRepository = instance(),
                 testLaunchRepository = instance(),
                 testSessionBuildRepository = instance(),
+                testDefinitionRepository = instance(),
                 methodIgnoreRuleRepository = instance(),
                 testLaunchCoverageRequestRepository = instance(),
                 scheduler = instance(),

@@ -19,8 +19,11 @@ import com.epam.drill.admin.common.exception.InvalidParameters
 import com.epam.drill.admin.common.principal.User
 import com.epam.drill.admin.common.scheduler.DrillScheduler
 import com.epam.drill.admin.common.scheduler.deleteMetricsDataJobKey
+import com.epam.drill.admin.common.scheduler.getAppDataDeletionDataMap
+import com.epam.drill.admin.common.scheduler.getGroupDataDeletionDataMap
 import com.epam.drill.admin.common.scheduler.getBuildDataDeletionDataMap
-import com.epam.drill.admin.common.scheduler.getTestDataDeletionDataMap
+import com.epam.drill.admin.common.scheduler.getTestSessionDataDeletionDataMap
+import com.epam.drill.admin.common.scheduler.getTestProjectDataDeletionDataMap
 import com.epam.drill.admin.writer.rawdata.config.RawDataWriterDatabaseConfig.transaction
 import com.epam.drill.admin.writer.rawdata.entity.MethodIgnoreRule
 import com.epam.drill.admin.writer.rawdata.repository.BuildRepository
@@ -28,6 +31,7 @@ import com.epam.drill.admin.writer.rawdata.repository.CoverageRepository
 import com.epam.drill.admin.writer.rawdata.repository.InstanceRepository
 import com.epam.drill.admin.writer.rawdata.repository.MethodIgnoreRuleRepository
 import com.epam.drill.admin.writer.rawdata.repository.MethodRepository
+import com.epam.drill.admin.writer.rawdata.repository.TestDefinitionRepository
 import com.epam.drill.admin.writer.rawdata.repository.TestLaunchCoverageRequestRepository
 import com.epam.drill.admin.writer.rawdata.repository.TestLaunchRepository
 import com.epam.drill.admin.writer.rawdata.repository.TestSessionBuildRepository
@@ -44,6 +48,7 @@ class DataManagementServiceImpl(
     private val methodRepository: MethodRepository,
     private val testSessionBuildRepository: TestSessionBuildRepository,
     private val testLaunchRepository: TestLaunchRepository,
+    private val testDefinitionRepository: TestDefinitionRepository,
     private val methodIgnoreRuleRepository: MethodIgnoreRuleRepository,
     private val testLaunchCoverageRequestRepository: TestLaunchCoverageRequestRepository,
     private val scheduler: DrillScheduler,
@@ -63,16 +68,57 @@ class DataManagementServiceImpl(
         }
     }
 
-    override suspend fun deleteTestSessionData(groupId: String, testSessionId: String, user: User?) {
+    override suspend fun deleteGroupData(groupId: String, user: User?) {
+        transaction {
+            coverageRepository.deleteAllByGroupId(groupId)
+            instanceRepository.deleteAllByGroupId(groupId)
+            methodRepository.deleteAllByGroupId(groupId)
+            testSessionBuildRepository.deleteAllByGroupId(groupId)
+            buildRepository.deleteAllByGroupId(groupId)
+            testDefinitionRepository.deleteAllByGroupId(groupId)
+            testLaunchRepository.deleteAllByGroupId(groupId)
+            testSessionRepository.deleteAllByGroupId(groupId)
+            scheduler.triggerJob(deleteMetricsDataJobKey, getGroupDataDeletionDataMap(groupId))
+        }
+    }
+
+    override suspend fun deleteAppData(groupId: String, appId: String, user: User?) {
+        transaction {
+            coverageRepository.deleteAllByAppId(groupId, appId)
+            instanceRepository.deleteAllByAppId(groupId, appId)
+            methodRepository.deleteAllByAppId(groupId, appId)
+            testSessionBuildRepository.deleteAllByAppId(groupId, appId)
+            buildRepository.deleteAllByAppId(groupId, appId)
+            scheduler.triggerJob(deleteMetricsDataJobKey, getAppDataDeletionDataMap(groupId, appId))
+        }
+    }
+
+    override suspend fun deleteTestProjectData(groupId: String, testProjectId: String, user: User?) {
+        transaction {
+            coverageRepository.deleteAllByTestProjectId(groupId, testProjectId)
+            testLaunchRepository.deleteAllByTestProjectId(groupId, testProjectId)
+            testSessionBuildRepository.deleteAllByTestProjectId(groupId, testProjectId)
+            testSessionRepository.deleteAllByTestProjectId(groupId, testProjectId)
+            testDefinitionRepository.deleteAllByTestProjectId(groupId, testProjectId)
+            scheduler.triggerJob(deleteMetricsDataJobKey, getTestProjectDataDeletionDataMap(groupId, testProjectId))
+        }
+    }
+
+    override suspend fun deleteTestSessionData(
+        groupId: String,
+        testProjectId: String?,
+        testSessionId: String,
+        user: User?
+    ) {
         transaction {
             if (!testSessionRepository.existsById(groupId, testSessionId)) {
                 throw InvalidParameters("Test Session not found for $testSessionId")
             }
             coverageRepository.deleteAllByTestSessionId(groupId, testSessionId)
-            testLaunchRepository.deleteAllByTestSessionId(groupId, testSessionId)
+            testLaunchRepository.deleteAllByTestSessionId(groupId, testProjectId, testSessionId)
             testSessionBuildRepository.deleteAllByTestSessionId(groupId, testSessionId)
-            testSessionRepository.deleteByTestSessionId(groupId, testSessionId)
-            scheduler.triggerJob(deleteMetricsDataJobKey, getTestDataDeletionDataMap(groupId, testSessionId))
+            testSessionRepository.deleteByTestSessionId(groupId, testProjectId, testSessionId)
+            scheduler.triggerJob(deleteMetricsDataJobKey, getTestSessionDataDeletionDataMap(groupId, testProjectId, testSessionId))
         }
     }
 

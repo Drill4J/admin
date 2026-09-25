@@ -29,12 +29,36 @@ interface DataManagementService {
      */
     suspend fun deleteBuildData(groupId: String, appId: String, buildId: String, user: User?)
     /**
+     * Deletes all data for a group, including all apps, builds, coverage, test sessions, and test projects.
+     * @param groupId The ID of the group.
+     * @param user The user performing the deletion (optional).
+     */
+    suspend fun deleteGroupData(groupId: String, user: User?)
+
+    /**
+     * Deletes all data for a specific application within a group, including all builds, coverage, methods, and instances.
+     * @param groupId The ID of the group.
+     * @param appId The ID of the application.
+     * @param user The user performing the deletion (optional).
+     */
+    suspend fun deleteAppData(groupId: String, appId: String, user: User?)
+
+    /**
+     * Deletes all test project data including coverage, test launches associated with the specified test project.
+     * @param groupId The ID of the group.
+     * @param testProjectId The ID of the test project to delete data for.
+     * @param user The user performing the deletion (optional).
+     */
+    suspend fun deleteTestProjectData(groupId: String, testProjectId: String, user: User?)
+
+    /**
      * Deletes all test session data including coverage, test launches associated with the specified test session.
      * @param groupId The ID of the group.
+     * @param testProjectId The ID of the test project (optional).
      * @param testSessionId The ID of the test session to delete data for.
      * @param user The user performing the deletion (optional).
      */
-    suspend fun deleteTestSessionData(groupId: String, testSessionId: String, user: User?)
+    suspend fun deleteTestSessionData(groupId: String, testProjectId: String?, testSessionId: String, user: User?)
 
     suspend fun saveMethodIgnoreRule(rulePayload: MethodIgnoreRulePayload)
     suspend fun getAllMethodIgnoreRules(

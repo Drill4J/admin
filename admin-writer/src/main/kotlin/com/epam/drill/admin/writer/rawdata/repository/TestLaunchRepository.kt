@@ -21,5 +21,7 @@ import java.time.LocalDate
 interface TestLaunchRepository {
     suspend fun createMany(testLaunchList: List<TestLaunch>)
     suspend fun deleteAllCreatedBefore(groupId: String, createdBefore: LocalDate)
-    suspend fun deleteAllByTestSessionId(groupId: String, testSessionId: String)
+    suspend fun deleteAllByTestSessionId(groupId: String, testProjectId: String?, testSessionId: String)
+    suspend fun deleteAllByTestProjectId(groupId: String, testProjectId: String)
+    suspend fun deleteAllByGroupId(groupId: String)
 }

@@ -31,6 +31,11 @@ fun Transaction.executeQueryReturnMap(sqlQuery: String, vararg params: Any?): Li
 fun Transaction.executeUpdate(sql: String, vararg params: Any?) =
     commonExecuteUpdate(sql, *params)
 
+fun Transaction.executeUpdate(buildSql: SqlBuilder.() -> Unit) {
+    val builder = SqlBuilderImpl().apply { buildSql() }
+    commonExecuteUpdate(builder.sqlQuery.toString(), *builder.params.toTypedArray())
+}
+
 fun Transaction.executeQueryReturnMap(buildSql: SqlBuilder.() -> Unit): List<Map<String, Any?>> {
     val builder = SqlBuilderImpl().apply { buildSql() }
     return executeQueryReturnMap(builder.sqlQuery.toString(), *builder.params.toTypedArray())
