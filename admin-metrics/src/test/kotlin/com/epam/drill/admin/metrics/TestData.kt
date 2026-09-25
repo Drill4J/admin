@@ -15,10 +15,12 @@
  */
 package com.epam.drill.admin.metrics
 
+import com.epam.drill.admin.common.service.generateBuildId
 import com.epam.drill.admin.writer.rawdata.route.payload.InstancePayload
 import com.epam.drill.admin.writer.rawdata.route.payload.SessionPayload
 import com.epam.drill.admin.writer.rawdata.route.payload.SingleMethodPayload
 import com.epam.drill.admin.writer.rawdata.route.payload.TestDetails
+import com.epam.drill.admin.writer.rawdata.util.md5
 import kotlinx.datetime.Clock
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonElement
@@ -160,3 +162,21 @@ fun SessionPayload.testProjectId(testProjectId: String) = SessionPayload(
     builds = this.builds,
     testProjectId = testProjectId,
 )
+
+val InstancePayload.buildId
+    get() = generateBuildId(this.groupId, this.appId, this.instanceId, this.commitSha, this.buildVersion)
+
+val SingleMethodPayload.signature
+    get() = listOf(
+        this.classname,
+        this.name,
+        this.params,
+        this.returnType
+    ).joinToString(":")
+
+val SingleMethodPayload.methodId
+    get() = listOf(
+        signature,
+        this.bodyChecksum,
+        this.probesCount
+    ).joinToString(":").md5()

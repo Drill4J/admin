@@ -16,10 +16,13 @@
 package com.epam.drill.admin.metrics
 
 import com.epam.drill.admin.common.scheduler.DrillScheduler
+import com.epam.drill.admin.common.scheduler.deleteMetricsDataJobKey
 import com.epam.drill.admin.metrics.config.etlDIModule
 import com.epam.drill.admin.metrics.config.metricsDIModule
 import com.epam.drill.admin.etl.job.IncrementalRunEtlJob
+import com.epam.drill.admin.etl.job.incrementalRunEtlJobKey
 import com.epam.drill.admin.etl.route.etlManagementRoutes
+import com.epam.drill.admin.metrics.job.DeleteMetricsDataJob
 import com.epam.drill.admin.metrics.route.metricsRoutes
 import com.epam.drill.admin.metrics.views.ChangeType
 import com.epam.drill.admin.metrics.views.TestImpactStatus
@@ -49,14 +52,23 @@ import org.kodein.di.singleton
 val scheduler = DI.Module("testModule") {
     bind<DrillScheduler>() with singleton {
         StubDrillScheduler(
-            instance<IncrementalRunEtlJob>()
+            mapOf(
+                incrementalRunEtlJobKey to instance<IncrementalRunEtlJob>(),
+                deleteMetricsDataJobKey to instance<DeleteMetricsDataJob>()
+            )
         )
     }
 }
 
 fun havingData(testsData: suspend TestDataDsl.() -> Unit): HttpClient {
     return runBlocking {
-        drillApplication(rawDataServicesDIModule, dataManagementServicesDIModule, metricsDIModule, etlDIModule, scheduler) {
+        drillApplication(
+            rawDataServicesDIModule,
+            dataManagementServicesDIModule,
+            metricsDIModule,
+            etlDIModule,
+            scheduler
+        ) {
             dataIngestRoutes()
             dataManagementRoutes()
             metricsRoutes()
@@ -230,6 +242,14 @@ fun HttpClient.expectThat(checks: suspend ExpectationDsl.(HttpClient) -> Unit) {
     }
 }
 
+fun HttpClient.afterCalling(body: suspend HttpClient.() -> Unit): HttpClient {
+    val client = this
+    runBlocking {
+        client.body()
+    }
+    return this
+}
+
 class ExpectationDsl(
     val client: HttpClient,
     var parameters: HttpRequestBuilder.() -> Unit = {}
@@ -336,11 +356,11 @@ class ExpectationDsl(
     suspend infix fun ImpactedMethods.comparedTo(baseline: InstancePayload) {
         client.getBuildChanges(this.build, baseline, hasImpactedTests = true, otherParameters = parameters)
             .returns { data ->
-            when (this.impactedStatus) {
-                TestImpactStatus.IMPACTED -> this.methods.forEach { it.assertMethodIsImpacted(data) }
-                TestImpactStatus.NOT_IMPACTED -> this.methods.forEach { it.assertMethodIsNotImpacted(data) }
-                TestImpactStatus.UNKNOWN_IMPACT -> this.methods.forEach { it.assertMethodHasUnknownImpact(data) }
+                when (this.impactedStatus) {
+                    TestImpactStatus.IMPACTED -> this.methods.forEach { it.assertMethodIsImpacted(data) }
+                    TestImpactStatus.NOT_IMPACTED -> this.methods.forEach { it.assertMethodIsNotImpacted(data) }
+                    TestImpactStatus.UNKNOWN_IMPACT -> this.methods.forEach { it.assertMethodHasUnknownImpact(data) }
+                }
             }
-        }
     }
 }
