@@ -78,8 +78,8 @@ class DataManagementServiceImpl(
             testDefinitionRepository.deleteAllByGroupId(groupId)
             testLaunchRepository.deleteAllByGroupId(groupId)
             testSessionRepository.deleteAllByGroupId(groupId)
-            scheduler.triggerJob(deleteMetricsDataJobKey, getGroupDataDeletionDataMap(groupId))
         }
+        scheduler.triggerJob(deleteMetricsDataJobKey, getGroupDataDeletionDataMap(groupId))
     }
 
     override suspend fun deleteAppData(groupId: String, appId: String, user: User?) {
@@ -89,8 +89,8 @@ class DataManagementServiceImpl(
             methodRepository.deleteAllByAppId(groupId, appId)
             testSessionBuildRepository.deleteAllByAppId(groupId, appId)
             buildRepository.deleteAllByAppId(groupId, appId)
-            scheduler.triggerJob(deleteMetricsDataJobKey, getAppDataDeletionDataMap(groupId, appId))
         }
+        scheduler.triggerJob(deleteMetricsDataJobKey, getAppDataDeletionDataMap(groupId, appId))
     }
 
     override suspend fun deleteTestProjectData(groupId: String, testProjectId: String, user: User?) {
@@ -100,8 +100,8 @@ class DataManagementServiceImpl(
             testSessionBuildRepository.deleteAllByTestProjectId(groupId, testProjectId)
             testSessionRepository.deleteAllByTestProjectId(groupId, testProjectId)
             testDefinitionRepository.deleteAllByTestProjectId(groupId, testProjectId)
-            scheduler.triggerJob(deleteMetricsDataJobKey, getTestProjectDataDeletionDataMap(groupId, testProjectId))
         }
+        scheduler.triggerJob(deleteMetricsDataJobKey, getTestProjectDataDeletionDataMap(groupId, testProjectId))
     }
 
     override suspend fun deleteTestSessionData(
@@ -118,8 +118,8 @@ class DataManagementServiceImpl(
             testLaunchRepository.deleteAllByTestSessionId(groupId, testProjectId, testSessionId)
             testSessionBuildRepository.deleteAllByTestSessionId(groupId, testSessionId)
             testSessionRepository.deleteByTestSessionId(groupId, testProjectId, testSessionId)
-            scheduler.triggerJob(deleteMetricsDataJobKey, getTestSessionDataDeletionDataMap(groupId, testProjectId, testSessionId))
         }
+        scheduler.triggerJob(deleteMetricsDataJobKey, getTestSessionDataDeletionDataMap(groupId, testProjectId, testSessionId))
     }
 
     override suspend fun saveMethodIgnoreRule(rulePayload: MethodIgnoreRulePayload) {
