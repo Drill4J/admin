@@ -235,9 +235,7 @@ class TestDataDsl(val client: HttpClient) {
 
 fun HttpClient.expectThat(checks: suspend ExpectationDsl.(HttpClient) -> Unit) {
     val client = this
-    return waitUntilInBlocking(
-        onAssertionFailed = { refreshMetrics(emptySet()) }
-    ) {
+    return waitUntilInBlocking {
         checks(ExpectationDsl(client), client)
     }
 }

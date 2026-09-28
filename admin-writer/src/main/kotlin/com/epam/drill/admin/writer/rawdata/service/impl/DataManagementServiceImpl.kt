@@ -64,8 +64,8 @@ class DataManagementServiceImpl(
             methodRepository.deleteAllByBuildId(groupId, appId, buildId)
             testSessionBuildRepository.deleteAllByBuildId(groupId, appId, buildId)
             buildRepository.deleteByBuildId(groupId, appId, buildId)
-            scheduler.triggerJob(deleteMetricsDataJobKey, getBuildDataDeletionDataMap(groupId, appId, buildId))
         }
+        scheduler.triggerJob(deleteMetricsDataJobKey, getBuildDataDeletionDataMap(groupId, appId, buildId))
     }
 
     override suspend fun deleteGroupData(groupId: String, user: User?) {
