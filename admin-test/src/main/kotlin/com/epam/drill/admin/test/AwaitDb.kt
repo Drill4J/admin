@@ -58,7 +58,6 @@ fun waitUntilInBlocking(
                     }
                 }
             }
-            throw e
         }
     }
 }
