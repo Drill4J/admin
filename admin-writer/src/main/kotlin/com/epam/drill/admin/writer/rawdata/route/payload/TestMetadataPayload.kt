@@ -66,16 +66,6 @@ class SingleSessionBuildPayload(
 )
 
 @Serializable
-class SessionPayload(
-    val id: String,
-    val groupId: String,
-    val testProjectId: String? = null,
-    val testTaskId: String,
-    val startedAt: Instant,
-    val builds: List<SingleSessionBuildPayload> = emptyList(),
-): RawDataPayload
-
-@Serializable
 class AddTestLaunchesPayload(
     val groupId: String,
     val testProjectId: String? = null,

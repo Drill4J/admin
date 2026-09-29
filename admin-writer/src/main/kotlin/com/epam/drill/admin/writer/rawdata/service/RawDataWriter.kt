@@ -29,6 +29,7 @@ interface RawDataWriter {
     suspend fun saveTestMetadata(testsPayload: AddTestsPayload)
     suspend fun saveTestDefinitions(testDefinitionsPayload: AddTestDefinitionsPayload)
     suspend fun saveTestLaunches(testLaunchesPayload: AddTestLaunchesPayload)
-    suspend fun saveTestSession(sessionPayload: SessionPayload, username: String?)
+    suspend fun saveTestSession(testSessionPayload: TestSessionPayload, username: String?)
+    suspend fun saveTestSessionHeartbeat(payload: TestSessionHeartbeatPayload)
     suspend fun finalizeBuild(payload: BuildFinalizePayload): BuildValidationStatus
 }

@@ -24,7 +24,7 @@ import com.epam.drill.admin.writer.rawdata.route.payload.CoveragePayload
 import com.epam.drill.admin.writer.rawdata.route.payload.InstancePayload
 import com.epam.drill.admin.writer.rawdata.route.payload.MethodsPayload
 import com.epam.drill.admin.writer.rawdata.route.payload.RawDataPayload
-import com.epam.drill.admin.writer.rawdata.route.payload.SessionPayload
+import com.epam.drill.admin.writer.rawdata.route.payload.TestSessionPayload
 import kotlin.reflect.KClass
 
 enum class RecordKey(val value: String, val payloadType: KClass<out RawDataPayload>) {
@@ -36,7 +36,7 @@ enum class RecordKey(val value: String, val payloadType: KClass<out RawDataPaylo
     TEST_DEFINITIONS("test-definitions", AddTestDefinitionsPayload::class),
     TEST_LAUNCHES("test-launches", AddTestLaunchesPayload::class),
     TEST_METADATA("test-metadata", AddTestsPayload::class),
-    TEST_SESSIONS("test-sessions", SessionPayload::class);
+    TEST_SESSIONS("test-sessions", TestSessionPayload::class);
 
     companion object {
         private val map = RecordKey.entries.associateBy(RecordKey::value)

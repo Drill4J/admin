@@ -16,15 +16,18 @@
 package com.epam.drill.admin.writer.rawdata.repository.impl
 
 import com.epam.drill.admin.writer.rawdata.entity.TestSession
+import com.epam.drill.admin.writer.rawdata.entity.TestSessionHeartbeat
 import com.epam.drill.admin.writer.rawdata.repository.TestSessionRepository
-import com.epam.drill.admin.writer.rawdata.table.BuildTable
+import com.epam.drill.admin.writer.rawdata.route.payload.TestSessionStatus
 import com.epam.drill.admin.writer.rawdata.table.TestSessionTable
 import org.jetbrains.exposed.sql.Op
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.less
 import org.jetbrains.exposed.sql.and
 import org.jetbrains.exposed.sql.deleteWhere
+import org.jetbrains.exposed.sql.javatime.CurrentDateTime
 import org.jetbrains.exposed.sql.selectAll
+import org.jetbrains.exposed.sql.update
 import org.jetbrains.exposed.sql.upsert
 import java.time.LocalDate
 
@@ -38,13 +41,31 @@ class TestSessionRepositoryImpl : TestSessionRepository {
     }
 
     override suspend fun create(session: TestSession) {
-        TestSessionTable.upsert {
+        TestSessionTable.upsert(
+            onUpdateExclude = listOf(
+                TestSessionTable.status,
+                TestSessionTable.lastHeartbeatAt,
+            )
+        ) {
             it[id] = session.id
             it[groupId] = session.groupId
             it[testProjectId] = session.testProjectId
             it[testTaskId] = session.testTaskId
             it[startedAt] = session.startedAt
             it[createdBy] = session.createdBy
+            it[lastHeartbeatAt] = CurrentDateTime
+            it[status] = TestSessionStatus.RUNNING.name
+        }
+    }
+
+    override suspend fun updateHeartbeat(session: TestSessionHeartbeat) {
+        TestSessionTable.update(where = {
+            (TestSessionTable.groupId eq session.groupId) and
+                    (TestSessionTable.testProjectId eq session.testProjectId) and
+                    (TestSessionTable.id eq session.id)
+        }) {
+            it[lastHeartbeatAt] = CurrentDateTime
+            it[status] = session.status.name
         }
     }
 

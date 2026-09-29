@@ -35,7 +35,7 @@ import com.epam.drill.admin.writer.rawdata.config.rawDataServicesDIModule
 import com.epam.drill.admin.writer.rawdata.route.dataIngestRoutes
 import com.epam.drill.admin.writer.rawdata.route.dataManagementRoutes
 import com.epam.drill.admin.writer.rawdata.route.payload.InstancePayload
-import com.epam.drill.admin.writer.rawdata.route.payload.SessionPayload
+import com.epam.drill.admin.writer.rawdata.route.payload.TestSessionPayload
 import com.epam.drill.admin.writer.rawdata.route.payload.SingleMethodPayload
 import com.epam.drill.admin.writer.rawdata.route.payload.TestDetails
 import com.epam.drill.admin.writer.rawdata.route.payload.TestResult
@@ -86,12 +86,12 @@ fun havingData(testsData: suspend TestDataDsl.() -> Unit): HttpClient {
 
 class TestSessionMap(
     val test: TestDetails,
-    val session: SessionPayload,
+    val session: TestSessionPayload,
 )
 
 class TestCoverageMap(
     val test: TestDetails,
-    val session: SessionPayload,
+    val session: TestSessionPayload,
     val result: TestResult,
     val method: SingleMethodPayload,
     val probes: IntArray
@@ -141,7 +141,7 @@ class TestDataDsl(val client: HttpClient) {
     suspend infix fun InstancePayload.hasDeleted(method: SingleMethodPayload) =
         MethodComparison(this, method, ChangeType.DELETED)
 
-    suspend infix fun TestDetails.of(session: SessionPayload): TestSessionMap {
+    suspend infix fun TestDetails.of(session: TestSessionPayload): TestSessionMap {
         sessions.add(session.groupId to session.id)
         return TestSessionMap(this, session = session)
     }

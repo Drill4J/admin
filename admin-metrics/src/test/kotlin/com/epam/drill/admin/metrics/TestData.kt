@@ -17,13 +17,12 @@ package com.epam.drill.admin.metrics
 
 import com.epam.drill.admin.common.service.generateBuildId
 import com.epam.drill.admin.writer.rawdata.route.payload.InstancePayload
-import com.epam.drill.admin.writer.rawdata.route.payload.SessionPayload
+import com.epam.drill.admin.writer.rawdata.route.payload.TestSessionPayload
 import com.epam.drill.admin.writer.rawdata.route.payload.SingleMethodPayload
 import com.epam.drill.admin.writer.rawdata.route.payload.TestDetails
 import com.epam.drill.admin.writer.rawdata.util.md5
 import kotlinx.datetime.Clock
 import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.JsonElement
 
 const val testGroup = "group-1"
 const val testApp = "app-1"
@@ -104,19 +103,19 @@ val test3 = TestDetails(
     testName = "test3",
     metadata = Json.parseToJsonElement("{\"metadata\":[\"value3\"]}")
 )
-val session1 = SessionPayload(
+val session1 = TestSessionPayload(
     groupId = testGroup,
     id = "session-1",
     testTaskId = testTask,
     startedAt = Clock.System.now()
 )
-val session2 = SessionPayload(
+val session2 = TestSessionPayload(
     groupId = testGroup,
     id = "session-2",
     testTaskId = testTask,
     startedAt = Clock.System.now()
 )
-val session3 = SessionPayload(
+val session3 = TestSessionPayload(
     groupId = testGroup,
     id = "session-3",
     testTaskId = testTask,
@@ -147,14 +146,14 @@ fun SingleMethodPayload.changeChecksum() = changed()
 
 fun probesOf(vararg probes: Int): IntArray = probes
 
-fun SessionPayload.testTaskId(testTaskId: String) = SessionPayload(
+fun TestSessionPayload.testTaskId(testTaskId: String) = TestSessionPayload(
     groupId = this.groupId,
     id = this.id,
     testTaskId = testTaskId,
     startedAt = this.startedAt
 )
 
-fun SessionPayload.testProjectId(testProjectId: String) = SessionPayload(
+fun TestSessionPayload.testProjectId(testProjectId: String) = TestSessionPayload(
     groupId = this.groupId,
     id = this.id,
     testTaskId = this.testTaskId,
