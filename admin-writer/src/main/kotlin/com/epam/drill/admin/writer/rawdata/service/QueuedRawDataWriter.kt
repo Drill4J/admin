@@ -30,7 +30,7 @@ import com.epam.drill.admin.writer.rawdata.route.payload.CoveragePayload
 import com.epam.drill.admin.writer.rawdata.route.payload.InstancePayload
 import com.epam.drill.admin.writer.rawdata.route.payload.MethodsPayload
 import com.epam.drill.admin.writer.rawdata.route.payload.RawDataPayload
-import com.epam.drill.admin.writer.rawdata.route.payload.SessionPayload
+import com.epam.drill.admin.writer.rawdata.route.payload.TestSessionPayload
 import mu.KotlinLogging
 
 class QueuedRawDataWriter(
@@ -56,7 +56,7 @@ class QueuedRawDataWriter(
                     is AddTestLaunchesPayload -> handler.saveTestLaunches(payload)
                     is AddTestsPayload -> handler.saveTestMetadata(payload)
                     is InstancePayload -> handler.saveInstance(payload)
-                    is SessionPayload -> handler.saveTestSession(payload, metadata[usernameKey])
+                    is TestSessionPayload -> handler.saveTestSession(payload, metadata[usernameKey])
                 }
             }
         },
