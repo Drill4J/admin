@@ -24,4 +24,6 @@ interface InstanceRepository {
     suspend fun updateHeartbeat(instance: InstanceHeartbeat)
     suspend fun deleteAllCreatedBefore(groupId: String, createdBefore: LocalDate)
     suspend fun deleteAllByBuildId(groupId: String, appId: String, buildId: String)
+    suspend fun deleteAllByAppId(groupId: String, appId: String)
+    suspend fun deleteAllByGroupId(groupId: String)
 }

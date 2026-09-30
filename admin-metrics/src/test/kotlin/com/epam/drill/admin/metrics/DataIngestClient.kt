@@ -15,14 +15,23 @@
  */
 package com.epam.drill.admin.metrics
 
+import com.epam.drill.admin.etl.EtlJobStatus
+import com.epam.drill.admin.metrics.config.MERGED_COVERAGE_ETL
 import com.epam.drill.admin.writer.rawdata.route.payload.*
 import com.jayway.jsonpath.JsonPath
 import io.ktor.client.*
 import io.ktor.client.request.*
 import io.ktor.client.statement.*
 import io.ktor.http.*
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.time.delay
+import kotlinx.coroutines.time.withTimeout
+import kotlinx.coroutines.withTimeout
 import java.util.concurrent.atomic.AtomicInteger
 import kotlin.test.assertEquals
+import kotlin.time.Duration.Companion.milliseconds
+import kotlin.time.Duration.Companion.seconds
 
 private val counter = AtomicInteger(0)
 

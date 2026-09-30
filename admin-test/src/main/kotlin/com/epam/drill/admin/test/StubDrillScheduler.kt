@@ -31,7 +31,7 @@ import org.quartz.spi.TriggerFiredBundle
 import javax.sql.DataSource
 
 class StubDrillScheduler(
-    val job: Job
+    val jobs: Map<JobKey, Job>
 ) : DrillScheduler {
 
     override fun init(jobFactory: JobFactory, dataSource: DataSource) {
@@ -56,7 +56,8 @@ class StubDrillScheduler(
         onCompletion: ((Any?, Exception?) -> Unit)?
     ) {
         try {
-            val context = executeJob(jobDetail = JobDetailImpl().apply {
+            val job = jobs[jobKey] ?: throw IllegalArgumentException("Job with key $jobKey not found")
+            val context = executeJob(job, jobDetail = JobDetailImpl().apply {
                 key = jobKey
                 jobClass = job::class.java
                 jobDataMap = data
@@ -72,7 +73,7 @@ class StubDrillScheduler(
         // no-op
     }
 
-    private fun executeJob(jobDetail: JobDetail): JobExecutionContext {
+    private fun executeJob(job: Job, jobDetail: JobDetail): JobExecutionContext {
         val context = JobExecutionContextImpl(
             null, TriggerFiredBundle(
                 jobDetail,

@@ -25,10 +25,28 @@ fun getBuildDataDeletionDataMap(groupId: String, appId: String, buildId: String)
     put("buildId", buildId)
 }
 
-fun getTestDataDeletionDataMap(groupId: String, testSessionId: String) = JobDataMap().apply {
+fun getAppDataDeletionDataMap(groupId: String, appId: String) = JobDataMap().apply {
+    put("dataType", "app")
+    put("groupId", groupId)
+    put("appId", appId)
+}
+
+fun getTestSessionDataDeletionDataMap(groupId: String, testProjectId: String?, testSessionId: String) = JobDataMap().apply {
     put("dataType", "testSession")
     put("groupId", groupId)
+    testProjectId?.let { put("testProjectId", it) }
     put("testSessionId", testSessionId)
+}
+
+fun getTestProjectDataDeletionDataMap(groupId: String, testProjectId: String) = JobDataMap().apply {
+    put("dataType", "testProject")
+    put("groupId", groupId)
+    put("testProjectId", testProjectId)
+}
+
+fun getGroupDataDeletionDataMap(groupId: String) = JobDataMap().apply {
+    put("dataType", "group")
+    put("groupId", groupId)
 }
 
 val deleteMetricsDataJobKey: JobKey

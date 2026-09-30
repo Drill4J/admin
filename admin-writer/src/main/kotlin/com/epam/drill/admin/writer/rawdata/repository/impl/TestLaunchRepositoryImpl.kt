@@ -18,6 +18,7 @@ package com.epam.drill.admin.writer.rawdata.repository.impl
 import com.epam.drill.admin.writer.rawdata.entity.TestLaunch
 import com.epam.drill.admin.writer.rawdata.repository.TestLaunchRepository
 import com.epam.drill.admin.writer.rawdata.table.TestLaunchTable
+import org.jetbrains.exposed.sql.Op
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.less
 import org.jetbrains.exposed.sql.and
@@ -42,10 +43,22 @@ class TestLaunchRepositoryImpl: TestLaunchRepository {
         TestLaunchTable.deleteWhere { (TestLaunchTable.groupId eq groupId) and (TestLaunchTable.createdAt less createdBefore.atStartOfDay()) }
     }
 
-    override suspend fun deleteAllByTestSessionId(groupId: String, testSessionId: String) {
+    override suspend fun deleteAllByTestSessionId(groupId: String, testProjectId: String?, testSessionId: String) {
         TestLaunchTable.deleteWhere {
             (TestLaunchTable.groupId eq groupId) and
+            (testProjectId?.let { TestLaunchTable.testProjectId eq it } ?: Op.TRUE) and
             (TestLaunchTable.testSessionId eq testSessionId)
         }
+    }
+
+    override suspend fun deleteAllByTestProjectId(groupId: String, testProjectId: String) {
+        TestLaunchTable.deleteWhere {
+            (TestLaunchTable.groupId eq groupId) and
+            (TestLaunchTable.testProjectId eq testProjectId)
+        }
+    }
+
+    override suspend fun deleteAllByGroupId(groupId: String) {
+        TestLaunchTable.deleteWhere { TestLaunchTable.groupId eq groupId }
     }
 }

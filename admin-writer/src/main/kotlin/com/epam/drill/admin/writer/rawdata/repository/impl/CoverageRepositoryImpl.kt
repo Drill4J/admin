@@ -19,6 +19,7 @@ import com.epam.drill.admin.writer.rawdata.entity.Coverage
 import com.epam.drill.admin.writer.rawdata.repository.CoverageRepository
 import com.epam.drill.admin.writer.rawdata.table.InstanceTable
 import com.epam.drill.admin.writer.rawdata.table.MethodCoverageTable
+import com.epam.drill.admin.writer.rawdata.table.TestSessionTable
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.inSubQuery
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.less
@@ -60,10 +61,33 @@ class CoverageRepositoryImpl : CoverageRepository {
         }
     }
 
+    override suspend fun deleteAllByAppId(groupId: String, appId: String) {
+        MethodCoverageTable.deleteWhere {
+            (MethodCoverageTable.groupId eq groupId) and
+            (MethodCoverageTable.appId eq appId)
+        }
+    }
+
     override suspend fun deleteAllByTestSessionId(groupId: String, testSessionId: String) {
         MethodCoverageTable.deleteWhere {
             (MethodCoverageTable.groupId eq groupId) and
             (MethodCoverageTable.testSessionId eq testSessionId)
+        }
+    }
+
+    override suspend fun deleteAllByGroupId(groupId: String) {
+        MethodCoverageTable.deleteWhere { MethodCoverageTable.groupId eq groupId }
+    }
+
+    override suspend fun deleteAllByTestProjectId(groupId: String, testProjectId: String) {
+        MethodCoverageTable.deleteWhere {
+            (MethodCoverageTable.groupId eq groupId) and
+            (MethodCoverageTable.testSessionId inSubQuery TestSessionTable
+                .select(TestSessionTable.id)
+                .where {
+                    (TestSessionTable.groupId eq groupId) and
+                    (TestSessionTable.testProjectId eq testProjectId)
+                })
         }
     }
 }

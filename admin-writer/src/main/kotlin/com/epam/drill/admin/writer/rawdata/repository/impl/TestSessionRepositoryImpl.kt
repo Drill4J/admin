@@ -19,6 +19,7 @@ import com.epam.drill.admin.writer.rawdata.entity.TestSession
 import com.epam.drill.admin.writer.rawdata.repository.TestSessionRepository
 import com.epam.drill.admin.writer.rawdata.table.BuildTable
 import com.epam.drill.admin.writer.rawdata.table.TestSessionTable
+import org.jetbrains.exposed.sql.Op
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.less
 import org.jetbrains.exposed.sql.and
@@ -51,9 +52,28 @@ class TestSessionRepositoryImpl : TestSessionRepository {
         TestSessionTable.deleteWhere { (TestSessionTable.groupId eq groupId) and (TestSessionTable.createdAt less createdBefore.atStartOfDay()) }
     }
 
-    override suspend fun deleteByTestSessionId(groupId: String, testSessionId: String) {
+    override suspend fun existsByGroupIdAndTestProjectId(groupId: String, testProjectId: String): Boolean {
+        return TestSessionTable.selectAll().where {
+            (TestSessionTable.groupId eq groupId) and
+                    (TestSessionTable.testProjectId eq testProjectId)
+        }.any()
+    }
+
+    override suspend fun deleteByTestSessionId(groupId: String, testProjectId: String?, testSessionId: String) {
         TestSessionTable.deleteWhere {
-            (TestSessionTable.groupId eq groupId) and (TestSessionTable.id eq testSessionId)
+            (TestSessionTable.groupId eq groupId) and
+                    (TestSessionTable.id eq testSessionId) and
+                    (testProjectId?.let { TestSessionTable.testProjectId eq it } ?: Op.TRUE)
         }
+    }
+
+    override suspend fun deleteAllByTestProjectId(groupId: String, testProjectId: String) {
+        TestSessionTable.deleteWhere {
+            (TestSessionTable.groupId eq groupId) and (TestSessionTable.testProjectId eq testProjectId)
+        }
+    }
+
+    override suspend fun deleteAllByGroupId(groupId: String) {
+        TestSessionTable.deleteWhere { TestSessionTable.groupId eq groupId }
     }
 }

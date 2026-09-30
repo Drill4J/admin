@@ -44,9 +44,21 @@ class DeleteMetricsDataJob(
                         etlService.reloadMergedCoverage(groupId, appId, from, to)
                     }
                 }
+                "app" -> {
+                    val appId = context.mergedJobDataMap.getString("appId")
+                    metricsRepository.deleteAllAppDataByAppId(groupId, appId)
+                }
                 "testSession" -> {
+                    val testProjectId = context.mergedJobDataMap.getString("testProjectId")
                     val testSessionId = context.mergedJobDataMap.getString("testSessionId")
-                    metricsRepository.deleteAllTestDataByTestSessionId(groupId, testSessionId)
+                    metricsRepository.deleteAllTestDataByTestSessionId(groupId, testProjectId, testSessionId)
+                }
+                "testProject" -> {
+                    val testProjectId = context.mergedJobDataMap.getString("testProjectId")
+                    metricsRepository.deleteAllTestDataByTestProjectId(groupId, testProjectId)
+                }
+                "group" -> {
+                    metricsRepository.deleteAllGroupDataByGroupId(groupId)
                 }
                 else -> throw IllegalArgumentException("Unknown dataType: $dataType")
             }
