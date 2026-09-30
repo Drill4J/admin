@@ -598,6 +598,9 @@ interface MetricsRepository {
     ): Map<String, List<String>>
 
     suspend fun getInstanceDateRange(groupId: String, appId: String, buildId: String): Pair<Instant, Instant>?
+    suspend fun getTestSessionDateRange(groupId: String, testSessionId: String): Pair<Instant, Instant>?
+
+    suspend fun getTestSessionApps(groupId: String, testSessionId: String): List<String>
 
     suspend fun deleteAllBuildDataCreatedBefore(groupId: String, timestamp: Instant)
     suspend fun deleteAllTestDataCreatedBefore(groupId: String, timestamp: Instant)

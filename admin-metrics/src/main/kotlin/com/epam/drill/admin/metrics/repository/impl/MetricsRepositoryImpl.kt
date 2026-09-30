@@ -29,7 +29,6 @@ import java.sql.Timestamp
 import java.time.Instant
 import java.time.LocalDateTime
 import java.time.ZoneId
-import java.time.ZoneOffset
 
 class MetricsRepositoryImpl : MetricsRepository {
 
@@ -2893,6 +2892,45 @@ class MetricsRepositoryImpl : MetricsRepository {
         }
     }
 
+    override suspend fun getTestSessionDateRange(
+        groupId: String,
+        testSessionId: String
+    ): Pair<Instant, Instant>? {
+        return transaction {
+            val result = executeQueryReturnMap(
+                """
+                SELECT 
+                    session_started_at,
+                    last_session_heartbeat_at
+                FROM metrics.test_sessions
+                WHERE group_id = ? AND test_session_id = ?
+                """.trimIndent(), groupId, testSessionId
+            )
+            val firstStartedAt = result.firstOrNull()?.get("session_started_at") as? LocalDateTime
+            val lastStoppedAt = result.firstOrNull()?.get("last_session_heartbeat_at") as? LocalDateTime
+            if (firstStartedAt != null && lastStoppedAt != null) {
+                Pair(
+                    firstStartedAt.atZone(ZoneId.systemDefault()).toInstant(),
+                    lastStoppedAt.atZone(ZoneId.systemDefault()).toInstant()
+                )
+            } else {
+                null
+            }
+        }
+    }
+
+    override suspend fun getTestSessionApps(groupId: String, testSessionId: String): List<String> {
+        return transaction {
+            executeQueryReturnMap(
+                """
+                SELECT app_id
+                FROM metrics.test_session_builds
+                WHERE group_id = ? AND test_session_id = ?
+                """.trimIndent(), groupId, testSessionId
+            ).mapNotNull { it["build_id"] as? String }
+        }
+    }
+
     override suspend fun deleteAllBuildDataCreatedBefore(groupId: String, timestamp: Instant) = transaction {
         val timestamp = Timestamp.from(timestamp)
         executeUpdate(
@@ -3060,8 +3098,6 @@ class MetricsRepositoryImpl : MetricsRepository {
         deleteBuildMethodTestDefinitionCoverage(groupId, appId = appId, buildId = buildId, testProjectId = null, testSessionId = null)
         deleteBuildMethodTestSessionCoverage(groupId, appId = appId, buildId = buildId, testProjectId = null, testSessionId = null)
         deleteBuildMethodCoverage(groupId, appId = appId, buildId = buildId, testProjectId = null)
-        // deleting from metrics.method_daily_coverage is impossible because the table does not reference build_id
-        // deleting from metrics.test_to_code_mapping is impossible because the table does not reference build_id
         deleteTestSessionBuilds(groupId, appId = appId, buildId = buildId, testProjectId = null, testSessionId = null)
         deleteBuildMethods(groupId, appId = appId, buildId = buildId)
         deleteBuilds(groupId, appId = appId, buildId = buildId)
@@ -3074,9 +3110,6 @@ class MetricsRepositoryImpl : MetricsRepository {
     ) = transaction {
         deleteBuildMethodTestDefinitionCoverage(groupId, appId = null, buildId = null, testProjectId = testProjectId, testSessionId = testSessionId)
         deleteBuildMethodTestSessionCoverage(groupId, appId = null, buildId = null, testProjectId = testProjectId, testSessionId = testSessionId)
-        // deleting from metrics.build_method_coverage is impossible because the table does not reference test_session_id
-        // deleting from metrics.method_daily_coverage is impossible because the table does not linked to test_session_id
-        // deleting from metrics.test_to_code_mapping is impossible because the table does not reference test_session_id
         deleteTestLaunches(groupId, testProjectId = testProjectId, testSessionId = testSessionId)
         deleteTestSessionBuilds(groupId, appId = null, buildId = null, testProjectId = testProjectId, testSessionId = testSessionId)
         deleteTestSessions(groupId, testProjectId = testProjectId, testSessionId = testSessionId)
