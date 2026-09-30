@@ -20,7 +20,7 @@ import com.epam.drill.admin.metrics.config.executeQueryReturnMap
 import com.epam.drill.admin.test.MetricsDatabaseTests
 import com.epam.drill.admin.writer.rawdata.config.RawDataWriterDatabaseConfig
 import com.epam.drill.admin.writer.rawdata.route.payload.InstancePayload
-import com.epam.drill.admin.writer.rawdata.route.payload.SessionPayload
+import com.epam.drill.admin.writer.rawdata.route.payload.TestSessionPayload
 import io.ktor.client.request.*
 import kotlinx.datetime.Clock
 import kotlin.test.Test
@@ -42,13 +42,13 @@ class DataDeletionApiTest : MetricsDatabaseTests({ default, metrics ->
         val keepBuild =
             InstancePayload(groupId = keepGroupId, appId = "app-1", instanceId = "inst-1", buildVersion = "1.0.0")
         val delSession =
-            SessionPayload(
+            TestSessionPayload(
                 groupId = delGroupId,
                 id = "sess1",
                 testTaskId = "task",
                 startedAt = Clock.System.now()
             )
-        val keepSession = SessionPayload(
+        val keepSession = TestSessionPayload(
             groupId = keepGroupId,
             id = "sess2",
             testTaskId = "task",
@@ -91,13 +91,13 @@ class DataDeletionApiTest : MetricsDatabaseTests({ default, metrics ->
             InstancePayload(groupId = groupId, appId = delAppId, instanceId = "inst-1", buildVersion = "1.0.0")
         val keepBuild =
             InstancePayload(groupId = groupId, appId = keepAppId, instanceId = "inst-1", buildVersion = "1.0.0")
-        val session1 = SessionPayload(
+        val session1 = TestSessionPayload(
             groupId = groupId,
             id = "sess1",
             testTaskId = "task",
             startedAt = Clock.System.now()
         )
-        val session2 = SessionPayload(
+        val session2 = TestSessionPayload(
             groupId = groupId,
             id = "sess2",
             testTaskId = "task",
@@ -130,11 +130,11 @@ class DataDeletionApiTest : MetricsDatabaseTests({ default, metrics ->
         val delTestProjectId = "tp-del"
         val keepTestProjectId = "tp-keep"
         val build = InstancePayload(groupId = groupId, appId = "app-1", instanceId = "inst-1", buildVersion = "1.0.0")
-        val delSession = SessionPayload(
+        val delSession = TestSessionPayload(
             groupId = groupId, id = "sess1", testTaskId = "task",
             startedAt = Clock.System.now(), testProjectId = delTestProjectId
         )
-        val keepSession = SessionPayload(
+        val keepSession = TestSessionPayload(
             groupId = groupId, id = "sess2", testTaskId = "task",
             startedAt = Clock.System.now(), testProjectId = keepTestProjectId
         )
@@ -210,13 +210,13 @@ class DataDeletionApiTest : MetricsDatabaseTests({ default, metrics ->
     @Test
     fun `delete test session should remove all raw data and metrics for the session`() {
         val groupId = testGroup
-        val delSession = SessionPayload(
+        val delSession = TestSessionPayload(
             groupId = groupId,
             id = "sess-del",
             testTaskId = "task",
             startedAt = Clock.System.now()
         )
-        val keepSession = SessionPayload(
+        val keepSession = TestSessionPayload(
             groupId = groupId,
             id = "sess-keep",
             testTaskId = "task",
