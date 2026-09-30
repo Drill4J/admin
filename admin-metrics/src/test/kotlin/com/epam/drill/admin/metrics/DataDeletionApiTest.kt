@@ -233,14 +233,16 @@ class DataDeletionApiTest : MetricsDatabaseTests({ default, metrics ->
             assertThatTableHasNot("metrics.test_sessions", groupId, testSessionId = delSession.id)
             assertThatTableHasNot("metrics.test_launches", groupId, testSessionId = delSession.id)
             assertThatTableHasNot("metrics.build_method_test_session_coverage", groupId, testSessionId = delSession.id)
-//            assertThatTableHasNot("metrics.method_daily_coverage", groupId, methodId = method1.methodId)
-//            assertThatTableHasNot("metrics.test_to_code_mapping", groupId, signature = method1.signature)
+            assertThatTableHasNot("metrics.build_method_coverage", groupId, methodId = method1.methodId)
+            assertThatTableHasNot("metrics.method_daily_coverage", groupId, methodId = method1.methodId)
+            assertThatTableHasNot("metrics.test_to_code_mapping", groupId, signature = method1.signature)
 
             assertThatTableHas("metrics.test_sessions", groupId, testSessionId = keepSession.id)
             assertThatTableHas("metrics.test_launches", groupId, testSessionId = keepSession.id)
             assertThatTableHas("metrics.build_method_test_session_coverage", groupId, testSessionId = keepSession.id)
-//            assertThatTableHas("metrics.method_daily_coverage", groupId, methodId = method2.methodId)
-//            assertThatTableHas("metrics.test_to_code_mapping", groupId, signature = method2.signature)
+            assertThatTableHas("metrics.build_method_coverage", groupId, methodId = method2.methodId)
+            assertThatTableHas("metrics.method_daily_coverage", groupId, methodId = method2.methodId)
+            assertThatTableHas("metrics.test_to_code_mapping", groupId, signature = method2.signature)
         }
     }
 
