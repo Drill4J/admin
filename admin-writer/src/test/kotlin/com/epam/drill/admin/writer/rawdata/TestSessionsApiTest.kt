@@ -15,16 +15,25 @@
  */
 package com.epam.drill.admin.writer.rawdata
 
+import com.epam.drill.admin.writer.rawdata.route.putTestSessionHeartbeat
 import com.epam.drill.admin.writer.rawdata.route.putTestSessions
 import com.epam.drill.admin.writer.rawdata.table.TestSessionTable
 import com.epam.drill.admin.test.*
 import com.epam.drill.admin.writer.rawdata.config.RawDataWriterDatabaseConfig
 import com.epam.drill.admin.writer.rawdata.config.rawDataServicesDIModule
+import com.epam.drill.admin.writer.rawdata.route.payload.TestSessionStatus
 import com.epam.drill.admin.writer.rawdata.table.TestSessionBuildTable
 import io.ktor.client.request.*
 import io.ktor.client.statement.*
 import io.ktor.http.*
+import kotlinx.coroutines.runBlocking
+import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
+import org.jetbrains.exposed.sql.deleteWhere
+import org.jetbrains.exposed.sql.insert
 import org.jetbrains.exposed.sql.selectAll
+import org.jetbrains.exposed.sql.transactions.transaction
+import org.junit.jupiter.api.AfterEach
+import org.junit.jupiter.api.BeforeEach
 import java.time.LocalDateTime
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -32,6 +41,33 @@ import kotlin.test.assertTrue
 import kotlin.test.assertNotNull
 
 class TestSessionsApiTest : DatabaseTests({ RawDataWriterDatabaseConfig.init(it) }) {
+
+    private val testExistingGroup = "test-old-group"
+    private val testExistingProjectId = "test-old-project"
+    private val testExistingSession = "test-old-session"
+
+    @BeforeEach
+    fun setUp() {
+        transaction {
+            transaction {
+                TestSessionTable.insert {
+                    it[id] = testExistingSession
+                    it[groupId] = testExistingGroup
+                    it[testProjectId] = testExistingProjectId
+                    it[startedAt] = LocalDateTime.now()
+                    it[status] = TestSessionStatus.RUNNING.name
+                }
+            }
+
+        }
+    }
+
+    @AfterEach
+    fun tearDown() {
+        transaction {
+            TestSessionTable.deleteWhere { id eq testExistingSession }
+        }
+    }
 
     @Test
     fun `given new test session, put test sessions service should save test session in database and return OK`() =
@@ -134,6 +170,46 @@ class TestSessionsApiTest : DatabaseTests({ RawDataWriterDatabaseConfig.init(it)
                 assertNotNull(it[TestSessionBuildTable.buildId])
                 assertNotNull(it[TestSessionBuildTable.groupId])
                 assertTrue(it[TestSessionBuildTable.createdAt] >= timeBeforeTest)
+            }
+        }
+    }
+
+    @Test
+    fun `given existing test session, put test session heartbeat with FINISHED status should record status and return OK`() {
+        runBlocking {
+            val app = drillApplication(rawDataServicesDIModule) {
+                putTestSessionHeartbeat()
+            }
+
+            app.client.put("/sessions/heartbeat") {
+                header(HttpHeaders.ContentType, ContentType.Application.Json.toString())
+                setBody(
+                    """
+                {
+                    "groupId": "$testExistingGroup",
+                    "testProjectId": "$testExistingProjectId",
+                    "testSessionId": "$testExistingSession",
+                    "status": "FINISHED"
+                }
+                    """.trimIndent()
+                )
+            }.apply {
+                assertEquals(HttpStatusCode.OK, status)
+                assertJsonEquals(
+                    """
+                {
+                    "message": "Test session heartbeat saved"
+                }
+                    """.trimIndent(), bodyAsText()
+                )
+            }
+
+            waitUntilInTransaction {
+                val savedSession = TestSessionTable.selectAll().first {
+                    it[TestSessionTable.id].value == testExistingSession
+                }
+                assertNotNull(savedSession[TestSessionTable.lastHeartbeatAt])
+                assertEquals(TestSessionStatus.FINISHED.name, savedSession[TestSessionTable.status])
             }
         }
     }

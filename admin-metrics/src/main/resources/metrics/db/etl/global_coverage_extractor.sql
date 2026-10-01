@@ -29,6 +29,8 @@ WITH coverage AS (
 	WHERE c.created_at > :since_timestamp
 	    AND c.created_at <= :until_timestamp
 	    AND c.group_id = :group_id
+        AND (:app_id::TEXT IS NULL OR c.app_id = :app_id)
+        AND (:build_id::TEXT IS NULL OR c.build_id = :build_id)
 	    AND c.test_id IS NULL
         AND (:test_session_id::TEXT IS NULL OR c.test_session_id = :test_session_id)
 	ORDER BY c.created_at, c.method_id

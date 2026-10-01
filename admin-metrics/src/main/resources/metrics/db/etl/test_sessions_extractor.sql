@@ -4,6 +4,8 @@ SELECT
     ts.test_project_id,
     ts.test_task_id,
     ts.started_at AS session_started_at,
+    ts.status AS session_status,
+    ts.last_heartbeat_at AS last_session_heartbeat_at,
     ts.created_by,
     ts.created_at,
     DATE_TRUNC('day', ts.created_at) AS created_at_day

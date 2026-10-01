@@ -193,6 +193,11 @@ interface MetricsRepository {
         buildId: String? = null,
     ): Map<String, Any?>?
 
+    suspend fun getAllTestSessionBuilds(
+        groupId: String,
+        testSessionId: String,
+    ): List<Map<String, Any?>>
+
     suspend fun getTestSessionBuilds(
         groupId: String,
         testSessionId: String,
@@ -598,6 +603,7 @@ interface MetricsRepository {
     ): Map<String, List<String>>
 
     suspend fun getInstanceDateRange(groupId: String, appId: String, buildId: String): Pair<Instant, Instant>?
+    suspend fun getTestSessionDateRange(groupId: String, testSessionId: String): Pair<Instant, Instant>?
 
     suspend fun deleteAllBuildDataCreatedBefore(groupId: String, timestamp: Instant)
     suspend fun deleteAllTestDataCreatedBefore(groupId: String, timestamp: Instant)

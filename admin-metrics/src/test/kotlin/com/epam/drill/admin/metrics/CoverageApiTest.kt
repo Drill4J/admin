@@ -41,7 +41,7 @@ class CoverageApiTest : MetricsDatabaseTests({ default, metrics ->
     MetricsDatabaseConfig.init(metrics)
 }) {
     @Test
-    fun `given build with no coverage, coverage service should return methods list with zero coverage`(): Unit =
+    fun `given build with no coverage, coverage service should return methods list with zero coverage`() {
         havingData {
             build1 has listOf(method1, method2)
         }.expectThat {
@@ -54,9 +54,9 @@ class CoverageApiTest : MetricsDatabaseTests({ default, metrics ->
                 assertTrue(data.all { it["coveredProbes"] == 0 })
             }
         }
-
+    }
     @Test
-    fun `given build with coverage, coverage service should return methods list with coverage data`(): Unit =
+    fun `given build with coverage, coverage service should return methods list with coverage data`() {
         havingData {
             build1 has listOf(method1, method2)
             test1 covers method1 with probesOf(1, 1) on build1
@@ -72,9 +72,9 @@ class CoverageApiTest : MetricsDatabaseTests({ default, metrics ->
                 assertTrue(data.any { it["name"] == method2.name && it["coveredProbes"] == 1 })
             }
         }
-
+    }
     @Test
-    fun `given testProjectIds filter, coverage should return only matching test project coverage`(): Unit =
+    fun `given testProjectIds filter, coverage should return only matching test project coverage`() {
         havingData {
             build1 has listOf(method1, method2)
             test1 of session1.testProjectId("project-a") covers method1 with probesOf(1, 1) on build1
@@ -90,9 +90,9 @@ class CoverageApiTest : MetricsDatabaseTests({ default, metrics ->
                 assertTrue(data.any { it["name"] == method2.name && it["coveredProbes"] == 0 })
             }
         }
-
+    }
     @Test
-    fun `given page and size, coverage service should return methods only for specified page and size`(): Unit =
+    fun `given page and size, coverage service should return methods only for specified page and size`() {
         havingData {
             val methods = (1..15).map { idx ->
                 SingleMethodPayload(
@@ -127,6 +127,7 @@ class CoverageApiTest : MetricsDatabaseTests({ default, metrics ->
                 assertEquals(5, data.size)
             }
         }
+    }
 
     @AfterEach
     fun clearAll() = withTransaction(RawDataWriterDatabaseConfig.database) {

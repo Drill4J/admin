@@ -48,133 +48,139 @@ class CoverageAggregationApiTest : MetricsDatabaseTests({ default, metrics ->
     )
 
     @Test
-    fun `coverage by package should aggregate methods and probes`() = havingData {
-        val classAMethod = SingleMethodPayload(
-            classname = "com/example/foo/ClassA",
-            name = "methodA", params = "()", returnType = "void",
-            probesCount = 2, probesStartPos = 0, bodyChecksum = "A00",
-        )
-        val classBMethod = SingleMethodPayload(
-            classname = "com/example/foo/ClassB",
-            name = "methodB", params = "()", returnType = "void",
-            probesCount = 3, probesStartPos = 2, bodyChecksum = "B00",
-        )
-        build1 has listOf(classAMethod, classBMethod)
-        test1 covers classAMethod with probesOf(1, 1) on build1
-        test1 covers classBMethod with probesOf(0, 0, 1) on build1
-    }.expectThat {
-        client.get("/metrics/coverage/by-package") {
-            parameter("buildId", build1Id)
-        }.apply {
-            assertEquals(HttpStatusCode.OK, status)
-            val data = JsonPath.parse(bodyAsText()).read<List<Map<String, Any>>>("$.data")
-            assertEquals(1, data.size)
-            assertEquals("com/example/foo", data.first()["packageName"])
-            assertTrue((data.first()["methodsCount"] as Number).toInt() >= 2)
-            assertTrue((data.first()["coveredProbes"] as Number).toInt() > 0)
+    fun `coverage by package should aggregate methods and probes`() {
+        havingData {
+            val classAMethod = SingleMethodPayload(
+                classname = "com/example/foo/ClassA",
+                name = "methodA", params = "()", returnType = "void",
+                probesCount = 2, probesStartPos = 0, bodyChecksum = "A00",
+            )
+            val classBMethod = SingleMethodPayload(
+                classname = "com/example/foo/ClassB",
+                name = "methodB", params = "()", returnType = "void",
+                probesCount = 3, probesStartPos = 2, bodyChecksum = "B00",
+            )
+            build1 has listOf(classAMethod, classBMethod)
+            test1 covers classAMethod with probesOf(1, 1) on build1
+            test1 covers classBMethod with probesOf(0, 0, 1) on build1
+        }.expectThat {
+            client.get("/metrics/coverage/by-package") {
+                parameter("buildId", build1Id)
+            }.apply {
+                assertEquals(HttpStatusCode.OK, status)
+                val data = JsonPath.parse(bodyAsText()).read<List<Map<String, Any>>>("$.data")
+                assertEquals(1, data.size)
+                assertEquals("com/example/foo", data.first()["packageName"])
+                assertTrue((data.first()["methodsCount"] as Number).toInt() >= 2)
+                assertTrue((data.first()["coveredProbes"] as Number).toInt() > 0)
+            }
         }
     }
 
     @Test
-    fun `coverage by package should split slash-separated class names`() = havingData {
-        val classAMethod = SingleMethodPayload(
-            classname = "com/example/foo/MyClass",
-            name = "methodA", params = "()", returnType = "void",
-            probesCount = 2, probesStartPos = 0, bodyChecksum = "A01",
-        )
-        val classBMethod = SingleMethodPayload(
-            classname = "com/other/bar/OtherClass",
-            name = "methodB", params = "()", returnType = "void",
-            probesCount = 3, probesStartPos = 2, bodyChecksum = "B01",
-        )
-        build1 has listOf(classAMethod, classBMethod)
-    }.expectThat {
-        client.get("/metrics/coverage/by-package") {
-            parameter("buildId", build1Id)
-        }.apply {
-            assertEquals(HttpStatusCode.OK, status)
-            val data = JsonPath.parse(bodyAsText()).read<List<Map<String, Any>>>("$.data")
-            assertTrue(data.size >= 2)
-            assertTrue(data.any { it["packageName"] == "com/example/foo" })
-            assertTrue(data.any { it["packageName"] == "com/other/bar" })
+    fun `coverage by package should split slash-separated class names`() {
+        havingData {
+            val classAMethod = SingleMethodPayload(
+                classname = "com/example/foo/MyClass",
+                name = "methodA", params = "()", returnType = "void",
+                probesCount = 2, probesStartPos = 0, bodyChecksum = "A01",
+            )
+            val classBMethod = SingleMethodPayload(
+                classname = "com/other/bar/OtherClass",
+                name = "methodB", params = "()", returnType = "void",
+                probesCount = 3, probesStartPos = 2, bodyChecksum = "B01",
+            )
+            build1 has listOf(classAMethod, classBMethod)
+        }.expectThat {
+            client.get("/metrics/coverage/by-package") {
+                parameter("buildId", build1Id)
+            }.apply {
+                assertEquals(HttpStatusCode.OK, status)
+                val data = JsonPath.parse(bodyAsText()).read<List<Map<String, Any>>>("$.data")
+                assertTrue(data.size >= 2)
+                assertTrue(data.any { it["packageName"] == "com/example/foo" })
+                assertTrue(data.any { it["packageName"] == "com/other/bar" })
+            }
+        }
+    }
+    @Test
+    fun `coverage by class should filter by package name`() {
+        havingData {
+            val classAMethod = SingleMethodPayload(
+                classname = "com/example/foo/ClassA",
+                name = "methodA", params = "()", returnType = "void",
+                probesCount = 2, probesStartPos = 0, bodyChecksum = "A02",
+            )
+            val classBMethod = SingleMethodPayload(
+                classname = "com/other/bar/ClassB",
+                name = "methodB", params = "()", returnType = "void",
+                probesCount = 3, probesStartPos = 2, bodyChecksum = "B02",
+            )
+            // A class located in a nested subpackage of "com/example/foo".
+            val classCMethod = SingleMethodPayload(
+                classname = "com/example/foo/sub/ClassC",
+                name = "methodC", params = "()", returnType = "void",
+                probesCount = 2, probesStartPos = 5, bodyChecksum = "C02",
+            )
+            build1 has listOf(classAMethod, classBMethod, classCMethod)
+            test1 covers classAMethod with probesOf(1, 1) on build1
+            test1 covers classBMethod with probesOf(0, 0, 1) on build1
+            test1 covers classCMethod with probesOf(1, 1) on build1
+        }.expectThat {
+            val packageName = "com/example/foo"
+            client.get("/metrics/coverage/by-class") {
+                parameter("buildId", build1Id)
+                parameter("packageName", packageName)
+            }.apply {
+                assertEquals(HttpStatusCode.OK, status)
+                val json = JsonPath.parse(bodyAsText())
+                val data = json.read<List<Map<String, Any>>>("$.data")
+                val total = json.read<Int>("$.paging.total")
+                // Only the class located directly in the requested package must be
+                // returned. The nested subpackage class (ClassC) must be excluded.
+                assertEquals(1, data.size)
+                assertEquals(1, total)
+                assertEquals("com/example/foo/ClassA", data.first()["fullClassName"])
+                assertEquals("ClassA", data.first()["className"])
+                assertEquals(packageName, data.first()["packageName"])
+            }
+
+            // The nested subpackage must be addressable on its own and must report
+            // its own package name for the class it contains.
+            client.get("/metrics/coverage/by-class") {
+                parameter("buildId", build1Id)
+                parameter("packageName", "com/example/foo/sub")
+            }.apply {
+                assertEquals(HttpStatusCode.OK, status)
+                val json = JsonPath.parse(bodyAsText())
+                val data = json.read<List<Map<String, Any>>>("$.data")
+                assertEquals(1, data.size)
+                assertEquals("com/example/foo/sub/ClassC", data.first()["fullClassName"])
+                assertEquals("ClassC", data.first()["className"])
+                assertEquals("com/example/foo/sub", data.first()["packageName"])
+            }
         }
     }
 
     @Test
-    fun `coverage by class should filter by package name`() = havingData {
-        val classAMethod = SingleMethodPayload(
-            classname = "com/example/foo/ClassA",
-            name = "methodA", params = "()", returnType = "void",
-            probesCount = 2, probesStartPos = 0, bodyChecksum = "A02",
-        )
-        val classBMethod = SingleMethodPayload(
-            classname = "com/other/bar/ClassB",
-            name = "methodB", params = "()", returnType = "void",
-            probesCount = 3, probesStartPos = 2, bodyChecksum = "B02",
-        )
-        // A class located in a nested subpackage of "com/example/foo".
-        val classCMethod = SingleMethodPayload(
-            classname = "com/example/foo/sub/ClassC",
-            name = "methodC", params = "()", returnType = "void",
-            probesCount = 2, probesStartPos = 5, bodyChecksum = "C02",
-        )
-        build1 has listOf(classAMethod, classBMethod, classCMethod)
-        test1 covers classAMethod with probesOf(1, 1) on build1
-        test1 covers classBMethod with probesOf(0, 0, 1) on build1
-        test1 covers classCMethod with probesOf(1, 1) on build1
-    }.expectThat {
-        val packageName = "com/example/foo"
-        client.get("/metrics/coverage/by-class") {
-            parameter("buildId", build1Id)
-            parameter("packageName", packageName)
-        }.apply {
-            assertEquals(HttpStatusCode.OK, status)
-            val json = JsonPath.parse(bodyAsText())
-            val data = json.read<List<Map<String, Any>>>("$.data")
-            val total = json.read<Int>("$.paging.total")
-            // Only the class located directly in the requested package must be
-            // returned. The nested subpackage class (ClassC) must be excluded.
-            assertEquals(1, data.size)
-            assertEquals(1, total)
-            assertEquals("com/example/foo/ClassA", data.first()["fullClassName"])
-            assertEquals("ClassA", data.first()["className"])
-            assertEquals(packageName, data.first()["packageName"])
-        }
-
-        // The nested subpackage must be addressable on its own and must report
-        // its own package name for the class it contains.
-        client.get("/metrics/coverage/by-class") {
-            parameter("buildId", build1Id)
-            parameter("packageName", "com/example/foo/sub")
-        }.apply {
-            assertEquals(HttpStatusCode.OK, status)
-            val json = JsonPath.parse(bodyAsText())
-            val data = json.read<List<Map<String, Any>>>("$.data")
-            assertEquals(1, data.size)
-            assertEquals("com/example/foo/sub/ClassC", data.first()["fullClassName"])
-            assertEquals("ClassC", data.first()["className"])
-            assertEquals("com/example/foo/sub", data.first()["packageName"])
+    fun `coverage by buildId should return paginated methods`() {
+        havingData {
+            build1 has listOf(method1, method2)
+        }.expectThat {
+            client.get("/metrics/coverage") {
+                parameter("buildId", build1Id)
+                parameter("page", 1)
+                parameter("pageSize", 10)
+            }.apply {
+                assertEquals(HttpStatusCode.OK, status)
+                val json = JsonPath.parse(bodyAsText())
+                val data = json.read<List<Map<String, Any>>>("$.data")
+                val total = json.read<Int>("$.paging.total")
+                assertEquals(2, data.size)
+                assertEquals(2, total)
+            }
         }
     }
-
-    @Test
-    fun `coverage by buildId should return paginated methods`() = havingData {
-        build1 has listOf(method1, method2)
-    }.expectThat {
-        client.get("/metrics/coverage") {
-            parameter("buildId", build1Id)
-            parameter("page", 1)
-            parameter("pageSize", 10)
-        }.apply {
-            assertEquals(HttpStatusCode.OK, status)
-            val json = JsonPath.parse(bodyAsText())
-            val data = json.read<List<Map<String, Any>>>("$.data")
-            val total = json.read<Int>("$.paging.total")
-            assertEquals(2, data.size)
-            assertEquals(2, total)
-        }
-    }
-
     @AfterEach
     fun clearAll() = withTransaction(RawDataWriterDatabaseConfig.database) {
         MethodCoverageTable.deleteAll()

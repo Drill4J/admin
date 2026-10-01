@@ -47,7 +47,7 @@ class ImpactedTestsApiTest : MetricsDatabaseTests({ default, metrics ->
 }) {
 
     @Test
-    fun `given a build with changes, impacted tests service should return a list of impacted tests`() =
+    fun `given a build with changes, impacted tests service should return a list of impacted tests`() {
         havingData {
             build1 has listOf(method1, method2)
             test1 covers method1 on build1
@@ -60,9 +60,10 @@ class ImpactedTestsApiTest : MetricsDatabaseTests({ default, metrics ->
                 assertTrue { data.none { it["testName"] == test1.testName } }
             }
         }
+    }
 
     @Test
-    fun `given page and size, impacted tests service should return tests only for specified page and size`() =
+    fun `given page and size, impacted tests service should return tests only for specified page and size`() {
         havingData {
             build1 has listOf(method1)
             for (i in 1..15) {
@@ -87,9 +88,9 @@ class ImpactedTestsApiTest : MetricsDatabaseTests({ default, metrics ->
                 assertTrue(data.size <= 5, "Expected at most 5 records, but got ${data.size}")
             }
         }
-
+    }
     @Test
-    fun `given test tag filter, impacted tests service should return only tests matching the tag`(): Unit =
+    fun `given test tag filter, impacted tests service should return only tests matching the tag`(): Unit {
         havingData {
             build1 has listOf(method1)
             val taggedTest = TestDetails(testName = "taggedTest", tags = listOf("important-tag"))
@@ -102,13 +103,17 @@ class ImpactedTestsApiTest : MetricsDatabaseTests({ default, metrics ->
                 put("testTag", "important-tag")
             }.returns { data ->
                 assertTrue(data.isNotEmpty(), "Expected at least one test with the specified tag")
-                assertTrue(data.all { it["testName"] == "taggedTest" }, "All returned tests should have the specified tag")
+                assertTrue(
+                    data.all { it["testName"] == "taggedTest" },
+                    "All returned tests should have the specified tag"
+                )
                 assertTrue(data.none { it["testName"] == "untaggedTest" }, "No untagged tests should be returned")
             }
         }
+    }
 
     @Test
-    fun `given test path filter, impacted tests service should return only tests matching the path`() =
+    fun `given test path filter, impacted tests service should return only tests matching the path`() {
         havingData {
             build1 has listOf(method1)
             val test1 = TestDetails(testName = "pathFilteredTest1", path = "com/example/path1/Test1")
@@ -123,14 +128,21 @@ class ImpactedTestsApiTest : MetricsDatabaseTests({ default, metrics ->
                 put("testPath", "com/example/path1")
             }.returns { data ->
                 assertTrue(data.isNotEmpty(), "Expected at least one test with the specified path")
-                assertTrue(data.all { it["testName"] == "pathFilteredTest1" || it["testName"] == "pathFilteredTest2" }, "All returned tests should match the specified path")
-                assertTrue(data.none { it["testName"] == "differentPathTest" }, "No tests from other paths should be returned")
+                assertTrue(
+                    data.all { it["testName"] == "pathFilteredTest1" || it["testName"] == "pathFilteredTest2" },
+                    "All returned tests should match the specified path"
+                )
+                assertTrue(
+                    data.none { it["testName"] == "differentPathTest" },
+                    "No tests from other paths should be returned"
+                )
             }
         }
+    }
 
 
     @Test
-    fun `given sortBy impactedMethods and sortOrder DESC, impacted tests should be sorted by number of impacted methods descending`() =
+    fun `given sortBy impactedMethods and sortOrder DESC, impacted tests should be sorted by number of impacted methods descending`() {
         havingData {
             build1 has listOf(method1, method2, method3)
             val test1 = TestDetails(testName = "testWith1Method")
@@ -159,16 +171,20 @@ class ImpactedTestsApiTest : MetricsDatabaseTests({ default, metrics ->
                 put("sortOrder", "DESC")
             }.returns { data ->
                 assertTrue(data.size >= 3, "Expected at least 3 tests")
-                val sortedByImpactedMethods = data.sortedByDescending { (it["impactedMethods"] as Number?)?.toInt() ?: 0 }
+                val sortedByImpactedMethods =
+                    data.sortedByDescending { (it["impactedMethods"] as Number?)?.toInt() ?: 0 }
                 val actualTestNames = data.map { it["testName"] as String }
                 val expectedTestNames = sortedByImpactedMethods.map { it["testName"] as String }
-                assertTrue(actualTestNames == expectedTestNames,
-                    "Tests should be sorted by impactedMethods DESC. Expected: $expectedTestNames, but got: $actualTestNames")
+                assertTrue(
+                    actualTestNames == expectedTestNames,
+                    "Tests should be sorted by impactedMethods DESC. Expected: $expectedTestNames, but got: $actualTestNames"
+                )
             }
         }
+    }
 
     @Test
-    fun `given invalid sortBy, should return BadRequest`(): Unit =
+    fun `given invalid sortBy, should return BadRequest`() {
         havingData {
             build1 has listOf(method1)
             test1 covers method1 on build1
@@ -189,9 +205,10 @@ class ImpactedTestsApiTest : MetricsDatabaseTests({ default, metrics ->
             assertEquals(HttpStatusCode.BadRequest, response.status)
             assertTrue(response.bodyAsText().contains("Invalid sortBy"))
         }
+    }
 
     @Test
-    fun `given excludeMethodSignatures, impacted tests should exclude tests that only cover excluded methods`() =
+    fun `given excludeMethodSignatures, impacted tests should exclude tests that only cover excluded methods`() {
         havingData {
             build1 has listOf(method1, method2, method3)
             val testCoveringMethod1 = TestDetails(testName = "testCoveringMethod1")
@@ -221,21 +238,27 @@ class ImpactedTestsApiTest : MetricsDatabaseTests({ default, metrics ->
                 assertTrue(data.isNotEmpty(), "Expected some tests to remain after exclusion")
 
                 // testCoveringMethod1 should NOT be in results (only covers excluded method1)
-                assertTrue(data.none { it["testName"] == "testCoveringMethod1" },
-                    "testCoveringMethod1 should be excluded as it only covers method1")
+                assertTrue(
+                    data.none { it["testName"] == "testCoveringMethod1" },
+                    "testCoveringMethod1 should be excluded as it only covers method1"
+                )
 
                 // testCoveringMethod2 should be in results (covers non-excluded method2)
-                assertTrue(data.any { it["testName"] == "testCoveringMethod2" },
-                    "testCoveringMethod2 should be included as it covers non-excluded method2")
+                assertTrue(
+                    data.any { it["testName"] == "testCoveringMethod2" },
+                    "testCoveringMethod2 should be included as it covers non-excluded method2"
+                )
 
                 // testCoveringBoth should be in results (covers not only excluded method1)
-                assertTrue(data.any { it["testName"] == "testCoveringBoth" },
-                    "testCoveringBoth should be included as it covers not only method1")
+                assertTrue(
+                    data.any { it["testName"] == "testCoveringBoth" },
+                    "testCoveringBoth should be included as it covers not only method1"
+                )
             }
         }
-
+    }
     @Test
-    fun `given test task id filter, impacted tests service should return only tests from matching task`() =
+    fun `given test task id filter, impacted tests service should return only tests from matching task`() {
         havingData {
             build1 has listOf(method1)
             val taskASession = session1.testTaskId("task-a")
@@ -251,13 +274,16 @@ class ImpactedTestsApiTest : MetricsDatabaseTests({ default, metrics ->
             }.returns { data ->
                 assertTrue(data.isNotEmpty(), "Expected at least one test from task-a")
                 assertTrue(data.all { it["testName"] == "testFromTaskA" }, "All returned tests should belong to task-a")
-                assertTrue(data.all { (it["testTaskIds"] as List<String>).contains("task-a") }, "All returned tests should have testTaskId task-a")
+                assertTrue(
+                    data.all { (it["testTaskIds"] as List<String>).contains("task-a") },
+                    "All returned tests should have testTaskId task-a"
+                )
                 assertTrue(data.none { it["testName"] == "testFromTaskB" }, "No tests from task-b should be returned")
             }
         }
-
+    }
     @Test
-    fun `given testProjectId filter, impacted tests service should return only tests from matching project`() =
+    fun `given testProjectId filter, impacted tests service should return only tests from matching project`() {
         havingData {
             build1 has listOf(method1)
             test1 of session1.testProjectId("project-a") covers method1 on build1
@@ -268,13 +294,19 @@ class ImpactedTestsApiTest : MetricsDatabaseTests({ default, metrics ->
                 put("testProjectId", "project-a")
             }.returns { data ->
                 assertTrue(data.isNotEmpty(), "Expected at least one test from project-a")
-                assertTrue(data.all { it["testProjectId"] == "project-a" }, "All returned tests should belong to project-a")
-                assertTrue(data.none { it["testProjectId"] == "project-b" }, "No tests from project-b should be returned")
+                assertTrue(
+                    data.all { it["testProjectId"] == "project-a" },
+                    "All returned tests should belong to project-a"
+                )
+                assertTrue(
+                    data.none { it["testProjectId"] == "project-b" },
+                    "No tests from project-b should be returned"
+                )
             }
         }
-
+    }
     @Test
-    fun `given impacted tests, filter-options should return available test task ids`() =
+    fun `given impacted tests, filter-options should return available test task ids`() {
         havingData {
             build1 has listOf(method1)
             val taskASession = session1.testTaskId("task-a")
@@ -290,9 +322,9 @@ class ImpactedTestsApiTest : MetricsDatabaseTests({ default, metrics ->
                 assertEquals(listOf("task-a", "task-b"), testTaskIds)
             }
         }
-
+    }
     @Test
-    fun `given test task id filter, impacted methods service should count only tests from matching task`() =
+    fun `given test task id filter, impacted methods service should count only tests from matching task`() {
         havingData {
             build1 has listOf(method1)
             val taskASession = session1.testTaskId("task-a")
@@ -315,6 +347,7 @@ class ImpactedTestsApiTest : MetricsDatabaseTests({ default, metrics ->
                 assertEquals(1, (methodRow?.get("impactedTests") as Number?)?.toInt())
             }
         }
+    }
 
     @AfterTest
     fun clearAll() = withTransaction(RawDataWriterDatabaseConfig.database) {

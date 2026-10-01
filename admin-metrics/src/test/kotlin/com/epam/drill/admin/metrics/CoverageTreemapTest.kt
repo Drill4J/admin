@@ -69,76 +69,110 @@ class CoverageTreemapTest : MetricsDatabaseTests({ default, metrics ->
     MetricsDatabaseConfig.init(metrics)
 }) {
     @Test
-    fun `given build with no methods no coverage, coverage-treemap should return empty list`() = havingData {
-        client.putBuildInfo(BuildInfoPayload(groupId = testGroup, appId = testApp, buildVersion = "1.0.0", branch = "main"))
-    }.expectThat {
-        client.get("/metrics/coverage-treemap") {
-            parameter("buildId", "${testGroup}:${testApp}:1.0.0")
-        }.returns { data ->
-            assertTrue(data.isEmpty())
+    fun `given build with no methods no coverage, coverage-treemap should return empty list`() {
+        havingData {
+            client.putBuildInfo(
+                BuildInfoPayload(
+                    groupId = testGroup,
+                    appId = testApp,
+                    buildVersion = "1.0.0",
+                    branch = "main"
+                )
+            )
+        }.expectThat {
+            client.get("/metrics/coverage-treemap") {
+                parameter("buildId", "${testGroup}:${testApp}:1.0.0")
+            }.returns { data ->
+                assertTrue(data.isEmpty())
+            }
         }
     }
 
     @Test
-    fun `given build with methods but no coverage, coverage-treemap should return non-empty list with zero coverage`() = havingData {
-        build1 has listOf(method1, method2)
-    }.expectThat {
-        client.get("/metrics/coverage-treemap") {
-            parameter("buildId", "${build1.groupId}:${build1.appId}:${build1.buildVersion}")
-        }.returns { data ->
-            assertTrue(data.isNotEmpty())
-            assertTrue(treemapAll(data) { it["type"] in listOf("package", "class", "method") })
-            assertTrue(treemapAny(data) { it["type"] == "method" && it["signature"] != null })
-            assertTrue(treemapAny(data) { it["name"].toString().startsWith(method1.name) && it["covered_probes"] == 0 })
-            assertTrue(treemapAny(data) { it["name"].toString().startsWith(method2.name) && it["covered_probes"] == 0 })
+    fun `given build with methods but no coverage, coverage-treemap should return non-empty list with zero coverage`() {
+        havingData {
+            build1 has listOf(method1, method2)
+        }.expectThat {
+            client.get("/metrics/coverage-treemap") {
+                parameter("buildId", "${build1.groupId}:${build1.appId}:${build1.buildVersion}")
+            }.returns { data ->
+                assertTrue(data.isNotEmpty())
+                assertTrue(treemapAll(data) { it["type"] in listOf("package", "class", "method") })
+                assertTrue(treemapAny(data) { it["type"] == "method" && it["signature"] != null })
+                assertTrue(treemapAny(data) {
+                    it["name"].toString().startsWith(method1.name) && it["covered_probes"] == 0
+                })
+                assertTrue(treemapAny(data) {
+                    it["name"].toString().startsWith(method2.name) && it["covered_probes"] == 0
+                })
+            }
+        }
+    }
+    @Test
+    fun `given build with methods and coverage, coverage-treemap should return non-empty list`() {
+        havingData {
+            build1 has listOf(method1, method2)
+            test1 covers method1 with probesOf(1, 1) on build1
+        }.expectThat {
+            client.get("/metrics/coverage-treemap") {
+                parameter("buildId", "${build1.groupId}:${build1.appId}:${build1.buildVersion}")
+            }.returns { data ->
+                assertTrue(data.isNotEmpty())
+                assertTrue(treemapAny(data) {
+                    it["name"].toString().startsWith(method1.name) && it["covered_probes"] == 2
+                })
+                assertTrue(treemapAny(data) {
+                    it["name"].toString().startsWith(method2.name) && it["covered_probes"] == 0
+                })
+            }
         }
     }
 
     @Test
-    fun `given build with methods and coverage, coverage-treemap should return non-empty list`() = havingData {
-        build1 has listOf(method1, method2)
-        test1 covers method1 with probesOf(1, 1) on build1
-    }.expectThat {
-        client.get("/metrics/coverage-treemap") {
-            parameter("buildId", "${build1.groupId}:${build1.appId}:${build1.buildVersion}")
-        }.returns { data ->
-            assertTrue(data.isNotEmpty())
-            assertTrue(treemapAny(data) { it["name"].toString().startsWith(method1.name) && it["covered_probes"] == 2 })
-            assertTrue(treemapAny(data) { it["name"].toString().startsWith(method2.name) && it["covered_probes"] == 0 })
-        }
-    }
-
-    @Test
-    fun `given build with coverage from multiple sessions, coverage-treemap filtered by testSessionId should return only that session coverage`() = havingData {
-        build1 has listOf(method1, method2)
-        test1 of session1 covers method1 with probesOf(1, 1) on build1
-        test2 of session2 covers method2 with probesOf(1, 1, 1) on build1
-    }.expectThat {
-        // Without filter - all coverage
-        client.get("/metrics/coverage-treemap") {
-            parameter("buildId", "${build1.groupId}:${build1.appId}:${build1.buildVersion}")
-        }.returns { data ->
-            assertTrue(data.isNotEmpty())
-            assertTrue(treemapAny(data) { it["name"].toString().startsWith(method1.name) && it["covered_probes"] == 2 })
-            assertTrue(treemapAny(data) { it["name"].toString().startsWith(method2.name) && it["covered_probes"] == 3 })
-        }
-        // Filter by session1 - only method1 coverage
-        client.get("/metrics/coverage-treemap") {
-            parameter("buildId", "${build1.groupId}:${build1.appId}:${build1.buildVersion}")
-            parameter("testSessionId", session1.id)
-        }.returns { data ->
-            assertTrue(data.isNotEmpty())
-            assertTrue(treemapAny(data) { it["name"].toString().startsWith(method1.name) && it["covered_probes"] == 2 })
-            assertTrue(treemapAny(data) { it["name"].toString().startsWith(method2.name) && it["covered_probes"] == 0 })
-        }
-        // Filter by session2 - only method2 coverage
-        client.get("/metrics/coverage-treemap") {
-            parameter("buildId", "${build1.groupId}:${build1.appId}:${build1.buildVersion}")
-            parameter("testSessionId", session2.id)
-        }.returns { data ->
-            assertTrue(data.isNotEmpty())
-            assertTrue(treemapAny(data) { it["name"].toString().startsWith(method1.name) && it["covered_probes"] == 0 })
-            assertTrue(treemapAny(data) { it["name"].toString().startsWith(method2.name) && it["covered_probes"] == 3 })
+    fun `given build with coverage from multiple sessions, coverage-treemap filtered by testSessionId should return only that session coverage`() {
+        havingData {
+            build1 has listOf(method1, method2)
+            test1 of session1 covers method1 with probesOf(1, 1) on build1
+            test2 of session2 covers method2 with probesOf(1, 1, 1) on build1
+        }.expectThat {
+            // Without filter - all coverage
+            client.get("/metrics/coverage-treemap") {
+                parameter("buildId", "${build1.groupId}:${build1.appId}:${build1.buildVersion}")
+            }.returns { data ->
+                assertTrue(data.isNotEmpty())
+                assertTrue(treemapAny(data) {
+                    it["name"].toString().startsWith(method1.name) && it["covered_probes"] == 2
+                })
+                assertTrue(treemapAny(data) {
+                    it["name"].toString().startsWith(method2.name) && it["covered_probes"] == 3
+                })
+            }
+            // Filter by session1 - only method1 coverage
+            client.get("/metrics/coverage-treemap") {
+                parameter("buildId", "${build1.groupId}:${build1.appId}:${build1.buildVersion}")
+                parameter("testSessionId", session1.id)
+            }.returns { data ->
+                assertTrue(data.isNotEmpty())
+                assertTrue(treemapAny(data) {
+                    it["name"].toString().startsWith(method1.name) && it["covered_probes"] == 2
+                })
+                assertTrue(treemapAny(data) {
+                    it["name"].toString().startsWith(method2.name) && it["covered_probes"] == 0
+                })
+            }
+            // Filter by session2 - only method2 coverage
+            client.get("/metrics/coverage-treemap") {
+                parameter("buildId", "${build1.groupId}:${build1.appId}:${build1.buildVersion}")
+                parameter("testSessionId", session2.id)
+            }.returns { data ->
+                assertTrue(data.isNotEmpty())
+                assertTrue(treemapAny(data) {
+                    it["name"].toString().startsWith(method1.name) && it["covered_probes"] == 0
+                })
+                assertTrue(treemapAny(data) {
+                    it["name"].toString().startsWith(method2.name) && it["covered_probes"] == 3
+                })
+            }
         }
     }
 

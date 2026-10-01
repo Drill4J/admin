@@ -4,6 +4,8 @@ INSERT INTO metrics.test_sessions (
     test_project_id,
     test_task_id,
     session_started_at,
+    session_status,
+    last_session_heartbeat_at,
     created_at,
     created_by,
     created_at_day
@@ -14,6 +16,8 @@ VALUES (
     :test_project_id,
     :test_task_id,
     :session_started_at,
+    :session_status,
+    :last_session_heartbeat_at,
     :created_at,
     :created_by,
     :created_at_day
@@ -27,6 +31,8 @@ DO UPDATE
 SET
     test_task_id = EXCLUDED.test_task_id,
     session_started_at = EXCLUDED.session_started_at,
+    session_status = EXCLUDED.session_status,
+    last_session_heartbeat_at = EXCLUDED.last_session_heartbeat_at,
     created_at = EXCLUDED.created_at,
     created_by = EXCLUDED.created_by,
     created_at_day = EXCLUDED.created_at_day

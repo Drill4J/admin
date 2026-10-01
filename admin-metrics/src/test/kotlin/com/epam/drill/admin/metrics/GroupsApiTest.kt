@@ -38,11 +38,13 @@ class GroupsApiTest : MetricsDatabaseTests({ default, metrics ->
     }
 
     @Test
-    fun `get groups should return distinct group ids ordered`() = havingData {
-        initTestData()
-    }.expectThat {
-        client.get("/metrics/groups").returnsStrings { data ->
-            assertEquals(listOf("group-1", "group-2"), data)
+    fun `get groups should return distinct group ids ordered`() {
+        havingData {
+            initTestData()
+        }.expectThat {
+            client.get("/metrics/groups").returnsStrings { data ->
+                assertEquals(listOf("group-1", "group-2"), data)
+            }
         }
     }
 

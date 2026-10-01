@@ -286,28 +286,40 @@ class RawDataServiceImpl(
         }.let { testLaunchRepository.createMany(it) }
     }
 
-    override suspend fun saveTestSession(sessionPayload: SessionPayload, username: String?) {
+    override suspend fun saveTestSession(testSessionPayload: TestSessionPayload, username: String?) {
         val testSession = TestSession(
-            id = sessionPayload.id,
-            groupId = sessionPayload.groupId,
-            testProjectId = sessionPayload.testProjectId ?: "",
-            testTaskId = sessionPayload.testTaskId,
-            startedAt = sessionPayload.startedAt.toLocalDateTime(TimeZone.currentSystemDefault()).toJavaLocalDateTime(),
+            id = testSessionPayload.id,
+            groupId = testSessionPayload.groupId,
+            testProjectId = testSessionPayload.testProjectId ?: "",
+            testTaskId = testSessionPayload.testTaskId,
+            startedAt = testSessionPayload.startedAt.toLocalDateTime(TimeZone.currentSystemDefault()).toJavaLocalDateTime(),
             createdBy = username
         )
         transaction {
             testSessionRepository.create(testSession)
-            testSessionBuildRepository.deleteAllByTestSessionId(sessionPayload.id)
-            sessionPayload.builds.forEach { buildInfo ->
+            testSessionBuildRepository.deleteAllByTestSessionId(testSessionPayload.id)
+            testSessionPayload.builds.forEach { buildInfo ->
                 val buildId = generateBuildId(
-                    sessionPayload.groupId,
+                    testSessionPayload.groupId,
                     buildInfo.appId,
                     buildInfo.instanceId,
                     buildInfo.commitSha,
                     buildInfo.buildVersion
                 )
-                testSessionBuildRepository.create(sessionPayload.id, buildId, sessionPayload.groupId)
+                testSessionBuildRepository.create(testSessionPayload.id, buildId, testSessionPayload.groupId)
             }
+        }
+    }
+
+    override suspend fun saveTestSessionHeartbeat(payload: TestSessionHeartbeatPayload) {
+        val session = TestSessionHeartbeat(
+            id = payload.testSessionId,
+            groupId = payload.groupId,
+            testProjectId = payload.testProjectId,
+            status = payload.status
+        )
+        transaction {
+            testSessionRepository.updateHeartbeat(session)
         }
     }
 
