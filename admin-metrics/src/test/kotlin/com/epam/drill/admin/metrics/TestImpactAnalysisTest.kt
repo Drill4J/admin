@@ -40,7 +40,7 @@ class TestImpactAnalysisTest : MetricsDatabaseTests({ default, metrics ->
 }) {
 
     @Test
-    fun `given modified methods compared to baseline, impacted tests service should return tests which cover modified methods`() =
+    fun `given modified methods compared to baseline, impacted tests service should return tests which cover modified methods`() {
         havingData {
             build1 has listOf(method1)
             test1 covers method1 on build1
@@ -51,9 +51,10 @@ class TestImpactAnalysisTest : MetricsDatabaseTests({ default, metrics ->
             //because
             method1 isModifiedOn build2 comparedTo build1
         }
+    }
 
     @Test
-    fun `given equal methods compared to baseline, impacted tests service should not return tests which cover equal methods`() =
+    fun `given equal methods compared to baseline, impacted tests service should not return tests which cover equal methods`() {
         havingData {
             build1 has listOf(method1)
             test1 covers method1 on build1
@@ -66,9 +67,10 @@ class TestImpactAnalysisTest : MetricsDatabaseTests({ default, metrics ->
             //because
             method1 isEqualOn build3 comparedTo build2
         }
+    }
 
     @Test
-    fun `given deleted methods compared to baseline, impacted tests service should return tests witch cover deleted methods`() =
+    fun `given deleted methods compared to baseline, impacted tests service should return tests witch cover deleted methods`() {
         havingData {
             build1 has listOf(method1, method2)
             test1 covers method1 on build1
@@ -79,9 +81,10 @@ class TestImpactAnalysisTest : MetricsDatabaseTests({ default, metrics ->
             //because
             method1 isDeletedOn build2 comparedTo build1
         }
+    }
 
     @Test
-    fun `given new covered methods compared to baseline, impacted tests service should return tests which cover new methods`() =
+    fun `given new covered methods compared to baseline, impacted tests service should return tests which cover new methods`() {
         havingData {
             build1 has listOf(method1)
             build2 hasNew method2 comparedTo build1
@@ -94,9 +97,10 @@ class TestImpactAnalysisTest : MetricsDatabaseTests({ default, metrics ->
             method2 isNewOn build2 comparedTo build1
             method2 isCoveredOn build2
         }
+    }
 
     @Test
-    fun `given new uncovered methods compared to baseline, impacted methods service should not return uncovered new methods`() =
+    fun `given new uncovered methods compared to baseline, impacted methods service should not return uncovered new methods`() {
         havingData {
             build1 has listOf(method1)
             build2 hasNew method2 comparedTo build1
@@ -106,9 +110,10 @@ class TestImpactAnalysisTest : MetricsDatabaseTests({ default, metrics ->
             method2 isNewOn build2 comparedTo build1
             method2 isNotCoveredOn build2
         }
+    }
 
     @Test
-    fun `given failed test, impacted tests service should return unknown impact`() =
+    fun `given failed test, impacted tests service should return unknown impact`() {
         havingData {
             build1 has listOf(method1)
             test1 failsOn method1 on build1
@@ -116,9 +121,10 @@ class TestImpactAnalysisTest : MetricsDatabaseTests({ default, metrics ->
         }.expectThat {
             test1 hasUnknownImpactOn build2 comparedTo build1
         }
+    }
 
     @Test
-    fun `given all impact statuses requested, impacted tests service should return each test with correct status`() =
+    fun `given all impact statuses requested, impacted tests service should return each test with correct status`() {
         havingData {
             build1 has listOf(method1, method2)
             val impactedTest = TestDetails(testName = "impactedTest")
@@ -153,9 +159,10 @@ class TestImpactAnalysisTest : MetricsDatabaseTests({ default, metrics ->
                 unknownImpactTest.assertTestHasUnknownImpact(data)
             }
         }
+    }
 
     @Test
-    fun `given IMPACTED filter only, impacted tests service should not return not impacted or unknown tests`() =
+    fun `given IMPACTED filter only, impacted tests service should not return not impacted or unknown tests`() {
         havingData {
             build1 has listOf(method1, method2)
             val impactedTest = TestDetails(testName = "impactedTest")
@@ -172,9 +179,9 @@ class TestImpactAnalysisTest : MetricsDatabaseTests({ default, metrics ->
                 TestDetails(testName = "unknownImpactTest").assertTestIsAbsent(data)
             }
         }
-
+    }
     @Test
-    fun `given NOT_IMPACTED filter only, impacted tests service should not return impacted or unknown tests`() =
+    fun `given NOT_IMPACTED filter only, impacted tests service should not return impacted or unknown tests`() {
         havingData {
             build1 has listOf(method1, method2)
             val impactedTest = TestDetails(testName = "impactedTest")
@@ -191,9 +198,10 @@ class TestImpactAnalysisTest : MetricsDatabaseTests({ default, metrics ->
                 TestDetails(testName = "unknownImpactTest").assertTestIsAbsent(data)
             }
         }
+    }
 
     @Test
-    fun `given method signature filter, impacted tests service should select matching tests but count all changed methods`() =
+    fun `given method signature filter, impacted tests service should select matching tests but count all changed methods`() {
         havingData {
             build1 has listOf(method1, method2)
             val testCoveringBoth = TestDetails(testName = "testCoveringBoth")
@@ -215,9 +223,10 @@ class TestImpactAnalysisTest : MetricsDatabaseTests({ default, metrics ->
                 testCoveringMethod2Only.assertTestIsAbsent(data)
             }
         }
+    }
 
     @Test
-    fun `given tests covering non-existent methods on both target and baseline builds, impacted tests service should not return these tests`() =
+    fun `given tests covering non-existent methods on both target and baseline builds, impacted tests service should not return these tests`() {
         havingData {
             build1 has listOf(method1)
             build2 hasNew method2 comparedTo build1
@@ -228,9 +237,9 @@ class TestImpactAnalysisTest : MetricsDatabaseTests({ default, metrics ->
             method2 isNotImpactedOn build3 comparedTo build1
             //because method2 does not exist on both build3 and build1
         }
-
+    }
     @Test
-    fun `given test task id filter with NOT_IMPACTED status, impacted tests service should return only not impacted tests from matching task`() =
+    fun `given test task id filter with NOT_IMPACTED status, impacted tests service should return only not impacted tests from matching task`() {
         havingData {
             build1 has listOf(method1, method2)
             val taskASession = session1.testTaskId("task-a")
@@ -251,6 +260,7 @@ class TestImpactAnalysisTest : MetricsDatabaseTests({ default, metrics ->
                 TestDetails(testName = "notImpactedTestFromTaskB").assertTestIsAbsent(data)
             }
         }
+    }
 
     @AfterTest
     fun clearAll() = withTransaction(RawDataWriterDatabaseConfig.database) {

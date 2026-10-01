@@ -48,7 +48,7 @@ class ImpactedMethodsApiTest : MetricsDatabaseTests({ default, metrics ->
     MetricsDatabaseConfig.init(metrics)
 }) {
     @Test
-    fun `given a build with changes, build-changes with hasImpactedTests should return impacted methods`() =
+    fun `given a build with changes, build-changes with hasImpactedTests should return impacted methods`() {
         havingData {
             build1 has listOf(method1, method2)
             test1 covers method1 on build1
@@ -61,9 +61,10 @@ class ImpactedMethodsApiTest : MetricsDatabaseTests({ default, metrics ->
                 assertTrue(data.none { it["name"] == method2.name })
             }
         }
+    }
 
     @Test
-    fun `given page and size, build-changes should paginate impacted methods`() =
+    fun `given page and size, build-changes should paginate impacted methods`() {
         havingData {
             build1 has listOf(method1, method2)
             repeat(15) { i ->
@@ -88,9 +89,10 @@ class ImpactedMethodsApiTest : MetricsDatabaseTests({ default, metrics ->
                 assertTrue(data.isEmpty(), "Expected no records on second page, but got ${data.size}")
             }
         }
+    }
 
     @Test
-    fun `given testProjectId filter, impacted methods service should count only tests from matching project`() =
+    fun `given testProjectId filter, impacted methods service should count only tests from matching project`() {
         havingData {
             build1 has listOf(method1)
             test1 of session1.testProjectId("project-a") covers method1 on build1
@@ -104,9 +106,10 @@ class ImpactedMethodsApiTest : MetricsDatabaseTests({ default, metrics ->
                 assertEquals(1, (methodRow?.get("impactedTests") as Number?)?.toInt())
             }
         }
+    }
 
     @Test
-    fun `given invalid sortBy, should return BadRequest`(): Unit =
+    fun `given invalid sortBy, should return BadRequest`(): Unit {
         havingData {
             build1 has listOf(method1)
             test1 covers method1 on build1
@@ -127,6 +130,7 @@ class ImpactedMethodsApiTest : MetricsDatabaseTests({ default, metrics ->
             assertEquals(HttpStatusCode.BadRequest, response.status)
             assertTrue(response.bodyAsText().contains("Invalid sortBy"))
         }
+    }
 
     @AfterTest
     fun clearAll() = withTransaction(RawDataWriterDatabaseConfig.database) {

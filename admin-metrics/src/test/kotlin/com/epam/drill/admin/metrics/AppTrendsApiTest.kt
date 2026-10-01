@@ -22,6 +22,7 @@ import com.epam.drill.admin.test.withTransaction
 import com.epam.drill.admin.writer.rawdata.config.RawDataWriterDatabaseConfig
 import com.epam.drill.admin.writer.rawdata.table.BuildTable
 import com.jayway.jsonpath.JsonPath
+import io.ktor.client.HttpClient
 import io.ktor.client.request.get
 import io.ktor.client.request.parameter
 import io.ktor.client.statement.bodyAsText
@@ -44,95 +45,107 @@ class AppTrendsApiTest : MetricsDatabaseTests({ default, metrics ->
     )
 
     @Test
-    fun `get coverage trends works without baseline across recent builds`() = havingData {
-        build1 has listOf(method1, method2)
-        build2 hasModified method2 comparedTo build1
-        test1 covers method1 with probesOf(1, 1) on build1
-        test1 covers method2 with probesOf(1, 0, 1) on build2
-    }.expectThat {
-        client.get("/metrics/apps/trends/coverage") {
-            parameter("groupId", testGroup)
-            parameter("appId", testApp)
-            parameter("size", 10)
-        }.apply {
-            assertEquals(HttpStatusCode.OK, status)
-            val json = JsonPath.parse(bodyAsText())
-            val data = json.read<List<Map<String, Any>>>("$.data")
-            assertTrue(data.size >= 2)
-            assertTrue(data.any { it["buildId"] == build1Id })
-            assertTrue(data.any { it["buildId"] == build2Id })
-            data.forEach { point ->
-                val isolated = (point["isolatedCoveragePercent"] as Number).toDouble()
-                val other = (point["otherBuildsCoveragePercent"] as Number).toDouble()
-                val aggregated = (point["aggregatedCoveragePercent"] as Number).toDouble()
-                assertTrue(aggregated + 0.0001 >= isolated)
-                assertEquals(aggregated, isolated + other, absoluteTolerance = 0.0001)
+    fun `get coverage trends works without baseline across recent builds`() {
+        havingData {
+            build1 has listOf(method1, method2)
+            build2 hasModified method2 comparedTo build1
+            test1 covers method1 with probesOf(1, 1) on build1
+            test1 covers method2 with probesOf(1, 0, 1) on build2
+        }.expectThat {
+            client.get("/metrics/apps/trends/coverage") {
+                parameter("groupId", testGroup)
+                parameter("appId", testApp)
+                parameter("size", 10)
+            }.apply {
+                assertEquals(HttpStatusCode.OK, status)
+                val json = JsonPath.parse(bodyAsText())
+                val data = json.read<List<Map<String, Any>>>("$.data")
+                assertTrue(data.size >= 2)
+                assertTrue(data.any { it["buildId"] == build1Id })
+                assertTrue(data.any { it["buildId"] == build2Id })
+                data.forEach { point ->
+                    val isolated = (point["isolatedCoveragePercent"] as Number).toDouble()
+                    val other = (point["otherBuildsCoveragePercent"] as Number).toDouble()
+                    val aggregated = (point["aggregatedCoveragePercent"] as Number).toDouble()
+                    assertTrue(aggregated + 0.0001 >= isolated)
+                    assertEquals(aggregated, isolated + other, absoluteTolerance = 0.0001)
+                }
             }
         }
     }
 
     @Test
-    fun `get changes trends requires baseline and returns probes and methods`() = havingData {
-        build1 has listOf(method1, method2)
-        build2 hasModified method2 comparedTo build1
-        test1 covers method2 with probesOf(1, 0, 1) on build2
-    }.expectThat {
-        client.get("/metrics/apps/trends/changes") {
-            parameter("groupId", testGroup)
-            parameter("appId", testApp)
-            parameter("size", 10)
-        }.apply {
-            assertTrue(
-                status == HttpStatusCode.BadRequest || status == HttpStatusCode.InternalServerError,
-                "missing baseline expected 400/500 but was $status body=${bodyAsText()}"
-            )
-        }
+    fun `get changes trends requires baseline and returns probes and methods`() {
+        havingData {
+            build1 has listOf(method1, method2)
+            build2 hasModified method2 comparedTo build1
+            test1 covers method2 with probesOf(1, 0, 1) on build2
+        }.expectThat {
+            client.get("/metrics/apps/trends/changes") {
+                parameter("groupId", testGroup)
+                parameter("appId", testApp)
+                parameter("size", 10)
+            }.apply {
+                assertTrue(
+                    status == HttpStatusCode.BadRequest || status == HttpStatusCode.InternalServerError,
+                    "missing baseline expected 400/500 but was $status body=${bodyAsText()}"
+                )
+            }
 
-        client.get("/metrics/apps/trends/changes") {
-            parameter("groupId", testGroup)
-            parameter("appId", testApp)
-            parameter("baselineBuildId", build1Id)
-            parameter("size", 10)
-        }.apply {
-            assertEquals(HttpStatusCode.OK, status, "with baseline body=${bodyAsText()}")
-            val json = JsonPath.parse(bodyAsText())
-            val data = json.read<List<Map<String, Any>>>("$.data")
-            assertTrue(data.size >= 2, "expected >=2 trend points, got ${data.size}: $data")
-            assertEquals(build1Id, data[0]["buildId"])
-            data.forEach { point ->
-                val coveredProbes = (point["coveredProbes"] as Number).toInt()
-                val aggregatedProbes = (point["coveredInOtherBuildsProbes"] as Number).toInt()
-                val coveredMethods = (point["coveredMethods"] as Number).toInt()
-                val aggregatedMethods = (point["coveredInOtherBuildsMethods"] as Number).toInt()
-                assertTrue(aggregatedProbes >= coveredProbes, "probes agg=$aggregatedProbes iso=$coveredProbes point=$point")
-                assertTrue(aggregatedMethods >= coveredMethods, "methods agg=$aggregatedMethods iso=$coveredMethods point=$point")
+            client.get("/metrics/apps/trends/changes") {
+                parameter("groupId", testGroup)
+                parameter("appId", testApp)
+                parameter("baselineBuildId", build1Id)
+                parameter("size", 10)
+            }.apply {
+                assertEquals(HttpStatusCode.OK, status, "with baseline body=${bodyAsText()}")
+                val json = JsonPath.parse(bodyAsText())
+                val data = json.read<List<Map<String, Any>>>("$.data")
+                assertTrue(data.size >= 2, "expected >=2 trend points, got ${data.size}: $data")
+                assertEquals(build1Id, data[0]["buildId"])
+                data.forEach { point ->
+                    val coveredProbes = (point["coveredProbes"] as Number).toInt()
+                    val aggregatedProbes = (point["coveredInOtherBuildsProbes"] as Number).toInt()
+                    val coveredMethods = (point["coveredMethods"] as Number).toInt()
+                    val aggregatedMethods = (point["coveredInOtherBuildsMethods"] as Number).toInt()
+                    assertTrue(
+                        aggregatedProbes >= coveredProbes,
+                        "probes agg=$aggregatedProbes iso=$coveredProbes point=$point"
+                    )
+                    assertTrue(
+                        aggregatedMethods >= coveredMethods,
+                        "methods agg=$aggregatedMethods iso=$coveredMethods point=$point"
+                    )
+                }
             }
         }
     }
 
     @Test
-    fun `given testProjectIds filter, coverage trends should include only matching test project coverage`() = havingData {
-        build1 has listOf(method1, method2)
-        test1 of session1.testProjectId("project-a") covers method1 with probesOf(1, 1) on build1
-        test2 of session2.testProjectId("project-b") covers method2 with probesOf(1, 1, 1) on build1
-    }.expectThat {
-        val respA = client.get("/metrics/apps/trends/coverage") {
-            parameter("groupId", testGroup)
-            parameter("appId", testApp)
-            parameter("testProjectIds", "project-a")
+    fun `given testProjectIds filter, coverage trends should include only matching test project coverage`() {
+        havingData {
+            build1 has listOf(method1, method2)
+            test1 of session1.testProjectId("project-a") covers method1 with probesOf(1, 1) on build1
+            test2 of session2.testProjectId("project-b") covers method2 with probesOf(1, 1, 1) on build1
+        }.expectThat {
+            val respA = client.get("/metrics/apps/trends/coverage") {
+                parameter("groupId", testGroup)
+                parameter("appId", testApp)
+                parameter("testProjectIds", "project-a")
+            }
+            val respB = client.get("/metrics/apps/trends/coverage") {
+                parameter("groupId", testGroup)
+                parameter("appId", testApp)
+                parameter("testProjectIds", "project-b")
+            }
+            assertEquals(HttpStatusCode.OK, respA.status)
+            assertEquals(HttpStatusCode.OK, respB.status)
+            val coverageA = JsonPath.parse(respA.bodyAsText()).read<List<Map<String, Any>>>("$.data")
+                .find { it["buildId"] == build1Id }?.let { (it["aggregatedCoveragePercent"] as Number).toDouble() }
+            val coverageB = JsonPath.parse(respB.bodyAsText()).read<List<Map<String, Any>>>("$.data")
+                .find { it["buildId"] == build1Id }?.let { (it["aggregatedCoveragePercent"] as Number).toDouble() }
+            assertTrue(coverageA != null && coverageB != null)
         }
-        val respB = client.get("/metrics/apps/trends/coverage") {
-            parameter("groupId", testGroup)
-            parameter("appId", testApp)
-            parameter("testProjectIds", "project-b")
-        }
-        assertEquals(HttpStatusCode.OK, respA.status)
-        assertEquals(HttpStatusCode.OK, respB.status)
-        val coverageA = JsonPath.parse(respA.bodyAsText()).read<List<Map<String, Any>>>("$.data")
-            .find { it["buildId"] == build1Id }?.let { (it["aggregatedCoveragePercent"] as Number).toDouble() }
-        val coverageB = JsonPath.parse(respB.bodyAsText()).read<List<Map<String, Any>>>("$.data")
-            .find { it["buildId"] == build1Id }?.let { (it["aggregatedCoveragePercent"] as Number).toDouble() }
-        assertTrue(coverageA != null && coverageB != null)
     }
 
     @AfterEach

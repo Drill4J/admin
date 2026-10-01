@@ -41,24 +41,28 @@ class ApplicationsApiTest : MetricsDatabaseTests({ default, metrics ->
     }
 
     @Test
-    fun `given groupId, get applications service should return applications for specified group`() = havingData {
-        initTestData()
-    }.expectThat {
-        client.get("/metrics/applications") {
-            parameter("groupId", testGroup)
-        }.returns { data ->
-            assertEquals(2, data.size)
-            assertEquals(setOf("app-1", "app-2"), data.map { it["appId"] }.toSet())
+    fun `given groupId, get applications service should return applications for specified group`() {
+        havingData {
+            initTestData()
+        }.expectThat {
+            client.get("/metrics/applications") {
+                parameter("groupId", testGroup)
+            }.returns { data ->
+                assertEquals(2, data.size)
+                assertEquals(setOf("app-1", "app-2"), data.map { it["appId"] }.toSet())
+            }
         }
     }
 
     @Test
-    fun `given no parameters, get applications service should return all applications`() = havingData {
-        initTestData()
-    }.expectThat {
-        client.get("/metrics/applications").returns { data ->
-            assertEquals(3, data.size)
-            assertEquals(setOf("app-1", "app-2", "app-3"), data.map { it["appId"] }.toSet())
+    fun `given no parameters, get applications service should return all applications`() {
+        havingData {
+            initTestData()
+        }.expectThat {
+            client.get("/metrics/applications").returns { data ->
+                assertEquals(3, data.size)
+                assertEquals(setOf("app-1", "app-2", "app-3"), data.map { it["appId"] }.toSet())
+            }
         }
     }
 

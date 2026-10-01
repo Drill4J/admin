@@ -47,7 +47,7 @@ class BuildChangesApiTest : MetricsDatabaseTests({ default, metrics ->
     }
 
     @Test
-    fun `given target and baseline build, build-changes should return diff with coverage and impact`(): Unit =
+    fun `given target and baseline build, build-changes should return diff with coverage and impact`() {
         havingData {
             initBuildsAndMethodsData()
         }.expectThat {
@@ -63,9 +63,10 @@ class BuildChangesApiTest : MetricsDatabaseTests({ default, metrics ->
                 assertTrue(data.any { it["name"] == method4.name && it["changeType"] == ChangeType.DELETED.name })
             }
         }
+    }
 
     @Test
-    fun `given isolated tested target build, build-changes should return coverage in current build`(): Unit =
+    fun `given isolated tested target build, build-changes should return coverage in current build`() {
         havingData {
             initBuildsAndMethodsData()
             test1 covers method2 with probesOf(1, 1, 0) on build3
@@ -79,9 +80,10 @@ class BuildChangesApiTest : MetricsDatabaseTests({ default, metrics ->
                 assertTrue(data.any { it["name"] == method2.name && (it["coveredProbes"] as Int) == 2 })
             }
         }
+    }
 
     @Test
-    fun `given aggregated tested builds, build-changes should return coverage in other builds`(): Unit =
+    fun `given aggregated tested builds, build-changes should return coverage in other builds`() {
         havingData {
             initBuildsAndMethodsData()
             test1 covers method2 with probesOf(1, 1, 0) on build2
@@ -97,9 +99,10 @@ class BuildChangesApiTest : MetricsDatabaseTests({ default, metrics ->
                 assertTrue(data.any { it["name"] == method2.name && (it["coveredProbesInOtherBuilds"] as Int) == 3 })
             }
         }
+    }
 
     @Test
-    fun `given testProjectIds filter, build-changes should include only matching test project coverage`(): Unit =
+    fun `given testProjectIds filter, build-changes should include only matching test project coverage`() {
         havingData {
             initBuildsAndMethodsData()
             test1 of session1.testProjectId("project-a") covers method2 with probesOf(1, 1, 0) on build3
@@ -115,9 +118,10 @@ class BuildChangesApiTest : MetricsDatabaseTests({ default, metrics ->
                 assertTrue(data.any { it["name"] == method2.name && (it["coveredProbes"] as Int) == 2 })
             }
         }
+    }
 
     @Test
-    fun `given changeTypes filter, build-changes should return only matching rows`(): Unit =
+    fun `given changeTypes filter, build-changes should return only matching rows`() {
         havingData {
             initBuildsAndMethodsData()
         }.expectThat {
@@ -132,9 +136,10 @@ class BuildChangesApiTest : MetricsDatabaseTests({ default, metrics ->
                 assertTrue(data.all { it["changeType"] == ChangeType.DELETED.name })
             }
         }
+    }
 
     @Test
-    fun `given page and size, build-changes should paginate`(): Unit =
+    fun `given page and size, build-changes should paginate`() {
         havingData {
             val methods = (1..15).map { idx ->
                 SingleMethodPayload(
@@ -173,6 +178,7 @@ class BuildChangesApiTest : MetricsDatabaseTests({ default, metrics ->
                 assertEquals(5, data.size)
             }
         }
+    }
 
     @AfterEach
     fun clearAll() = withTransaction(RawDataWriterDatabaseConfig.database) {

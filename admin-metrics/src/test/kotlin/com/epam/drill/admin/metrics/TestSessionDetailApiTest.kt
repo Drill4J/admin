@@ -44,7 +44,7 @@ class TestSessionDetailApiTest : MetricsDatabaseTests({ default, metrics ->
     private val build1Id = "${build1.groupId}:${build1.appId}:${build1.buildVersion}"
 
     @Test
-    fun `given test session, should return session detail`(): Unit =
+    fun `given test session, should return session detail`() {
         havingData {
             build1 has listOf(method1)
             test1 of session1 covers method1 with probesOf(1, 1) on build1
@@ -59,9 +59,9 @@ class TestSessionDetailApiTest : MetricsDatabaseTests({ default, metrics ->
                 assertEquals(2, (data["testDefinitions"] as Number).toInt())
             }
         }
-
+    }
     @Test
-    fun `given wrong groupId, should return NotFound`(): Unit =
+    fun `given wrong groupId, should return NotFound`() {
         havingData {
             build1 has listOf(method1)
             test1 of session1 covers method1 with probesOf(1, 1) on build1
@@ -71,9 +71,10 @@ class TestSessionDetailApiTest : MetricsDatabaseTests({ default, metrics ->
             }
             assertEquals(HttpStatusCode.NotFound, response.status)
         }
+    }
 
     @Test
-    fun `given session with partial coverage, coverage summary totals should match build`(): Unit =
+    fun `given session with partial coverage, coverage summary totals should match build`() {
         havingData {
             build1 has listOf(method1, method2)
             test1 of session1 covers method1 with probesOf(1, 1) on build1
@@ -96,10 +97,13 @@ class TestSessionDetailApiTest : MetricsDatabaseTests({ default, metrics ->
             }.returnsSingle { data ->
                 @Suppress("UNCHECKED_CAST")
                 val probesSlices = (data["probes"] as Map<String, Any>)["slices"] as List<Map<String, Any>>
+
                 @Suppress("UNCHECKED_CAST")
                 val methodsSlices = (data["methods"] as Map<String, Any>)["slices"] as List<Map<String, Any>>
-                val probesByMetric = probesSlices.associate { it["metric"] as String to (it["value"] as Number).toInt() }
-                val methodsByMetric = methodsSlices.associate { it["metric"] as String to (it["value"] as Number).toInt() }
+                val probesByMetric =
+                    probesSlices.associate { it["metric"] as String to (it["value"] as Number).toInt() }
+                val methodsByMetric =
+                    methodsSlices.associate { it["metric"] as String to (it["value"] as Number).toInt() }
 
                 assertEquals(buildProbes, probesSlices.sumOf { (it["value"] as Number).toInt() })
                 assertEquals(buildMethods, methodsSlices.sumOf { (it["value"] as Number).toInt() })
@@ -109,9 +113,9 @@ class TestSessionDetailApiTest : MetricsDatabaseTests({ default, metrics ->
                 assertEquals(1, methodsByMetric["missed"])
             }
         }
-
+    }
     @Test
-    fun `given test definition with partial coverage, coverage summary totals should match build`(): Unit =
+    fun `given test definition with partial coverage, coverage summary totals should match build`() {
         havingData {
             build1 has listOf(method1, method2)
             test1 of session1 covers method1 with probesOf(1, 1) on build1
@@ -136,10 +140,13 @@ class TestSessionDetailApiTest : MetricsDatabaseTests({ default, metrics ->
             }.returnsSingle { data ->
                 @Suppress("UNCHECKED_CAST")
                 val probesSlices = (data["probes"] as Map<String, Any>)["slices"] as List<Map<String, Any>>
+
                 @Suppress("UNCHECKED_CAST")
                 val methodsSlices = (data["methods"] as Map<String, Any>)["slices"] as List<Map<String, Any>>
-                val probesByMetric = probesSlices.associate { it["metric"] as String to (it["value"] as Number).toInt() }
-                val methodsByMetric = methodsSlices.associate { it["metric"] as String to (it["value"] as Number).toInt() }
+                val probesByMetric =
+                    probesSlices.associate { it["metric"] as String to (it["value"] as Number).toInt() }
+                val methodsByMetric =
+                    methodsSlices.associate { it["metric"] as String to (it["value"] as Number).toInt() }
 
                 assertEquals(buildProbes, probesSlices.sumOf { (it["value"] as Number).toInt() })
                 assertEquals(buildMethods, methodsSlices.sumOf { (it["value"] as Number).toInt() })
@@ -149,9 +156,9 @@ class TestSessionDetailApiTest : MetricsDatabaseTests({ default, metrics ->
                 assertEquals(1, methodsByMetric["missed"])
             }
         }
-
+    }
     @Test
-    fun `given session with coverage, should return coverage summary`(): Unit =
+    fun `given session with coverage, should return coverage summary`() {
         havingData {
             build1 has listOf(method1)
             test1 of session1 covers method1 with probesOf(1, 1) on build1
@@ -162,15 +169,17 @@ class TestSessionDetailApiTest : MetricsDatabaseTests({ default, metrics ->
             }.returnsSingle { data ->
                 @Suppress("UNCHECKED_CAST")
                 val probesSlices = (data["probes"] as Map<String, Any>)["slices"] as List<Map<String, Any>>
-                val probesByMetric = probesSlices.associate { it["metric"] as String to (it["value"] as Number).toInt() }
+                val probesByMetric =
+                    probesSlices.associate { it["metric"] as String to (it["value"] as Number).toInt() }
 
                 assertTrue(probesSlices.sumOf { (it["value"] as Number).toInt() } > 0)
                 assertTrue((probesByMetric["covered"] ?: 0) > 0)
             }
         }
+    }
 
     @Test
-    fun `given session with tests, should return launches and file launches`(): Unit =
+    fun `given session with tests, should return launches and file launches`() {
         havingData {
             build1 has listOf(method1)
             test1 of session1 covers method1 with probesOf(1, 1) on build1
@@ -188,9 +197,10 @@ class TestSessionDetailApiTest : MetricsDatabaseTests({ default, metrics ->
                 assertEquals(testPath, data[0]["testPath"])
             }
         }
+    }
 
     @Test
-    fun `coverage filtered by testSessionId and className should return class methods`(): Unit =
+    fun `coverage filtered by testSessionId and className should return class methods`() {
         havingData {
             build1 has listOf(method1, method2)
             test1 of session1 covers method1 with probesOf(1, 1) on build1
@@ -206,9 +216,9 @@ class TestSessionDetailApiTest : MetricsDatabaseTests({ default, metrics ->
                 assertTrue(data.any { it["name"] == method2.name })
             }
         }
-
+    }
     @Test
-    fun `definitions endpoint should return paginated results and support query`(): Unit =
+    fun `definitions endpoint should return paginated results and support query`() {
         havingData {
             build1 has listOf(method1)
             test1 of session1 covers method1 with probesOf(1, 1) on build1
@@ -237,9 +247,10 @@ class TestSessionDetailApiTest : MetricsDatabaseTests({ default, metrics ->
                 assertEquals(test1.testName, data[0]["testName"])
             }
         }
+    }
 
     @Test
-    fun `file launches should sort by successRate and reject invalid sortBy`(): Unit =
+    fun `file launches should sort by successRate and reject invalid sortBy`() {
         havingData {
             build1 has listOf(method1)
             test1 of session1 covers method1 with probesOf(1, 1) on build1
@@ -260,9 +271,10 @@ class TestSessionDetailApiTest : MetricsDatabaseTests({ default, metrics ->
             assertEquals(HttpStatusCode.BadRequest, invalid.status)
             assertTrue(invalid.bodyAsText().contains("Invalid sortBy"))
         }
+    }
 
     @Test
-    fun `file launches filter-options should return paths and results`(): Unit =
+    fun `file launches filter-options should return paths and results`() {
         havingData {
             build1 has listOf(method1)
             test1 of session1 covers method1 with probesOf(1, 1) on build1
@@ -272,6 +284,7 @@ class TestSessionDetailApiTest : MetricsDatabaseTests({ default, metrics ->
             }.returnsSingle { data ->
                 @Suppress("UNCHECKED_CAST")
                 val testPaths = data["testPaths"] as List<String>
+
                 @Suppress("UNCHECKED_CAST")
                 val results = data["results"] as List<String>
                 assertTrue(testPaths.contains(testPath))
@@ -285,9 +298,10 @@ class TestSessionDetailApiTest : MetricsDatabaseTests({ default, metrics ->
                 assertTrue(data.contains(testPath))
             }
         }
+    }
 
     @Test
-    fun `launches should filter by testName and sort by testLaunches`(): Unit =
+    fun `launches should filter by testName and sort by testLaunches`() {
         havingData {
             build1 has listOf(method1)
             test1 of session1 covers method1 with probesOf(1, 1) on build1
@@ -316,9 +330,10 @@ class TestSessionDetailApiTest : MetricsDatabaseTests({ default, metrics ->
             assertEquals(HttpStatusCode.BadRequest, invalid.status)
             assertTrue(invalid.bodyAsText().contains("Invalid sortBy"))
         }
+    }
 
     @Test
-    fun `file launches page should return the page for a path`(): Unit =
+    fun `file launches page should return the page for a path`() {
         havingData {
             build1 has listOf(method1)
             test1 of session1 covers method1 with probesOf(1, 1) on build1
@@ -344,9 +359,9 @@ class TestSessionDetailApiTest : MetricsDatabaseTests({ default, metrics ->
             }
             assertEquals(HttpStatusCode.NotFound, missing.status)
         }
-
+    }
     @Test
-    fun `launches page should return the page for a launchId`(): Unit =
+    fun `launches page should return the page for a launchId`() {
         havingData {
             build1 has listOf(method1)
             test1 of session1 covers method1 with probesOf(1, 1) on build1
@@ -374,7 +389,7 @@ class TestSessionDetailApiTest : MetricsDatabaseTests({ default, metrics ->
             }
             assertEquals(HttpStatusCode.NotFound, missing.status)
         }
-
+    }
     @AfterEach
     fun cleanup() = withTransaction(RawDataWriterDatabaseConfig.database) {
         MethodCoverageTable.deleteAll()
