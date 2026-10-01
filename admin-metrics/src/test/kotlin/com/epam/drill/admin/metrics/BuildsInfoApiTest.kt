@@ -37,11 +37,46 @@ class BuildsInfoApiTest : MetricsDatabaseTests({ default, metrics ->
     MetricsDatabaseConfig.init(metrics)
 }) {
     private suspend fun TestDataDsl.initTestData() {
-        client.putBuildInfo(BuildInfoPayload(groupId = testGroup, appId = testApp, buildVersion = "1.0.0", branch = testBranch))
-        client.putBuildInfo(BuildInfoPayload(groupId = testGroup, appId = testApp, buildVersion = "2.0.0", branch = testBranch))
-        client.putBuildInfo(BuildInfoPayload(groupId = testGroup, appId = testApp, buildVersion = "3.0.0", branch = "develop"))
-        client.putBuildInfo(BuildInfoPayload(groupId = testGroup, appId = "app-2", buildVersion = "1.0.0", branch = testBranch))
-        client.putBuildInfo(BuildInfoPayload(groupId = "group-2", appId = testApp, buildVersion = "1.0.0", branch = testBranch))
+        client.putBuildInfo(
+            BuildInfoPayload(
+                groupId = testGroup,
+                appId = testApp,
+                buildVersion = "1.0.0",
+                branch = testBranch
+            )
+        )
+        client.putBuildInfo(
+            BuildInfoPayload(
+                groupId = testGroup,
+                appId = testApp,
+                buildVersion = "2.0.0",
+                branch = testBranch
+            )
+        )
+        client.putBuildInfo(
+            BuildInfoPayload(
+                groupId = testGroup,
+                appId = testApp,
+                buildVersion = "3.0.0",
+                branch = "develop"
+            )
+        )
+        client.putBuildInfo(
+            BuildInfoPayload(
+                groupId = testGroup,
+                appId = "app-2",
+                buildVersion = "1.0.0",
+                branch = testBranch
+            )
+        )
+        client.putBuildInfo(
+            BuildInfoPayload(
+                groupId = "group-2",
+                appId = testApp,
+                buildVersion = "1.0.0",
+                branch = testBranch
+            )
+        )
     }
 
     private suspend fun TestDataDsl.initEnvironmentData() {
@@ -76,7 +111,7 @@ class BuildsInfoApiTest : MetricsDatabaseTests({ default, metrics ->
 
 
     @Test
-    fun `given groupId and appId, get builds service should return builds only for specified group and app`() =
+    fun `given groupId and appId, get builds service should return builds only for specified group and app`() {
         havingData {
             initTestData()
         }.expectThat {
@@ -94,54 +129,59 @@ class BuildsInfoApiTest : MetricsDatabaseTests({ default, metrics ->
                 }
             }
         }
+    }
 
 
     @Test
-    fun `given branch, get metrics builds should return builds only for specified branch`() = havingData {
-        initTestData()
-    }.expectThat {
-        client.get("/metrics/builds") {
-            parameter("groupId", testGroup)
-            parameter("appId", testApp)
-            parameter("branches", testBranch)
-        }.apply {
-            assertEquals(HttpStatusCode.OK, status)
-            val json = JsonPath.parse(bodyAsText())
-            val data = json.read<List<Map<String, Any>>>("$.data")
-            assertEquals(2, data.size)
-            data.forEach { record ->
-                assertEquals(testGroup, record["groupId"])
-                assertEquals(testApp, record["appId"])
-                assertEquals(testBranch, record["branch"])
+    fun `given branch, get metrics builds should return builds only for specified branch`() {
+        havingData {
+            initTestData()
+        }.expectThat {
+            client.get("/metrics/builds") {
+                parameter("groupId", testGroup)
+                parameter("appId", testApp)
+                parameter("branches", testBranch)
+            }.apply {
+                assertEquals(HttpStatusCode.OK, status)
+                val json = JsonPath.parse(bodyAsText())
+                val data = json.read<List<Map<String, Any>>>("$.data")
+                assertEquals(2, data.size)
+                data.forEach { record ->
+                    assertEquals(testGroup, record["groupId"])
+                    assertEquals(testApp, record["appId"])
+                    assertEquals(testBranch, record["branch"])
+                }
             }
         }
     }
 
     @Test
-    fun `given envId, get builds service should return builds having only specified environment`() = havingData {
+    fun `given envId, get builds service should return builds having only specified environment`() {
+        havingData {
 
-        initTestData()
-        initEnvironmentData()
-    }.expectThat {
-        client.get("/metrics/builds") {
-            parameter("groupId", testGroup)
-            parameter("appId", testApp)
-            parameter("envIds", testEnv)
-        }.apply {
-            assertEquals(HttpStatusCode.OK, status)
-            val json = JsonPath.parse(bodyAsText())
-            val data = json.read<List<Map<String, Any>>>("$.data")
-            assertEquals(2, data.size)
-            data.forEach { record ->
-                assertEquals(testGroup, record["groupId"])
-                assertEquals(testApp, record["appId"])
-                assertTrue((record["envIds"] as List<String>).contains(testEnv))
+            initTestData()
+            initEnvironmentData()
+        }.expectThat {
+            client.get("/metrics/builds") {
+                parameter("groupId", testGroup)
+                parameter("appId", testApp)
+                parameter("envIds", testEnv)
+            }.apply {
+                assertEquals(HttpStatusCode.OK, status)
+                val json = JsonPath.parse(bodyAsText())
+                val data = json.read<List<Map<String, Any>>>("$.data")
+                assertEquals(2, data.size)
+                data.forEach { record ->
+                    assertEquals(testGroup, record["groupId"])
+                    assertEquals(testApp, record["appId"])
+                    assertTrue((record["envIds"] as List<String>).contains(testEnv))
+                }
             }
         }
     }
 
     @Test
-    fun `given page and size, get metrics builds should return builds only for specified page and size`() =
+    fun `given page and size, get metrics builds should return builds only for specified page and size`() {
         havingData {
             initTestData()
         }.expectThat {
@@ -173,9 +213,10 @@ class BuildsInfoApiTest : MetricsDatabaseTests({ default, metrics ->
                 assertEquals(3, total)
             }
         }
+    }
 
     @Test
-    fun `given groupId and appId, get app branches should return distinct branches for the app`() =
+    fun `given groupId and appId, get app branches should return distinct branches for the app`() {
         havingData {
             initTestData()
         }.expectThat {
@@ -189,45 +230,71 @@ class BuildsInfoApiTest : MetricsDatabaseTests({ default, metrics ->
                 assertEquals(listOf("develop", testBranch), data)
             }
         }
-
+    }
     @Test
-    fun `given buildVersion, get builds should return only builds with specified buildVersion`() = havingData {
-        initTestData()
-    }.expectThat {
-        client.get("/metrics/builds") {
-            parameter("groupId", testGroup)
-            parameter("appId", testApp)
-            parameter("buildVersion", "1.0.0")
-        }.apply {
-            assertEquals(HttpStatusCode.OK, status)
-            val json = JsonPath.parse(bodyAsText())
-            val data = json.read<List<Map<String, Any>>>("$.data")
-            assertEquals(1, data.size)
-            assertEquals("1.0.0", data[0]["buildVersion"])
+    fun `given buildVersion, get builds should return only builds with specified buildVersion`() {
+        havingData {
+            initTestData()
+        }.expectThat {
+            client.get("/metrics/builds") {
+                parameter("groupId", testGroup)
+                parameter("appId", testApp)
+                parameter("buildVersion", "1.0.0")
+            }.apply {
+                assertEquals(HttpStatusCode.OK, status)
+                val json = JsonPath.parse(bodyAsText())
+                val data = json.read<List<Map<String, Any>>>("$.data")
+                assertEquals(1, data.size)
+                assertEquals("1.0.0", data[0]["buildVersion"])
+            }
         }
     }
-
     @Test
-    fun `given commitSha, get builds should return only builds with specified commitSha`() = havingData {
-        client.putBuildInfo(BuildInfoPayload(groupId = testGroup, appId = testApp, commitSha = "abc111", buildVersion = "1.0.0", branch = testBranch))
-        client.putBuildInfo(BuildInfoPayload(groupId = testGroup, appId = testApp, commitSha = "def222", buildVersion = "2.0.0", branch = testBranch))
-        client.putBuildInfo(BuildInfoPayload(groupId = testGroup, appId = testApp, commitSha = "ghi333", buildVersion = "3.0.0", branch = "develop"))
-    }.expectThat {
-        client.get("/metrics/builds") {
-            parameter("groupId", testGroup)
-            parameter("appId", testApp)
-            parameter("commitSha", "abc111")
-        }.apply {
-            assertEquals(HttpStatusCode.OK, status)
-            val json = JsonPath.parse(bodyAsText())
-            val data = json.read<List<Map<String, Any>>>("$.data")
-            assertEquals(1, data.size)
-            assertEquals("abc111", data[0]["commitSha"])
+    fun `given commitSha, get builds should return only builds with specified commitSha`() {
+        havingData {
+            client.putBuildInfo(
+                BuildInfoPayload(
+                    groupId = testGroup,
+                    appId = testApp,
+                    commitSha = "abc111",
+                    buildVersion = "1.0.0",
+                    branch = testBranch
+                )
+            )
+            client.putBuildInfo(
+                BuildInfoPayload(
+                    groupId = testGroup,
+                    appId = testApp,
+                    commitSha = "def222",
+                    buildVersion = "2.0.0",
+                    branch = testBranch
+                )
+            )
+            client.putBuildInfo(
+                BuildInfoPayload(
+                    groupId = testGroup,
+                    appId = testApp,
+                    commitSha = "ghi333",
+                    buildVersion = "3.0.0",
+                    branch = "develop"
+                )
+            )
+        }.expectThat {
+            client.get("/metrics/builds") {
+                parameter("groupId", testGroup)
+                parameter("appId", testApp)
+                parameter("commitSha", "abc111")
+            }.apply {
+                assertEquals(HttpStatusCode.OK, status)
+                val json = JsonPath.parse(bodyAsText())
+                val data = json.read<List<Map<String, Any>>>("$.data")
+                assertEquals(1, data.size)
+                assertEquals("abc111", data[0]["commitSha"])
+            }
         }
     }
-
     @Test
-    fun `given sortBy BUILD_VERSION and sortOrder ASC, get builds should return builds sorted by buildVersion ascending`() =
+    fun `given sortBy BUILD_VERSION and sortOrder ASC, get builds should return builds sorted by buildVersion ascending`() {
         havingData {
             initTestData()
         }.expectThat {
@@ -246,9 +313,10 @@ class BuildsInfoApiTest : MetricsDatabaseTests({ default, metrics ->
                 assertEquals("3.0.0", data[2]["buildVersion"])
             }
         }
+    }
 
     @Test
-    fun `given groupId and appId, get app env ids should return distinct env ids for the app`() =
+    fun `given groupId and appId, get app env ids should return distinct env ids for the app`() {
         havingData {
             initTestData()
             initEnvironmentData()
@@ -263,9 +331,9 @@ class BuildsInfoApiTest : MetricsDatabaseTests({ default, metrics ->
                 assertEquals(listOf(testEnv, "env-2"), data)
             }
         }
-
+    }
     @Test
-    fun `given sortBy BUILD_VERSION and sortOrder DESC, get builds should return builds sorted by buildVersion descending`() =
+    fun `given sortBy BUILD_VERSION and sortOrder DESC, get builds should return builds sorted by buildVersion descending`() {
         havingData {
             initTestData()
         }.expectThat {
@@ -284,6 +352,7 @@ class BuildsInfoApiTest : MetricsDatabaseTests({ default, metrics ->
                 assertEquals("1.0.0", data[2]["buildVersion"])
             }
         }
+    }
 
     @AfterEach
     fun clearAll() = withTransaction(RawDataWriterDatabaseConfig.database) {

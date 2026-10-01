@@ -45,19 +45,9 @@ fun waitUntilInBlocking(
     onAssertionFailed: suspend (AssertionError) -> Unit = {},
     assertion: suspend () -> Unit
 ) {
-    waitUntilIn {
-        runCatching {
-            runBlocking {
-                assertion()
-            }
-        }.onFailure { e ->
-            if (e is AssertionError) {
-                runCatching {
-                    runBlocking {
-                        onAssertionFailed(e)
-                    }
-                }
-            }
+
+        runBlocking {
+            assertion()
         }
-    }
+
 }
