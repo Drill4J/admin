@@ -35,6 +35,7 @@ class EtlServiceImpl(
     private val historicalEtlName: String,
     private val testSessionCoverageEtlName: String,
     private val mergedCoverageEtlName: String,
+    private val buildCoverageEtlName: String,
     private val settingsService: SettingsService,
     private val maxWorkers: Int,
 ) : EtlService {
@@ -184,6 +185,19 @@ class EtlServiceImpl(
         val context = EtlContext(groupId = groupId, appId = appId)
         val period = EtlPeriod(from, to)
         return launcher.rerun(mergedCoverageEtlName, context, period, 1, withDataDeletion = true)
+            .map { it.toJobView() }
+    }
+
+    override suspend fun reloadBuildCoverage(
+        groupId: String,
+        appId: String,
+        buildId: String,
+        from: LocalDate?,
+        to: LocalDate?
+    ): List<EtlJobView> {
+        val context = EtlContext(groupId = groupId, appId = appId, buildId = buildId)
+        val period = EtlPeriod(from, to)
+        return launcher.rerun(buildCoverageEtlName, context, period, 1, withDataDeletion = true)
             .map { it.toJobView() }
     }
 

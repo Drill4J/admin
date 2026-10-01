@@ -689,6 +689,26 @@ class MetricsRepositoryImpl : MetricsRepository {
         } ?: 0L
     }
 
+    override suspend fun getAllTestSessionBuilds(
+        groupId: String,
+        testSessionId: String
+    ): List<Map<String, Any?>>  = transaction {
+        executeQueryReturnMap {
+            append(
+                """
+            SELECT
+                tsb.app_id,
+                tsb.build_id    
+            FROM metrics.test_session_builds tsb   
+            WHERE tsb.group_id = ?
+                AND tsb.test_session_id = ?
+                """.trimIndent(),
+                groupId,
+                testSessionId,
+            )
+        }
+    }
+
     override suspend fun getTestSessionBuilds(
         groupId: String,
         testSessionId: String,
@@ -2916,18 +2936,6 @@ class MetricsRepositoryImpl : MetricsRepository {
             } else {
                 null
             }
-        }
-    }
-
-    override suspend fun getTestSessionApps(groupId: String, testSessionId: String): List<String> {
-        return transaction {
-            executeQueryReturnMap(
-                """
-                SELECT app_id
-                FROM metrics.test_session_builds
-                WHERE group_id = ? AND test_session_id = ?
-                """.trimIndent(), groupId, testSessionId
-            ).mapNotNull { it["build_id"] as? String }
         }
     }
 

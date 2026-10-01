@@ -52,13 +52,18 @@ class DeleteMetricsDataJob(
                     val testProjectId = context.mergedJobDataMap.getString("testProjectId")
                     val testSessionId = context.mergedJobDataMap.getString("testSessionId")
                     val period = metricsRepository.getTestSessionDateRange(groupId, testSessionId)
-                    val apps = metricsRepository.getTestSessionApps(groupId, testSessionId)
+                    val builds = metricsRepository.getAllTestSessionBuilds(groupId, testSessionId).associate {
+                        it["app_id"] as String to it["build_id"] as String
+                    }
                     metricsRepository.deleteAllTestDataByTestSessionId(groupId, testProjectId, testSessionId)
                     period?.let { (startedAt, stoppedAt) ->
                         val from = startedAt.atZone(ZoneOffset.systemDefault()).toLocalDate()
                         val to = stoppedAt.atZone(ZoneOffset.systemDefault()).toLocalDate()
-                        apps.forEach { appId ->
+                        builds.keys.forEach { appId ->
                             etlService.reloadMergedCoverage(groupId, appId, from, to)
+                        }
+                        builds.forEach { (appId, buildId) ->
+                            etlService.reloadBuildCoverage(groupId, appId, buildId, from, to)
                         }
                     }
                 }
