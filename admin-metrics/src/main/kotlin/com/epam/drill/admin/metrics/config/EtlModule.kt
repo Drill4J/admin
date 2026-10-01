@@ -50,6 +50,7 @@ const val DEFAULT_ETL = "incremental"
 const val HISTORICAL_ETL = "historical"
 const val TEST_SESSION_COVERAGE_ETL = "testSessionCoverage"
 const val MERGED_COVERAGE_ETL = "merged_coverage"
+const val BUILD_COVERAGE_ETL = "build_coverage"
 
 val etlDIModule
     get() = DI.Module("etlServices") {
@@ -171,6 +172,24 @@ val etlDIModule
                 )
             }
         }
+        bind<EtlOrchestrator>(tag = BUILD_COVERAGE_ETL) with singleton {
+            val etlConfig = instance<EtlConfig>()
+            with(etlConfig) {
+                EtlOrchestratorImpl(
+                    name = BUILD_COVERAGE_ETL,
+                    pipelines = listOf(
+                        historicalBuildMethodCoveragePipeline,
+                    ),
+                    metadataRepository = instance(),
+                    jobsRepository = instance(),
+                    metrics = metrics,
+                    consistencyWindow = consistencyWindow,
+                    processingDelay = processingDelay,
+                    bufferSize = bufferSize,
+                    lockLeaseSeconds = lockLeaseSeconds,
+                )
+            }
+        }
 
         bind<EtlWorkerPool>() with singleton {
             val etlConfig = instance<EtlConfig>()
@@ -183,7 +202,8 @@ val etlDIModule
                     instance<EtlOrchestrator>(tag = DEFAULT_ETL),
                     instance<EtlOrchestrator>(tag = HISTORICAL_ETL),
                     instance<EtlOrchestrator>(tag = TEST_SESSION_COVERAGE_ETL),
-                    instance<EtlOrchestrator>(tag = MERGED_COVERAGE_ETL)
+                    instance<EtlOrchestrator>(tag = MERGED_COVERAGE_ETL),
+                    instance<EtlOrchestrator>(tag = BUILD_COVERAGE_ETL),
                 ),
                 jobsRepository = instance(),
                 lockLeaseSeconds = etlConfig.lockLeaseSeconds,
@@ -199,6 +219,7 @@ val etlDIModule
                 historicalEtlName = HISTORICAL_ETL,
                 testSessionCoverageEtlName = TEST_SESSION_COVERAGE_ETL,
                 mergedCoverageEtlName = MERGED_COVERAGE_ETL,
+                buildCoverageEtlName = BUILD_COVERAGE_ETL,
                 settingsService = instance(),
                 maxWorkers = instance<EtlConfig>().maxWorkers,
             )
