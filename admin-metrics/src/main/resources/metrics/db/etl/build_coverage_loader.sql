@@ -1,0 +1,39 @@
+INSERT INTO metrics.build_coverage (
+    group_id,
+    app_id,
+    build_id,
+    app_env_id,
+    test_result,
+    test_session_id,
+    test_project_id,
+    created_at_day,
+    updated_at_day,
+    probes
+)
+VALUES (
+    :group_id,
+    :app_id,
+    :build_id,
+    :app_env_id,
+    :test_result,
+    :test_session_id,
+    :test_project_id,
+    :created_at_day,
+    :created_at_day,
+    :probes
+)
+ON CONFLICT (
+    group_id,
+    app_id,
+    build_id,
+    created_at_day,
+    COALESCE(app_env_id, ''),
+    COALESCE(test_result, ''),
+    COALESCE(test_session_id, ''),
+    COALESCE(test_project_id, '')
+)
+DO UPDATE
+SET
+    probes = build_coverage.probes | EXCLUDED.probes,
+    updated_at_day = EXCLUDED.created_at_day
+WHERE build_coverage.probes IS DISTINCT FROM EXCLUDED.probes;

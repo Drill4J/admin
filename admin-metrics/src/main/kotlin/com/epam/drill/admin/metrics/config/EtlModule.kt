@@ -88,10 +88,12 @@ val etlDIModule
                         testSessionBuildsPipeline,
                         // Coverage extractor group
                         buildMethodCoveragePipeline,
+                        buildCoveragePipeline,
                         methodCoveragePipeline,
                         testSessionBuildsFromCoveragePipeline,
                         // Test-launch coverage extractor group
                         buildMethodCoverageFromTestLaunchesPipeline,
+                        buildCoverageFromTestLaunchesPipeline,
                         methodCoverageFromTestLaunchesPipeline,
                         test2CodeMappingPipeline,
                         testSessionBuildsFromTestLaunchesPipeline,
@@ -122,6 +124,7 @@ val etlDIModule
                         testSessionBuildsPipeline,
                         // Coverage extractor group
                         historicalBuildMethodCoveragePipeline,
+                        historicalBuildCoveragePipeline,
                         historicalMethodCoveragePipeline,
                         historicalTest2CodeMappingPipeline,
                         historicalTestSessionBuildsPipeline,
@@ -179,6 +182,7 @@ val etlDIModule
                     name = BUILD_COVERAGE_ETL,
                     pipelines = listOf(
                         historicalBuildMethodCoveragePipeline,
+                        historicalBuildCoveragePipeline,
                     ),
                     metadataRepository = instance(),
                     jobsRepository = instance(),
