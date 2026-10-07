@@ -8,7 +8,8 @@ INSERT INTO metrics.build_coverage (
     test_project_id,
     created_at_day,
     updated_at_day,
-    probes
+    code_probes,
+    method_probes
 )
 VALUES (
     :group_id,
@@ -20,7 +21,8 @@ VALUES (
     :test_project_id,
     :created_at_day,
     :created_at_day,
-    :probes
+    :code_probes,
+    :method_probes
 )
 ON CONFLICT (
     group_id,
@@ -34,6 +36,7 @@ ON CONFLICT (
 )
 DO UPDATE
 SET
-    probes = build_coverage.probes | EXCLUDED.probes,
-    updated_at_day = EXCLUDED.created_at_day
-WHERE build_coverage.probes IS DISTINCT FROM EXCLUDED.probes;
+    code_probes = build_coverage.code_probes | EXCLUDED.code_probes,
+    method_probes = build_coverage.method_probes | EXCLUDED.method_probes
+WHERE build_coverage.code_probes IS DISTINCT FROM EXCLUDED.code_probes
+   OR build_coverage.method_probes IS DISTINCT FROM EXCLUDED.method_probes;

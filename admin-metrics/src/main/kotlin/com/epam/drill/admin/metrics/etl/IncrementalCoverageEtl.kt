@@ -281,7 +281,7 @@ internal fun mergeProbes(current: Any?, next: Any?): PGobject {
     }
 }
 
-internal fun EtlConfig.coverageAggregator(name: String, groupKeys: List<String>): UntypedAggregationTransformer {
+internal fun EtlConfig.coverageAggregator(name: String, groupKeys: List<String>, probeKeys: List<String> = listOf("probes")): UntypedAggregationTransformer {
     return UntypedAggregationTransformer(
         name = name,
         bufferSize = transformationBufferSize,
@@ -290,7 +290,9 @@ internal fun EtlConfig.coverageAggregator(name: String, groupKeys: List<String>)
         groupKeys = groupKeys,
         aggregate = { current, next ->
             val map = HashMap<String, Any?>(current)
-            map["probes"] = mergeProbes(current["probes"], next["probes"])
+            probeKeys.forEach { key ->
+                map[key] = mergeProbes(current[key], next[key])
+            }
             UntypedRow(next.timestamp, map)
         },
     )

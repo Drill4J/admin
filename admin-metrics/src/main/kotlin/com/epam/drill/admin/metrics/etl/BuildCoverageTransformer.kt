@@ -40,8 +40,10 @@ class BuildCoverageTransformer(
 
     private val logger = KotlinLogging.logger {}
 
-    private data class MethodProbeInfo(val probeStartPos: Int, val probesCount: Int)
-    private data class BuildProbeLayout(val methods: Map<String, MethodProbeInfo>, val totalProbes: Int)
+    private data class MethodProbeInfo(val methodPos: Int, val probeStartPos: Int, val probesCount: Int)
+    private data class BuildProbeLayout(val methods: Map<String, MethodProbeInfo>, val totalProbes: Int) {
+        val totalMethods = methods.size
+    }
 
     override suspend fun transform(
         context: EtlContext,
@@ -63,11 +65,21 @@ class BuildCoverageTransformer(
                 loadBuildProbeLayout(groupId, appId, buildId)
             }
 
-            val info = layout.methods[methodId] ?: error("No probe layout info for method_id $methodId in build $buildId")
+            val info = layout.methods[methodId] ?: run {
+                logger.warn { "ETL transformer [$name] skipping method [$methodId] because it is not found in build [$buildId]" }
+                onTransformationProgress(row.timestamp)
+                return@collect
+            }
 
-            val buildProbes = positionProbes(probes, info.probeStartPos, info.probesCount, layout.totalProbes)
+            val codeProbes = positionProbes(probes, info.probeStartPos, info.probesCount, layout.totalProbes)
+            val testedMethod = probes.value?.contains('1') ?: false
+            val singleProbe = PGobject().apply {
+                type = "varbit"
+                value = if (testedMethod) "1" else "0"
+            }
+            val methodProbes = positionProbes(singleProbe, info.methodPos, 1, layout.totalMethods)
 
-            emit(UntypedRow(row.timestamp, (row as Map<String, Any?>) + ("probes" to buildProbes)))
+            emit(UntypedRow(row.timestamp, (row as Map<String, Any?>) + ("code_probes" to codeProbes) + ("method_probes" to methodProbes)))
         }
     }
 
@@ -93,11 +105,11 @@ class BuildCoverageTransformer(
                 *args.toTypedArray()
             )
         }
-        rows.forEach { row ->
+        rows.forEachIndexed { methodPos, row ->
             val mid = row["method_id"] as String
             val probeStartPos = (row["probe_start_pos"] as Number).toInt()
             val probesCount = (row["probes_count"] as Number).toInt()
-            methods[mid] = MethodProbeInfo(probeStartPos, probesCount)
+            methods[mid] = MethodProbeInfo(methodPos, probeStartPos, probesCount)
         }
         val totalProbes = methods.values.maxOfOrNull { it.probeStartPos + it.probesCount } ?: 0
         logger.debug { "ETL transformer [$name] loaded probe layout for build $buildId: ${methods.size} methods, $totalProbes total probes" }
