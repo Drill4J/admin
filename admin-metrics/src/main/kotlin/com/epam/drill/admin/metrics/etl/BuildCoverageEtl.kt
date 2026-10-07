@@ -35,7 +35,7 @@ val EtlConfig.buildCoverageLoader
 
 val EtlConfig.buildCoverageAggregator
     get() = coverageAggregator(
-        "build_coverage_aggregator", listOf(
+        name = "build_coverage_aggregator", groupKeys = listOf(
             "group_id",
             "app_id",
             "build_id",
@@ -45,6 +45,9 @@ val EtlConfig.buildCoverageAggregator
             "test_task_id",
             "test_project_id",
             "created_at_day"
+        ), probeKeys = listOf(
+            "code_probes",
+            "method_probes"
         )
     )
 
