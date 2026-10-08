@@ -327,6 +327,228 @@ END;
 $$ LANGUAGE plpgsql STABLE PARALLEL SAFE;
 
 -----------------------------------------------------------------
+-- Function to get builds with coverage information
+-- @param input_build_id: The ID of the build
+-- @param input_build_ids: Array of build IDs
+-- @param input_test_session_id: Optional test session ID to filter coverage
+-- @param input_coverage_app_env_ids: Array of app environment IDs to filter coverage
+-- @param input_coverage_branches: Array of branches to filter coverage
+-- @param input_coverage_test_results: Array of test results to filter coverage
+-- @param input_coverage_test_project_ids: Array of test project IDs to filter coverage
+-- @param input_coverage_period_from: Optional timestamp to filter coverage by creation date
+-- @param is_smart_coverage_before_build: Boolean value indicating whether smart coverage should only be considered up to the build date
+-- @returns TABLE: A table containing builds with coverage information
+-----------------------------------------------------------------
+DROP FUNCTION IF EXISTS metrics.get_builds_with_coverage_v2 CASCADE;
+CREATE OR REPLACE FUNCTION metrics.get_builds_with_coverage_v2(
+    input_build_id VARCHAR DEFAULT NULL,
+    input_build_ids VARCHAR[] DEFAULT NULL,
+    input_test_session_id VARCHAR DEFAULT NULL,
+    input_baseline_build_id VARCHAR DEFAULT NULL,
+
+    input_coverage_app_env_ids VARCHAR[] DEFAULT NULL,
+    input_coverage_branches VARCHAR[] DEFAULT NULL,
+    input_coverage_test_results VARCHAR[] DEFAULT NULL,
+    input_coverage_test_project_ids VARCHAR[] DEFAULT NULL,
+    input_coverage_period_from TIMESTAMP DEFAULT NULL,
+
+    include_smart_coverage BOOLEAN DEFAULT TRUE,
+    is_smart_coverage_before_build BOOLEAN DEFAULT TRUE
+)
+RETURNS TABLE (
+    group_id VARCHAR,
+    app_id VARCHAR,
+    build_id VARCHAR,
+
+    total_probes INT,
+    isolated_covered_probes INT,
+    isolated_missed_probes INT,
+    isolated_probes_coverage_ratio FLOAT,
+    aggregated_covered_probes INT,
+    aggregated_missed_probes INT,
+    aggregated_probes_coverage_ratio FLOAT,
+
+    total_methods INT,
+    isolated_tested_methods INT,
+    isolated_missed_methods INT,
+    isolated_methods_coverage_ratio FLOAT,
+    aggregated_tested_methods INT,
+    aggregated_missed_methods INT,
+    aggregated_methods_coverage_ratio FLOAT,
+
+    total_change_probes INT,
+    isolated_covered_change_probes INT,
+    isolated_missed_change_probes INT,
+    isolated_change_probes_coverage_ratio FLOAT,
+    aggregated_covered_change_probes INT,
+    aggregated_missed_change_probes INT,
+    aggregated_change_probes_coverage_ratio FLOAT,
+
+    total_change_methods INT,
+    isolated_tested_change_methods INT,
+    isolated_missed_change_methods INT,
+    isolated_change_methods_coverage_ratio FLOAT,
+    aggregated_tested_change_methods INT,
+    aggregated_missed_change_methods INT,
+    aggregated_change_methods_coverage_ratio FLOAT
+) AS $$
+DECLARE
+    _group_id VARCHAR;
+    _app_id VARCHAR;
+    _build_ids VARCHAR[];
+BEGIN
+    IF input_build_id IS null AND input_build_ids IS null THEN
+        RAISE EXCEPTION 'One of the following parameters must be set: input_build_id, input_build_ids';
+    END IF;
+    _build_ids = CASE WHEN input_build_ids IS null THEN array[input_build_id] ELSE input_build_ids END;
+    _group_id = split_part(_build_ids[1], ':', 1);
+    _app_id = split_part(_build_ids[1], ':', 2);
+
+    RETURN QUERY
+        WITH
+            build_method_changes AS (
+                SELECT
+                    b.group_id,
+                    b.app_id,
+                    b.build_id,
+                    bm.method_id,
+                    (CASE WHEN baseline_bm.method_id IS NULL THEN m.probes_count ELSE 0 END) AS change_probes_count,
+                    (CASE WHEN baseline_bm.method_id IS NULL THEN 1 ELSE 0 END) AS change_methods_count,
+                    REPEAT(CASE WHEN baseline_bm.method_id IS NULL THEN '1' ELSE '0' END, m.probes_count::INT)::VARBIT AS mask
+                FROM metrics.builds b
+                         JOIN metrics.build_methods bm ON b.group_id = bm.group_id AND b.app_id = bm.app_id AND b.build_id = bm.build_id
+                         JOIN metrics.methods m ON m.group_id = bm.group_id AND m.app_id = bm.app_id AND m.method_id = bm.method_id
+                         LEFT JOIN metrics.build_methods baseline_bm ON baseline_bm.group_id = bm.group_id AND baseline_bm.app_id = bm.app_id
+                    AND baseline_bm.build_id = input_baseline_build_id
+                    AND baseline_bm.method_id = bm.method_id
+                WHERE b.group_id = _group_id
+                  AND b.app_id = _app_id
+                  AND b.build_id = ANY(_build_ids)
+                ORDER BY b.group_id, b.app_id, b.build_id, bm.method_id
+            ),
+            build_changes AS (
+                SELECT
+                    m.group_id,
+                    m.app_id,
+                    m.build_id,
+                    SUM(m.change_probes_count) AS total_change_probes,
+                    SUM(m.change_methods_count) AS total_change_methods,
+                    STRING_AGG(m.mask::TEXT, '' ORDER BY m.method_id)::VARBIT AS code_mask,
+                    STRING_AGG(CASE WHEN m.change_methods_count = 1 THEN '1' ELSE '0' END, '' ORDER BY m.method_id)::VARBIT AS method_mask
+                FROM build_method_changes m
+                GROUP BY m.group_id, m.app_id, m.build_id
+                HAVING SUM(m.change_methods_count) > 0
+            ),
+            method_smart_coverage AS (
+                SELECT
+                    bm.group_id,
+                    bm.app_id,
+                    bm.build_id,
+                    bm.method_id,
+                    BIT_OR(COALESCE(sc.probes, REPEAT('0', m.probes_count::INT)::VARBIT)) AS probes
+                FROM metrics.builds b
+                         JOIN metrics.build_methods bm ON b.group_id = bm.group_id AND b.app_id = bm.app_id AND b.build_id = bm.build_id
+                         JOIN metrics.methods m ON m.group_id = bm.group_id AND m.app_id = bm.app_id AND m.method_id = bm.method_id
+                         LEFT JOIN metrics.method_daily_coverage sc ON sc.group_id = b.group_id AND sc.app_id = b.app_id AND sc.method_id = bm.method_id
+                    -- Filters by smart coverage
+                    AND (is_smart_coverage_before_build IS false OR sc.created_at_day <= b.created_at_day)
+                    AND (input_coverage_branches IS NULL OR sc.branch = ANY(input_coverage_branches::VARCHAR[]))
+                    AND (input_coverage_app_env_ids IS NULL OR sc.app_env_id = ANY(input_coverage_app_env_ids::VARCHAR[]))
+                    AND (input_coverage_test_results IS NULL OR sc.test_result = ANY(input_coverage_test_results::VARCHAR[]))
+                    AND (input_coverage_test_project_ids IS NULL OR sc.test_project_id = ANY(input_coverage_test_project_ids::VARCHAR[]))
+                    AND (input_coverage_period_from IS NULL OR sc.created_at_day >= input_coverage_period_from)
+                WHERE b.group_id = _group_id
+                  AND b.app_id = _app_id
+                  AND b.build_id = ANY(_build_ids)
+                GROUP BY bm.group_id, bm.app_id, bm.build_id, bm.method_id
+            ),
+            build_smart_coverage AS (
+                SELECT
+                    c.group_id,
+                    c.app_id,
+                    c.build_id,
+                    STRING_AGG(c.probes::TEXT, '' ORDER BY c.method_id)::VARBIT AS code_probes,
+                    STRING_AGG(CASE WHEN BIT_COUNT(c.probes) > 0 THEN '1' ELSE '0' END, '' ORDER BY c.method_id)::VARBIT AS method_probes
+                FROM method_smart_coverage c
+                GROUP BY c.group_id, c.app_id, c.build_id
+            ),
+            builds_with_coverage AS (
+                SELECT
+                    b.group_id,
+                    b.app_id,
+                    b.build_id,
+                    MIN(b.total_probes) AS total_probes,
+                    MIN(b.total_methods) AS total_methods,
+                    BIT_COUNT(BIT_OR(ic.code_probes)) AS isolated_covered_probes,
+                    BIT_COUNT(BIT_OR(ic.method_probes)) AS isolated_tested_methods,
+                    BIT_COUNT(BIT_OR(COALESCE(sc.code_probes, REPEAT('0', b.total_probes::INT)::VARBIT) | COALESCE(ic.code_probes, REPEAT('0', b.total_probes::INT)::VARBIT))) AS covered_probes,
+                    BIT_COUNT(BIT_OR(COALESCE(sc.method_probes, REPEAT('0', b.total_methods::INT)::VARBIT) | COALESCE(ic.method_probes, REPEAT('0', b.total_methods::INT)::VARBIT))) AS tested_methods,
+
+                    MIN(bc.total_change_probes) AS total_change_probes,
+                    MIN(bc.total_change_methods) AS total_change_methods,
+                    BIT_COUNT(BIT_OR(ic.code_probes & bc.code_mask)) AS isolated_covered_change_probes,
+                    BIT_COUNT(BIT_OR(ic.method_probes & bc.method_mask)) AS isolated_tested_change_methods,
+                    BIT_COUNT(BIT_OR(COALESCE(sc.code_probes, REPEAT('0', b.total_probes::INT)::VARBIT) | COALESCE(ic.code_probes, REPEAT('0', b.total_probes::INT)::VARBIT) & bc.code_mask)) AS covered_change_probes,
+                    BIT_COUNT(BIT_OR(COALESCE(sc.method_probes, REPEAT('0', b.total_methods::INT)::VARBIT) | COALESCE(ic.method_probes, REPEAT('0', b.total_methods::INT)::VARBIT) & bc.method_mask)) AS tested_change_methods
+                FROM metrics.builds_with_statistics b
+                         LEFT JOIN metrics.build_coverage ic ON ic.group_id = b.group_id AND ic.app_id = b.app_id AND ic.build_id = b.build_id
+                    -- Filters by isolated coverage
+                    AND (input_test_session_id IS NULL OR ic.test_session_id = input_test_session_id)
+                    AND (input_coverage_app_env_ids IS NULL OR ic.app_env_id = ANY(input_coverage_app_env_ids::VARCHAR[]))
+                    AND (input_coverage_test_results IS NULL OR ic.test_result = ANY(input_coverage_test_results::VARCHAR[]))
+                    AND (input_coverage_test_project_ids IS NULL OR ic.test_project_id = ANY(input_coverage_test_project_ids::VARCHAR[]))
+                    AND (input_coverage_period_from IS NULL OR ic.created_at_day >= input_coverage_period_from)
+                         LEFT JOIN build_smart_coverage sc ON include_smart_coverage IS TRUE
+                    AND sc.group_id = b.group_id AND sc.app_id = b.app_id AND sc.build_id = b.build_id
+                         LEFT JOIN build_changes bc ON input_baseline_build_id IS NOT NULL
+                    AND bc.group_id = b.group_id AND bc.app_id = b.app_id AND bc.build_Id = b.build_id
+                WHERE b.group_id = _group_id
+                  AND b.app_id = _app_id
+                  AND b.build_id = ANY(_build_ids)
+                GROUP BY b.group_id, b.app_id, b.build_id
+            )
+        SELECT
+            c.group_id::VARCHAR,
+            c.app_id::VARCHAR,
+            c.build_id::VARCHAR,
+
+            c.total_probes::INT,
+            c.isolated_covered_probes::INT,
+            (c.total_probes - c.isolated_covered_probes)::INT AS isolated_missed_probes,
+            COALESCE(c.isolated_covered_probes::FLOAT / COALESCE(c.total_probes, 0), 0.0)::FLOAT AS isolated_probes_coverage_ratio,
+            c.covered_probes::INT AS aggregated_covered_probes,
+            (c.total_probes - c.covered_probes)::INT AS aggregated_missed_probes,
+            COALESCE(c.covered_probes::FLOAT / COALESCE(c.total_probes, 0), 0.0)::FLOAT AS aggregated_probes_coverage_ratio,
+
+            c.total_methods::INT,
+            c.isolated_tested_methods::INT AS isolated_tested_methods,
+            (c.total_methods - c.isolated_tested_methods)::INT AS isolated_missed_methods,
+            COALESCE(c.isolated_tested_methods::FLOAT / COALESCE(c.total_methods, 0), 0.0)::FLOAT AS isolated_methods_coverage_ratio,
+            c.tested_methods::INT AS aggregated_tested_methods,
+            (c.total_methods - c.tested_methods)::INT AS aggregated_missed_methods,
+            COALESCE(c.tested_methods::FLOAT / COALESCE(c.total_methods, 0), 0.0)::FLOAT AS aggregated_methods_coverage_ratio,
+
+            c.total_change_probes::INT,
+            c.isolated_covered_change_probes::INT,
+            (c.total_change_probes - c.isolated_covered_change_probes)::INT AS isolated_missed_change_probes,
+            COALESCE(c.isolated_covered_change_probes::FLOAT / COALESCE(c.total_change_probes, 0), 0.0)::FLOAT AS isolated_change_probes_coverage_ratio,
+            c.covered_change_probes::INT AS aggregated_covered_change_probes,
+            (c.total_change_probes - c.covered_change_probes)::INT AS aggregated_missed_change_probes,
+            COALESCE(c.covered_change_probes::FLOAT / COALESCE(c.total_change_probes, 0), 0.0)::FLOAT AS aggregated_change_probes_coverage_ratio,
+
+            c.total_change_methods::INT,
+            c.isolated_tested_change_methods::INT AS isolated_tested_change_methods,
+            (c.total_change_methods - c.isolated_tested_change_methods)::INT AS isolated_missed_change_methods,
+            COALESCE(c.isolated_tested_change_methods::FLOAT / COALESCE(c.total_change_methods, 0), 0.0)::FLOAT AS isolated_change_methods_coverage_ratio,
+            c.tested_change_methods::INT AS aggregated_tested_change_methods,
+            (c.total_change_methods - c.tested_change_methods)::INT AS aggregated_missed_change_methods,
+            COALESCE(c.tested_change_methods::FLOAT / COALESCE(c.total_change_methods, 0), 0.0)::FLOAT AS aggregated_change_methods_coverage_ratio
+        FROM builds_with_coverage c
+    ;
+END;
+$$ LANGUAGE plpgsql STABLE PARALLEL SAFE;
+
+-----------------------------------------------------------------
 -- Function to get changes in methods between two builds
 -- @param input_build_id: The ID of the target build to compare
 -- @param input_baseline_build_id: The ID of the baseline build for comparison

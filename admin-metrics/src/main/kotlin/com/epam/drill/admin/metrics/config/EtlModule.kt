@@ -86,7 +86,7 @@ val etlDIModule
                         testDefinitionsPipeline,
                         testSessionsPipeline,
                         testSessionBuildsPipeline,
-                        // Coverage extractor group
+                        // Global coverage extractor group
                         buildMethodCoveragePipeline,
                         buildCoveragePipeline,
                         methodCoveragePipeline,

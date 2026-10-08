@@ -10,6 +10,7 @@ JOIN raw_data.methods m ON m.method_id = bm.method_id AND m.app_id = bm.app_id A
 WHERE bm.group_id = :group_id
     AND bm.created_at > :since_timestamp
     AND bm.created_at <= :until_timestamp
+    AND m.probes_count > 0
     AND NOT EXISTS (
         SELECT 1
         FROM raw_data.method_ignore_rules r
