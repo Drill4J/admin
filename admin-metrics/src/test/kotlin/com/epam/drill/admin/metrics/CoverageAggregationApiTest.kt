@@ -16,33 +16,17 @@
 package com.epam.drill.admin.metrics
 
 import com.epam.drill.admin.common.service.generateBuildId
-import com.epam.drill.admin.metrics.config.MetricsDatabaseConfig
-import com.epam.drill.admin.test.MetricsDatabaseTests
-import com.epam.drill.admin.test.withTransaction
-import com.epam.drill.admin.writer.rawdata.config.RawDataWriterDatabaseConfig
 import com.epam.drill.admin.writer.rawdata.route.payload.SingleMethodPayload
-import com.epam.drill.admin.writer.rawdata.table.BuildTable
-import com.epam.drill.admin.writer.rawdata.table.InstanceTable
-import com.epam.drill.admin.writer.rawdata.table.MethodCoverageTable
-import com.epam.drill.admin.writer.rawdata.table.MethodTable
-import com.epam.drill.admin.writer.rawdata.table.TestDefinitionTable
-import com.epam.drill.admin.writer.rawdata.table.TestLaunchTable
-import com.epam.drill.admin.writer.rawdata.table.TestSessionTable
 import com.jayway.jsonpath.JsonPath
 import io.ktor.client.request.get
 import io.ktor.client.request.parameter
 import io.ktor.client.statement.bodyAsText
 import io.ktor.http.HttpStatusCode
-import org.jetbrains.exposed.sql.deleteAll
-import org.junit.jupiter.api.AfterEach
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
-class CoverageAggregationApiTest : MetricsDatabaseTests({ default, metrics ->
-    RawDataWriterDatabaseConfig.init(default)
-    MetricsDatabaseConfig.init(metrics)
-}) {
+class CoverageAggregationApiTest : MetricsApiTests() {
     private val build1Id = generateBuildId(
         testGroup, testApp, build1.instanceId, null, build1.buildVersion
     )
@@ -180,15 +164,5 @@ class CoverageAggregationApiTest : MetricsDatabaseTests({ default, metrics ->
                 assertEquals(2, total)
             }
         }
-    }
-    @AfterEach
-    fun clearAll() = withTransaction(RawDataWriterDatabaseConfig.database) {
-        MethodCoverageTable.deleteAll()
-        InstanceTable.deleteAll()
-        MethodTable.deleteAll()
-        BuildTable.deleteAll()
-        TestLaunchTable.deleteAll()
-        TestSessionTable.deleteAll()
-        TestDefinitionTable.deleteAll()
     }
 }

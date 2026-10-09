@@ -24,13 +24,15 @@ import java.time.Duration
 private val DEFAULT_DB_WAIT_TIMEOUT: Duration = Duration.ofSeconds(5)
 private val DEFAULT_DB_POLL_INTERVAL: Duration = Duration.ofMillis(100)
 
-fun waitUntilIn(block: () -> Unit) {
+fun <T> waitUntilIn(block: () -> T?): T? {
+    var result: T? = null
     await()
         .atMost(DEFAULT_DB_WAIT_TIMEOUT)
         .pollInterval(DEFAULT_DB_POLL_INTERVAL)
         .untilAsserted {
-            block()
+            result = block()
         }
+    return result
 }
 
 fun waitUntilInTransaction(assertion: Transaction.() -> Unit) {
@@ -45,9 +47,14 @@ fun waitUntilInBlocking(
     onAssertionFailed: suspend (AssertionError) -> Unit = {},
     assertion: suspend () -> Unit
 ) {
-
+    waitUntilIn {
         runBlocking {
-            assertion()
+            try {
+                assertion()
+            } catch (e: AssertionError) {
+                onAssertionFailed(e)
+                throw e
+            }
         }
-
+    }
 }
