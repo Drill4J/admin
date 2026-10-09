@@ -15,21 +15,11 @@
  */
 package com.epam.drill.admin.metrics
 
-import com.epam.drill.admin.metrics.config.MetricsDatabaseConfig
-import com.epam.drill.admin.test.MetricsDatabaseTests
-import com.epam.drill.admin.test.withTransaction
-import com.epam.drill.admin.writer.rawdata.config.RawDataWriterDatabaseConfig
-import com.epam.drill.admin.writer.rawdata.table.*
 import io.ktor.client.request.*
-import org.jetbrains.exposed.sql.deleteAll
-import org.junit.jupiter.api.AfterEach
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
-class BuildDiffReportApiTest : MetricsDatabaseTests({ default, metrics ->
-    RawDataWriterDatabaseConfig.init(default)
-    MetricsDatabaseConfig.init(metrics)
-}) {
+class BuildDiffReportApiTest : MetricsApiTests() {
     @Test
     fun `given builds with different methods, build-diff-report service should calculate total changes`() {
         havingData {
@@ -195,18 +185,6 @@ class BuildDiffReportApiTest : MetricsDatabaseTests({ default, metrics ->
                 assertEquals(422, status.value)
             }
         }
-    }
-
-    @AfterEach
-    fun clearAll() = withTransaction(RawDataWriterDatabaseConfig.database) {
-        MethodCoverageTable.deleteAll()
-        InstanceTable.deleteAll()
-        MethodTable.deleteAll()
-        BuildMethodTable.deleteAll()
-        BuildTable.deleteAll()
-        TestLaunchTable.deleteAll()
-        TestSessionTable.deleteAll()
-        TestDefinitionTable.deleteAll()
     }
 }
 

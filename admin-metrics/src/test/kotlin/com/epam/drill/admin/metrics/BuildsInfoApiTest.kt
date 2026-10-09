@@ -15,27 +15,17 @@
  */
 package com.epam.drill.admin.metrics
 
-import com.epam.drill.admin.metrics.config.MetricsDatabaseConfig
-import com.epam.drill.admin.test.*
-import com.epam.drill.admin.writer.rawdata.config.RawDataWriterDatabaseConfig
 import com.epam.drill.admin.writer.rawdata.route.payload.BuildInfoPayload
-import com.epam.drill.admin.writer.rawdata.route.payload.BuildPayload
 import com.epam.drill.admin.writer.rawdata.route.payload.InstancePayload
-import com.epam.drill.admin.writer.rawdata.table.BuildTable
 import com.jayway.jsonpath.JsonPath
 import io.ktor.client.request.*
 import io.ktor.client.statement.*
 import io.ktor.http.*
-import org.jetbrains.exposed.sql.deleteAll
-import org.junit.jupiter.api.AfterEach
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
-class BuildsInfoApiTest : MetricsDatabaseTests({ default, metrics ->
-    RawDataWriterDatabaseConfig.init(default)
-    MetricsDatabaseConfig.init(metrics)
-}) {
+class BuildsInfoApiTest : MetricsApiTests() {
     private suspend fun TestDataDsl.initTestData() {
         client.putBuildInfo(
             BuildInfoPayload(
@@ -353,10 +343,4 @@ class BuildsInfoApiTest : MetricsDatabaseTests({ default, metrics ->
             }
         }
     }
-
-    @AfterEach
-    fun clearAll() = withTransaction(RawDataWriterDatabaseConfig.database) {
-        BuildTable.deleteAll()
-    }
-
 }

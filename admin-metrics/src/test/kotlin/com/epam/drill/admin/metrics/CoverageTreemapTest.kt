@@ -15,18 +15,11 @@
  */
 package com.epam.drill.admin.metrics
 
-import com.epam.drill.admin.metrics.config.MetricsDatabaseConfig
-import com.epam.drill.admin.test.MetricsDatabaseTests
-import com.epam.drill.admin.test.withTransaction
-import com.epam.drill.admin.writer.rawdata.config.RawDataWriterDatabaseConfig
 import com.epam.drill.admin.writer.rawdata.route.payload.BuildInfoPayload
-import com.epam.drill.admin.writer.rawdata.route.payload.BuildPayload
 import com.epam.drill.admin.writer.rawdata.route.payload.InstancePayload
 import com.epam.drill.admin.writer.rawdata.route.payload.SingleMethodPayload
 import com.epam.drill.admin.writer.rawdata.table.*
 import io.ktor.client.request.*
-import org.jetbrains.exposed.sql.deleteAll
-import org.junit.jupiter.api.AfterEach
 import kotlin.test.Test
 import kotlin.test.assertTrue
 
@@ -64,10 +57,7 @@ private fun treemapAll(
     return valid && nodes.isNotEmpty()
 }
 
-class CoverageTreemapTest : MetricsDatabaseTests({ default, metrics ->
-    RawDataWriterDatabaseConfig.init(default)
-    MetricsDatabaseConfig.init(metrics)
-}) {
+class CoverageTreemapTest : MetricsApiTests() {
     @Test
     fun `given build with no methods no coverage, coverage-treemap should return empty list`() {
         havingData {
@@ -374,17 +364,5 @@ class CoverageTreemapTest : MetricsDatabaseTests({ default, metrics ->
                 parameter("envIds", "env-A")
             }.returns { onlyMatchingEnvironments(it) }
         }
-    }
-
-    @AfterEach
-    fun clearAll() = withTransaction(RawDataWriterDatabaseConfig.database) {
-        MethodCoverageTable.deleteAll()
-        InstanceTable.deleteAll()
-        MethodTable.deleteAll()
-        BuildMethodTable.deleteAll()
-        BuildTable.deleteAll()
-        TestLaunchTable.deleteAll()
-        TestSessionTable.deleteAll()
-        TestDefinitionTable.deleteAll()
     }
 }
