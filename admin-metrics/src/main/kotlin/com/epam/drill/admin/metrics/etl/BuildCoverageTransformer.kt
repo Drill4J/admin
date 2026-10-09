@@ -19,6 +19,7 @@ import com.epam.drill.admin.etl.DataTransformer
 import com.epam.drill.admin.etl.EtlContext
 import com.epam.drill.admin.etl.UntypedRow
 import com.epam.drill.admin.etl.config.EtlMeter
+import com.epam.drill.admin.etl.flow.LruMap
 import com.epam.drill.admin.etl.impl.UntypedPreparedSql
 import com.epam.drill.admin.metrics.config.executeQueryReturnMap
 import com.epam.drill.admin.metrics.config.fromResource
@@ -34,7 +35,7 @@ import java.time.Instant
 class BuildCoverageTransformer(
     override val name: String,
     private val database: Database,
-    private val loggingFrequency: Int = 10,
+    private val buildProbeLayoutCacheSize: Int,
     private val metrics: EtlMeter,
 ) : DataTransformer<UntypedRow, UntypedRow> {
 
@@ -52,7 +53,7 @@ class BuildCoverageTransformer(
         collector: Flow<UntypedRow>,
         onTransformationProgress: suspend (Instant) -> Unit,
     ): Flow<UntypedRow> = flow {
-        val layoutCache = HashMap<Triple<String, String, String>, BuildProbeLayout>()
+        val buildProbeLayout = LruMap<Triple<String, String, String>, BuildProbeLayout>(maxSize = buildProbeLayoutCacheSize)
 
         collector.collect { row ->
             val groupId = row["group_id"] as? String ?: error("Missing group_id in row: $row")
@@ -61,8 +62,8 @@ class BuildCoverageTransformer(
             val methodId = row["method_id"] as? String ?: error("Missing method_id in row: $row")
             val probes = row["probes"] as? PGobject ?: error("Missing probes in row: $row")
 
-            val layout = layoutCache.getOrPut(Triple(groupId, appId, buildId)) {
-                loadBuildProbeLayout(groupId, appId, buildId)
+            val (layout, _) = buildProbeLayout.compute(Triple(groupId, appId, buildId)) { value ->
+                value ?: loadBuildProbeLayout(groupId, appId, buildId)
             }
 
             val info = layout.methods[methodId] ?: run {
@@ -79,7 +80,12 @@ class BuildCoverageTransformer(
             }
             val methodProbes = positionProbes(singleProbe, info.methodPos, 1, layout.totalMethods)
 
-            emit(UntypedRow(row.timestamp, (row as Map<String, Any?>) + ("code_probes" to codeProbes) + ("method_probes" to methodProbes)))
+            emit(
+                UntypedRow(
+                    row.timestamp,
+                    (row as Map<String, Any?>) + ("code_probes" to codeProbes) + ("method_probes" to methodProbes)
+                )
+            )
         }
     }
 
