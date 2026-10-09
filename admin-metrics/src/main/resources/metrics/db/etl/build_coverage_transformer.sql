@@ -24,5 +24,5 @@ JOIN raw_data.builds b ON b.group_id = bm.group_id
 WHERE bm.group_id = :group_id
     AND bm.app_id = :app_id
     AND bm.build_id = :build_id
-    --AND b.validation_status = 'VALID'
+    AND b.validation_status = 'VALID'
 ORDER BY bm.method_id
