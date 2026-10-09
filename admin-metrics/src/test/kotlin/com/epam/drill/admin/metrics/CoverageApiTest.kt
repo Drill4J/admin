@@ -15,31 +15,14 @@
  */
 package com.epam.drill.admin.metrics
 
-import com.epam.drill.admin.metrics.config.MetricsDatabaseConfig
-import com.epam.drill.admin.test.MetricsDatabaseTests
-import com.epam.drill.admin.test.withTransaction
-import com.epam.drill.admin.writer.rawdata.config.RawDataWriterDatabaseConfig
 import com.epam.drill.admin.writer.rawdata.route.payload.SingleMethodPayload
-import com.epam.drill.admin.writer.rawdata.table.BuildMethodTable
-import com.epam.drill.admin.writer.rawdata.table.BuildTable
-import com.epam.drill.admin.writer.rawdata.table.MethodCoverageTable
-import com.epam.drill.admin.writer.rawdata.table.InstanceTable
-import com.epam.drill.admin.writer.rawdata.table.MethodTable
-import com.epam.drill.admin.writer.rawdata.table.TestDefinitionTable
-import com.epam.drill.admin.writer.rawdata.table.TestLaunchTable
-import com.epam.drill.admin.writer.rawdata.table.TestSessionTable
 import io.ktor.client.request.*
 import io.ktor.client.statement.*
-import org.jetbrains.exposed.sql.deleteAll
-import org.junit.jupiter.api.AfterEach
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
-class CoverageApiTest : MetricsDatabaseTests({ default, metrics ->
-    RawDataWriterDatabaseConfig.init(default)
-    MetricsDatabaseConfig.init(metrics)
-}) {
+class CoverageApiTest : MetricsApiTests() {
     @Test
     fun `given build with no coverage, coverage service should return methods list with zero coverage`() {
         havingData {
@@ -127,17 +110,5 @@ class CoverageApiTest : MetricsDatabaseTests({ default, metrics ->
                 assertEquals(5, data.size)
             }
         }
-    }
-
-    @AfterEach
-    fun clearAll() = withTransaction(RawDataWriterDatabaseConfig.database) {
-        MethodCoverageTable.deleteAll()
-        InstanceTable.deleteAll()
-        MethodTable.deleteAll()
-        BuildMethodTable.deleteAll()
-        BuildTable.deleteAll()
-        TestLaunchTable.deleteAll()
-        TestSessionTable.deleteAll()
-        TestDefinitionTable.deleteAll()
     }
 }

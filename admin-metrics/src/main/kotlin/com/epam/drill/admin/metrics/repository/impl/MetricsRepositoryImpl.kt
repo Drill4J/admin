@@ -88,6 +88,10 @@ class MetricsRepositoryImpl : MetricsRepository {
                 b.commit_author,
                 b.commit_message,
                 b.committed_at,
+                b.validation_status,
+                b.agent_version,
+                b.agent_env,
+                b.agent_params,
                 b.created_at
             FROM metrics.builds b
             WHERE b.group_id = ? AND b.app_id = ?
@@ -265,7 +269,11 @@ class MetricsRepositoryImpl : MetricsRepository {
                 app_env_ids,
                 total_classes,
                 total_methods,
-                total_probes
+                total_probes,
+                validation_status,
+                agent_version,
+                agent_env,
+                agent_params
             FROM metrics.builds_with_statistics
             WHERE build_id = ?
             """.trimIndent(),
@@ -291,7 +299,7 @@ class MetricsRepositoryImpl : MetricsRepository {
                     total_methods,
                     isolated_tested_methods,
                     aggregated_tested_methods
-                FROM metrics.get_builds_with_coverage(
+                FROM metrics.get_builds_with_coverage_v2(
                     input_build_id => ?
                 """.trimIndent(), buildId
             )
@@ -348,7 +356,7 @@ class MetricsRepositoryImpl : MetricsRepository {
                     COALESCE(c.isolated_probes_coverage_ratio, 0) AS isolated_probes_coverage_ratio,
                     COALESCE(c.aggregated_probes_coverage_ratio, 0) AS aggregated_probes_coverage_ratio
                 FROM builds b
-                LEFT JOIN metrics.get_builds_with_coverage(
+                LEFT JOIN metrics.get_builds_with_coverage_v2(
                     input_build_ids => ARRAY(SELECT build_id FROM builds)
                 """.trimIndent(),
                 size,
@@ -426,7 +434,7 @@ class MetricsRepositoryImpl : MetricsRepository {
                     COALESCE(c.isolated_tested_methods, 0) AS isolated_tested_methods,
                     COALESCE(c.aggregated_tested_methods, 0) AS aggregated_tested_methods
                 FROM builds b
-                LEFT JOIN metrics.get_builds_with_coverage(
+                LEFT JOIN metrics.get_builds_with_coverage_v2(
                     input_build_ids => ARRAY(SELECT build_id FROM builds),
                     input_baseline_build_id => ?
                 """.trimIndent(),
@@ -2475,9 +2483,11 @@ class MetricsRepositoryImpl : MetricsRepository {
                 """
                     Coverage AS (
                         SELECT
-                            isolated_probes_coverage_ratio,
-                            aggregated_probes_coverage_ratio                            
-                        FROM metrics.get_builds_with_coverage(
+                            isolated_probes_coverage_ratio,  
+                            aggregated_probes_coverage_ratio,
+                            isolated_change_probes_coverage_ratio,
+                            aggregated_change_probes_coverage_ratio                            
+                        FROM metrics.get_builds_with_coverage_v2(
                             input_build_id => ?,
                             input_baseline_build_id => ?                            
                         )
@@ -2532,8 +2542,10 @@ class MetricsRepositoryImpl : MetricsRepository {
                         (SELECT deleted FROM Changes) as changes_deleted_methods,
                         COALESCE((SELECT tested_methods FROM TestedChanges WHERE change_type = 'new'), 0) as tested_new_methods,
                         COALESCE((SELECT tested_methods FROM TestedChanges WHERE change_type = 'modified'), 0) as tested_modified_methods,
-                        (SELECT isolated_probes_coverage_ratio FROM Coverage) as coverage,                                                                        
-                        (SELECT aggregated_probes_coverage_ratio FROM Coverage) as aggregated_coverage,
+                        (SELECT isolated_probes_coverage_ratio FROM Coverage) as total_coverage,                                                                        
+                        (SELECT aggregated_probes_coverage_ratio FROM Coverage) as total_aggregated_coverage,
+                        (SELECT isolated_change_probes_coverage_ratio FROM Coverage) as coverage,                                                                        
+                        (SELECT aggregated_change_probes_coverage_ratio FROM Coverage) as aggregated_coverage,
                         (SELECT impacted_tests FROM ImpactedTestsWithResults) AS impacted_tests,
                     	(SELECT passed_impacted_tests FROM ImpactedTestsWithResults) AS passed_impacted_tests,
                     	(SELECT failed_impacted_tests FROM ImpactedTestsWithResults) AS failed_impacted_tests

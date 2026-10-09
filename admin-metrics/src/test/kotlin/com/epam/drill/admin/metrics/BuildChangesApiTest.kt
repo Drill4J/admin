@@ -15,30 +15,15 @@
  */
 package com.epam.drill.admin.metrics
 
-import com.epam.drill.admin.metrics.config.MetricsDatabaseConfig
 import com.epam.drill.admin.metrics.views.ChangeType
 import com.epam.drill.admin.test.*
-import com.epam.drill.admin.writer.rawdata.config.RawDataWriterDatabaseConfig
 import com.epam.drill.admin.writer.rawdata.route.payload.SingleMethodPayload
-import com.epam.drill.admin.writer.rawdata.table.BuildMethodTable
-import com.epam.drill.admin.writer.rawdata.table.BuildTable
-import com.epam.drill.admin.writer.rawdata.table.MethodCoverageTable
-import com.epam.drill.admin.writer.rawdata.table.InstanceTable
-import com.epam.drill.admin.writer.rawdata.table.MethodTable
-import com.epam.drill.admin.writer.rawdata.table.TestDefinitionTable
-import com.epam.drill.admin.writer.rawdata.table.TestLaunchTable
-import com.epam.drill.admin.writer.rawdata.table.TestSessionTable
 import io.ktor.client.request.*
-import org.jetbrains.exposed.sql.deleteAll
-import org.junit.jupiter.api.AfterEach
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
-class BuildChangesApiTest : MetricsDatabaseTests({ default, metrics ->
-    RawDataWriterDatabaseConfig.init(default)
-    MetricsDatabaseConfig.init(metrics)
-}) {
+class BuildChangesApiTest : MetricsApiTests() {
     private suspend fun TestDataDsl.initBuildsAndMethodsData() {
         build1 has listOf(method1, method2, method4)
         build2 hasModified method2 comparedTo build1
@@ -153,7 +138,7 @@ class BuildChangesApiTest : MetricsDatabaseTests({ default, metrics ->
                 )
             }
             build1 has methods.toList()
-            client.deployInstance(instance = build2, methods = methods.map { it.changeChecksum() }.toTypedArray())
+            client.deployInstance(instance = build2, methods = methods.map { it.changeChecksum() })
 
         }.expectThat {
             client.get("/metrics/build-changes") {
@@ -178,17 +163,5 @@ class BuildChangesApiTest : MetricsDatabaseTests({ default, metrics ->
                 assertEquals(5, data.size)
             }
         }
-    }
-
-    @AfterEach
-    fun clearAll() = withTransaction(RawDataWriterDatabaseConfig.database) {
-        MethodCoverageTable.deleteAll()
-        InstanceTable.deleteAll()
-        MethodTable.deleteAll()
-        BuildMethodTable.deleteAll()
-        BuildTable.deleteAll()
-        TestLaunchTable.deleteAll()
-        TestSessionTable.deleteAll()
-        TestDefinitionTable.deleteAll()
     }
 }

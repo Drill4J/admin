@@ -10,6 +10,10 @@ WITH builds_with_instances AS (
         b.commit_author,
         b.commit_message,
         b.committed_at,
+        b.validation_status,
+        b.agent_version,
+        b.agent_env,
+        b.agent_params,
         b.created_at,
         MIN(i.created_at) AS first_instance_created_at,
         MAX(COALESCE(i.last_heartbeat_at, i.created_at)) AS last_instance_heartbeat_at,
@@ -32,6 +36,10 @@ SELECT
     bi.commit_author,
     bi.commit_message,
     bi.committed_at,
+    bi.validation_status,
+    bi.agent_version,
+    bi.agent_env,
+    bi.agent_params,
     bi.created_at,
     bi.first_instance_created_at,
     bi.last_instance_heartbeat_at,
@@ -41,5 +49,5 @@ SELECT
 FROM builds_with_instances bi
 WHERE bi.updated_at > :since_timestamp
   AND bi.updated_at <= :until_timestamp
-ORDER BY bi.updated_at ASC
+ORDER BY bi.updated_at
 LIMIT :limit

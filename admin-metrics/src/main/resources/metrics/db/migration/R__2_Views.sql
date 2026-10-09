@@ -25,7 +25,11 @@ SELECT
     MIN(b.app_env_ids) AS app_env_ids,
     COUNT(DISTINCT m.class_name) AS total_classes,
     COUNT(DISTINCT m.signature) AS total_methods,
-    SUM(COALESCE(m.probes_count, 0)) AS total_probes
+    SUM(COALESCE(m.probes_count, 0)) AS total_probes,
+    MIN(b.validation_status) AS validation_status,
+    MIN(b.agent_version) AS agent_version,
+    (ARRAY_AGG(b.agent_env))[1] AS agent_env,
+    (ARRAY_AGG(b.agent_params))[1] AS agent_params
 FROM metrics.builds b
 LEFT JOIN metrics.build_methods bm ON b.group_id = bm.group_id AND b.app_id = bm.app_id AND b.build_id = bm.build_id
 LEFT JOIN metrics.methods m ON bm.group_id = m.group_id AND bm.app_id = m.app_id AND bm.method_id = m.method_id

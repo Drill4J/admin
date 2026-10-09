@@ -16,6 +16,7 @@
 package com.epam.drill.admin.metrics
 
 import com.epam.drill.admin.common.service.generateBuildId
+import com.epam.drill.admin.writer.rawdata.route.payload.BuildPayload
 import com.epam.drill.admin.writer.rawdata.route.payload.InstancePayload
 import com.epam.drill.admin.writer.rawdata.route.payload.TestSessionPayload
 import com.epam.drill.admin.writer.rawdata.route.payload.SingleMethodPayload
@@ -164,6 +165,9 @@ fun TestSessionPayload.testProjectId(testProjectId: String) = TestSessionPayload
 
 val InstancePayload.buildId
     get() = generateBuildId(this.groupId, this.appId, this.instanceId, this.commitSha, this.buildVersion)
+
+val BuildPayload.buildId
+    get() = generateBuildId(this.groupId, this.appId, instanceId = null, this.commitSha, this.buildVersion)
 
 val SingleMethodPayload.signature
     get() = listOf(

@@ -100,7 +100,11 @@ class MetricsServiceImpl(
                     commitSha = it["commit_sha"] as String?,
                     commitDate = (it["committed_at"] as LocalDateTime?)?.toKotlinLocalDateTime(),
                     commitMessage = it["commit_message"] as String?,
-                    commitAuthor = it["commit_author"] as String?
+                    commitAuthor = it["commit_author"] as String?,
+                    validationStatus = it["validation_status"] as String?,
+                    agentVersion = it["agent_version"] as String?,
+                    agentEnv = it["agent_env"] as? JsonElement,
+                    agentParams = it["agent_params"] as? JsonElement,
                 )
             }
         } withTotal {
@@ -1558,6 +1562,10 @@ class MetricsServiceImpl(
         totalClasses = (row["total_classes"] as? Number)?.toInt() ?: 0,
         totalMethods = (row["total_methods"] as? Number)?.toInt() ?: 0,
         totalProbes = (row["total_probes"] as? Number)?.toInt() ?: 0,
+        validationStatus = (row["validation_status"] as String?),
+        agentVersion = (row["agent_version"] as String?),
+        agentEnv = (row["agent_env"] as? JsonElement),
+        agentParams = (row["agent_params"] as? JsonElement),
     )
 
     private fun mapToCoverageUnitSlices(

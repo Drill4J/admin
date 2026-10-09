@@ -1,0 +1,5 @@
+ALTER TABLE metrics.builds
+    ADD COLUMN IF NOT EXISTS validation_status VARCHAR(32) NULL,
+    ADD COLUMN IF NOT EXISTS agent_version VARCHAR NULL,
+    ADD COLUMN IF NOT EXISTS agent_env     JSONB   NULL,
+    ADD COLUMN IF NOT EXISTS agent_params  JSONB   NULL;

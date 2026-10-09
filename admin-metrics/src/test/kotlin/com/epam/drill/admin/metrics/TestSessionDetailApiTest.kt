@@ -15,32 +15,15 @@
  */
 package com.epam.drill.admin.metrics
 
-import com.epam.drill.admin.metrics.config.MetricsDatabaseConfig
-import com.epam.drill.admin.test.MetricsDatabaseTests
-import com.epam.drill.admin.test.withTransaction
-import com.epam.drill.admin.writer.rawdata.config.RawDataWriterDatabaseConfig
-import com.epam.drill.admin.writer.rawdata.table.BuildMethodTable
-import com.epam.drill.admin.writer.rawdata.table.BuildTable
-import com.epam.drill.admin.writer.rawdata.table.InstanceTable
-import com.epam.drill.admin.writer.rawdata.table.MethodCoverageTable
-import com.epam.drill.admin.writer.rawdata.table.MethodTable
-import com.epam.drill.admin.writer.rawdata.table.TestDefinitionTable
-import com.epam.drill.admin.writer.rawdata.table.TestLaunchTable
-import com.epam.drill.admin.writer.rawdata.table.TestSessionTable
 import com.jayway.jsonpath.JsonPath
 import io.ktor.client.request.*
 import io.ktor.client.statement.bodyAsText
 import io.ktor.http.HttpStatusCode
-import org.jetbrains.exposed.sql.deleteAll
-import org.junit.jupiter.api.AfterEach
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
-class TestSessionDetailApiTest : MetricsDatabaseTests({ default, metrics ->
-    RawDataWriterDatabaseConfig.init(default)
-    MetricsDatabaseConfig.init(metrics)
-}) {
+class TestSessionDetailApiTest : MetricsApiTests() {
     private val build1Id = "${build1.groupId}:${build1.appId}:${build1.buildVersion}"
 
     @Test
@@ -389,16 +372,5 @@ class TestSessionDetailApiTest : MetricsDatabaseTests({ default, metrics ->
             }
             assertEquals(HttpStatusCode.NotFound, missing.status)
         }
-    }
-    @AfterEach
-    fun cleanup() = withTransaction(RawDataWriterDatabaseConfig.database) {
-        MethodCoverageTable.deleteAll()
-        TestLaunchTable.deleteAll()
-        TestDefinitionTable.deleteAll()
-        TestSessionTable.deleteAll()
-        BuildMethodTable.deleteAll()
-        MethodTable.deleteAll()
-        BuildTable.deleteAll()
-        InstanceTable.deleteAll()
     }
 }
