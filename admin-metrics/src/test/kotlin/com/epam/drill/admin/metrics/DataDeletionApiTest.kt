@@ -17,46 +17,16 @@ package com.epam.drill.admin.metrics
 
 import com.epam.drill.admin.metrics.config.MetricsDatabaseConfig
 import com.epam.drill.admin.metrics.config.executeQueryReturnMap
-import com.epam.drill.admin.test.MetricsDatabaseTests
-import com.epam.drill.admin.test.withTransaction
-import com.epam.drill.admin.writer.rawdata.config.RawDataWriterDatabaseConfig
 import com.epam.drill.admin.writer.rawdata.route.payload.InstancePayload
 import com.epam.drill.admin.writer.rawdata.route.payload.TestSessionPayload
-import com.epam.drill.admin.writer.rawdata.table.BuildMethodTable
-import com.epam.drill.admin.writer.rawdata.table.BuildTable
-import com.epam.drill.admin.writer.rawdata.table.InstanceTable
-import com.epam.drill.admin.writer.rawdata.table.MethodCoverageTable
-import com.epam.drill.admin.writer.rawdata.table.MethodTable
-import com.epam.drill.admin.writer.rawdata.table.TestDefinitionTable
-import com.epam.drill.admin.writer.rawdata.table.TestLaunchTable
-import com.epam.drill.admin.writer.rawdata.table.TestSessionBuildTable
-import com.epam.drill.admin.writer.rawdata.table.TestSessionTable
 import io.ktor.client.request.*
 import kotlinx.datetime.Clock
-import org.jetbrains.exposed.sql.deleteAll
-import org.junit.jupiter.api.AfterEach
 import kotlin.test.Test
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 
-class DataDeletionApiTest : MetricsDatabaseTests({ default, metrics ->
-    MetricsDatabaseConfig.init(metrics)
-    RawDataWriterDatabaseConfig.init(default)
-}) {
-
-    @AfterEach
-    fun clearAll() = withTransaction(RawDataWriterDatabaseConfig.database) {
-        MethodCoverageTable.deleteAll()
-        InstanceTable.deleteAll()
-        BuildMethodTable.deleteAll()
-        TestSessionBuildTable.deleteAll()
-        BuildTable.deleteAll()
-        MethodTable.deleteAll()
-        TestLaunchTable.deleteAll()
-        TestSessionTable.deleteAll()
-        TestDefinitionTable.deleteAll()
-    }
+class DataDeletionApiTest : MetricsApiTests() {
 
     @Test
     fun `delete group should remove all metrics for the group`() {
@@ -87,7 +57,7 @@ class DataDeletionApiTest : MetricsDatabaseTests({ default, metrics ->
             test1 of keepSession covers method1 on keepBuild
         }.whenExecuting {
             delete("/data-management/groups/$delGroupId").assertSuccessStatus()
-        }.expectThat {
+        }.expectThat(onFailed = {}) {
             assertThatTableHasNot("metrics.builds", delGroupId)
             assertThatTableHasNot("metrics.methods", delGroupId)
             assertThatTableHasNot("metrics.test_sessions", delGroupId)
@@ -136,7 +106,7 @@ class DataDeletionApiTest : MetricsDatabaseTests({ default, metrics ->
             (test2 of session2) covers method2 on keepBuild
         }.whenExecuting {
             delete("/data-management/groups/$groupId/apps/$delAppId").assertSuccessStatus()
-        }.expectThat {
+        }.expectThat(onFailed = {}) {
             assertThatTableHasNot("metrics.builds", groupId, appId = delAppId)
             assertThatTableHasNot("metrics.methods", groupId, appId = delAppId)
             assertThatTableHasNot("metrics.method_daily_coverage", groupId, appId = delAppId)
@@ -200,7 +170,7 @@ class DataDeletionApiTest : MetricsDatabaseTests({ default, metrics ->
             test2 covers method2 on keepBuild
         }.whenExecuting {
             delete("/data-management/groups/$groupId/apps/$appId/builds/$delBuildId").assertSuccessStatus()
-        }.expectThat {
+        }.expectThat(onFailed = {}) {
             assertThatTableHasNot("metrics.builds", groupId, appId = appId, buildId = delBuildId)
             assertThatTableHasNot("metrics.build_methods", groupId, appId = appId, buildId = delBuildId)
             assertThatTableHasNot("metrics.test_session_builds", groupId, appId = appId, buildId = delBuildId)
