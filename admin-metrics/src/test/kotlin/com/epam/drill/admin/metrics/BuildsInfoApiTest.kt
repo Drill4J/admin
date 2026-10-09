@@ -16,11 +16,14 @@
 package com.epam.drill.admin.metrics
 
 import com.epam.drill.admin.writer.rawdata.route.payload.BuildInfoPayload
+import com.epam.drill.admin.writer.rawdata.route.payload.BuildPayload
 import com.epam.drill.admin.writer.rawdata.route.payload.InstancePayload
 import com.jayway.jsonpath.JsonPath
 import io.ktor.client.request.*
 import io.ktor.client.statement.*
 import io.ktor.http.*
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.put
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
@@ -322,6 +325,42 @@ class BuildsInfoApiTest : MetricsApiTests() {
             }
         }
     }
+    @Test
+    fun `given finalized build with agent info, get builds should return validationStatus, agentVersion, agentEnv and agentParams`() {
+        havingData {
+            client.sendBuild(
+                BuildPayload(
+                    groupId = testGroup,
+                    appId = testApp,
+                    buildVersion = "1.0.0",
+                    agentVersion = "0.9.1",
+                    agentEnvironment = buildJsonObject {
+                        put("OS", "linux")
+                    },
+                    agentParams = buildJsonObject {
+                        put("packagePrefixes", "com.example")
+                    }
+                ),
+                listOf(method1)
+            )
+        }.expectThat {
+            client.get("/metrics/builds") {
+                parameter("groupId", testGroup)
+                parameter("appId", testApp)
+            }.apply {
+                assertEquals(HttpStatusCode.OK, status)
+                val json = JsonPath.parse(bodyAsText())
+                val data = json.read<List<Map<String, Any>>>("$.data")
+                assertEquals(1, data.size)
+                val build = data[0]
+                assertEquals("VALID", build["validationStatus"])
+                assertEquals("0.9.1", build["agentVersion"])
+                assertEquals(mapOf("OS" to "linux"), build["agentEnv"])
+                assertEquals(mapOf("packagePrefixes" to "com.example"), build["agentParams"])
+            }
+        }
+    }
+
     @Test
     fun `given sortBy BUILD_VERSION and sortOrder DESC, get builds should return builds sorted by buildVersion descending`() {
         havingData {
