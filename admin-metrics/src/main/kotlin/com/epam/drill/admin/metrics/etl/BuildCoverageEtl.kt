@@ -55,7 +55,7 @@ val EtlConfig.buildCoverageTransformer
     get() = BuildCoverageTransformer(
         name = "build_coverage_transformer",
         database = RawDataWriterDatabaseConfig.database,
-        loggingFrequency = loggingFrequency,
+        buildProbeLayoutCacheSize = buildProbeLayoutCacheSize,
         metrics = metrics,
     )
 

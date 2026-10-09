@@ -106,4 +106,10 @@ class EtlConfig(private val config: ApplicationConfig, val metrics: EtlMeter) {
      */
     val maxWorkers : Int
         get() = config.propertyOrNull("maxWorkers")?.getString()?.toIntOrNull() ?: 4
+
+    /**
+     * Controls the size of the build probe layout cache used in the build coverage transformation process.
+     */
+    val buildProbeLayoutCacheSize : Int
+        get() = config.propertyOrNull("buildProbeLayoutCacheSize")?.getString()?.toIntOrNull() ?: 100
 }
