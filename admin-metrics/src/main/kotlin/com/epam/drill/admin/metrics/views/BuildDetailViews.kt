@@ -17,6 +17,7 @@ package com.epam.drill.admin.metrics.views
 
 import kotlinx.datetime.LocalDateTime
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.JsonElement
 
 @Serializable
 data class BuildDetailView(
@@ -34,6 +35,10 @@ data class BuildDetailView(
     val totalClasses: Int,
     val totalMethods: Int,
     val totalProbes: Int,
+    val validationStatus: String?,
+    val agentVersion: String?,
+    val agentEnv: JsonElement?,
+    val agentParams: JsonElement?,
 )
 
 @Serializable
