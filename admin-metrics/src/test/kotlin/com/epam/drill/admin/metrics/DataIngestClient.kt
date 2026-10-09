@@ -29,11 +29,11 @@ import kotlin.test.assertEquals
 
 private val counter = AtomicInteger(0)
 
-suspend fun HttpClient.sendBuildInfo(
-    build: BuildInfoPayload,
+suspend fun HttpClient.sendBuild(
+    build: BuildPayload,
     methods: Collection<SingleMethodPayload>
 ) {
-    putBuildInfo(build)
+    putBuild(build)
     putMethods(
         MethodsPayload(
             groupId = build.groupId,

@@ -17,6 +17,8 @@ package com.epam.drill.admin.metrics.views
 
 import kotlinx.datetime.LocalDateTime
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.JsonElement
+
 @Serializable
 class BuildView (
     val id: String,
@@ -28,5 +30,9 @@ class BuildView (
     val envIds: List<String>,
     val commitDate: LocalDateTime?,
     val commitMessage: String?,
-    val commitAuthor: String?
+    val commitAuthor: String?,
+    val validationStatus: String?,
+    val agentVersion: String?,
+    val agentEnv: JsonElement?,
+    val agentParams: JsonElement?,
 )

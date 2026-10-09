@@ -88,6 +88,10 @@ class MetricsRepositoryImpl : MetricsRepository {
                 b.commit_author,
                 b.commit_message,
                 b.committed_at,
+                b.validation_status,
+                b.agent_version,
+                b.agent_env,
+                b.agent_params,
                 b.created_at
             FROM metrics.builds b
             WHERE b.group_id = ? AND b.app_id = ?
@@ -265,7 +269,11 @@ class MetricsRepositoryImpl : MetricsRepository {
                 app_env_ids,
                 total_classes,
                 total_methods,
-                total_probes
+                total_probes,
+                validation_status,
+                agent_version,
+                agent_env,
+                agent_params
             FROM metrics.builds_with_statistics
             WHERE build_id = ?
             """.trimIndent(),

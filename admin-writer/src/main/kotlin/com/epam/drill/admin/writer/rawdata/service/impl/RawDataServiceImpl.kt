@@ -126,6 +126,9 @@ class RawDataServiceImpl(
                     instanceId = instancePayload.instanceId,
                     commitSha = instancePayload.commitSha,
                     buildVersion = instancePayload.buildVersion,
+                    agentVersion = instancePayload.agentVersion,
+                    agentEnv = instancePayload.agentEnvironment,
+                    agentParams = instancePayload.agentParams
                 )
                 buildRepository.saveBuildId(build)
             }
