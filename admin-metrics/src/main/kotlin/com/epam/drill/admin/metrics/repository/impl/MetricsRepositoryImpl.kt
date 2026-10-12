@@ -274,7 +274,7 @@ class MetricsRepositoryImpl : MetricsRepository {
                 agent_version,
                 agent_env,
                 agent_params
-            FROM metrics.builds_with_statistics
+            FROM metrics.builds
             WHERE build_id = ?
             """.trimIndent(),
             buildId
@@ -736,7 +736,7 @@ class MetricsRepositoryImpl : MetricsRepository {
                 COALESCE(cov.tested_methods, 0) AS covered_methods,
                 COALESCE(cov.total_methods, 0) AS total_methods
             FROM metrics.test_session_builds tsb
-            LEFT JOIN metrics.builds_with_statistics bws
+            LEFT JOIN metrics.builds bws
                 ON bws.group_id = tsb.group_id
                 AND bws.app_id = tsb.app_id
                 AND bws.build_id = tsb.build_id
@@ -882,7 +882,7 @@ class MetricsRepositoryImpl : MetricsRepository {
             JOIN metrics.test_sessions_with_statistics tss
                 ON tss.group_id = tsb.group_id
                 AND tss.test_session_id = tsb.test_session_id
-            LEFT JOIN metrics.builds_with_statistics bws
+            LEFT JOIN metrics.builds bws
                 ON bws.group_id = tsb.group_id
                 AND bws.app_id = tsb.app_id
                 AND bws.build_id = tsb.build_id
