@@ -23,6 +23,35 @@ WITH builds_with_instances AS (
         AND i.group_id = b.group_id
     WHERE b.group_id = :group_id
     GROUP BY b.id
+),
+build_totals AS (
+    SELECT
+        b.id AS build_id,
+        COUNT(DISTINCT m.class_name) AS total_classes,
+        COUNT(DISTINCT m.signature)  AS total_methods,
+        SUM(m.probes_count)          AS total_probes
+    FROM raw_data.builds b
+    JOIN raw_data.build_methods bm
+        ON bm.group_id = b.group_id
+       AND bm.app_id   = b.app_id
+       AND bm.build_id = b.id
+    JOIN raw_data.methods m
+        ON m.method_id  = bm.method_id
+       AND m.app_id     = bm.app_id
+       AND m.group_id   = bm.group_id
+       AND m.probes_count > 0
+       AND NOT EXISTS (
+           SELECT 1
+           FROM raw_data.method_ignore_rules r
+           WHERE r.group_id = m.group_id
+             AND r.app_id   = m.app_id
+             AND (r.classname_pattern IS NULL
+                  OR m.class_name::text ~ r.classname_pattern::text)
+             AND (r.name_pattern IS NULL
+                  OR m.method_name::text ~ r.name_pattern::text)
+       )
+    WHERE b.group_id = :group_id
+    GROUP BY b.id
 )
 SELECT
     bi.group_id,
@@ -45,8 +74,12 @@ SELECT
     bi.last_instance_heartbeat_at,
     bi.updated_at,
     DATE_TRUNC('day', bi.created_at) AS created_at_day,
-    DATE_TRUNC('day', bi.updated_at) AS updated_at_day
+    DATE_TRUNC('day', bi.updated_at) AS updated_at_day,
+    COALESCE(bt.total_classes, 0) AS total_classes,
+    COALESCE(bt.total_methods, 0) AS total_methods,
+    COALESCE(bt.total_probes,  0) AS total_probes
 FROM builds_with_instances bi
+LEFT JOIN build_totals bt ON bt.build_id = bi.id
 WHERE bi.updated_at > :since_timestamp
   AND bi.updated_at <= :until_timestamp
 ORDER BY bi.updated_at
