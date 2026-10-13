@@ -14,13 +14,5 @@ WHERE bm.group_id = :group_id
     AND bm.created_at <= :until_timestamp
     AND b.validation_status = 'VALID'
     AND m.probes_count > 0
-    AND NOT EXISTS (
-        SELECT 1
-        FROM raw_data.method_ignore_rules r
-        WHERE r.group_id = m.group_id
-            AND r.app_id = m.app_id
-            AND (r.classname_pattern IS NULL OR m.class_name::text ~ r.classname_pattern::text)
-            AND (r.name_pattern IS NULL OR m.method_name::text ~ r.name_pattern::text)
-    )
 ORDER BY GREATEST(bm.created_at, b.updated_at), bm.method_id
 LIMIT :limit

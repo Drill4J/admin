@@ -22,7 +22,9 @@ INSERT INTO metrics.builds (
     last_instance_heartbeat_at,
     total_classes,
     total_methods,
-    total_probes
+    total_probes,
+    method_ignore_mask,
+    code_ignore_mask
 )
 VALUES (
     :group_id,
@@ -48,7 +50,9 @@ VALUES (
     :last_instance_heartbeat_at,
     :total_classes,
     :total_methods,
-    :total_probes
+    :total_probes,
+    :method_ignore_mask,
+    :code_ignore_mask
 )
 ON CONFLICT (
     group_id,
@@ -74,4 +78,6 @@ SET
     last_instance_heartbeat_at = EXCLUDED.last_instance_heartbeat_at,
     total_classes = EXCLUDED.total_classes,
     total_methods = EXCLUDED.total_methods,
-    total_probes = EXCLUDED.total_probes
+    total_probes = EXCLUDED.total_probes,
+    method_ignore_mask = EXCLUDED.method_ignore_mask,
+    code_ignore_mask   = EXCLUDED.code_ignore_mask
