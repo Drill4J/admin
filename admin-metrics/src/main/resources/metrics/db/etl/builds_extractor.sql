@@ -130,8 +130,8 @@ SELECT
     COALESCE(bt.total_classes, 0) AS total_classes,
     COALESCE(bt.total_methods, 0) AS total_methods,
     COALESCE(bt.total_probes,  0) AS total_probes,
-    bm2.method_ignore_mask,
-    bm2.code_ignore_mask
+    bm2.method_ignore_mask::VARBIT,
+    bm2.code_ignore_mask::VARBIT
 FROM builds_with_instances bi
 LEFT JOIN build_totals bt
     ON bt.group_id = bi.group_id
