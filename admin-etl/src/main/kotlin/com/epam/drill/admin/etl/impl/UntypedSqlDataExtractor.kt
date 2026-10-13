@@ -46,18 +46,20 @@ class UntypedSqlDataExtractor(
             val value = when (meta.getColumnTypeName(i)) {
                 "bit", "varbit" -> {
                     val bit = rs.getObject(i)
-                    when (bit) {
-                        is Boolean -> PGobject().apply {
-                            type = "varbit"
-                            value = if (bit) "1" else "0"
+                    if (bit != null) {
+                        when (bit) {
+                            is Boolean -> PGobject().apply {
+                                type = "varbit"
+                                value = if (bit) "1" else "0"
+                            }
+                            is String -> PGobject().apply {
+                                type = "varbit"
+                                value = bit
+                            }
+                            is PGobject -> bit
+                            else -> throw IllegalStateException("Unsupported BIT/VARBIT type: ${bit?.javaClass?.name}")
                         }
-                        is String -> PGobject().apply {
-                            type = "varbit"
-                            value = bit
-                        }
-                        is PGobject -> bit
-                        else -> throw IllegalStateException("Unsupported BIT/VARBIT type: ${bit?.javaClass?.name}")
-                    }
+                    } else null
                 }
                 else -> rs.getObject(i)
             }
