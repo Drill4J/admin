@@ -57,7 +57,7 @@ class BuildChangesApiTest : MetricsApiTests() {
             client.postMethodIgnoreRule(
                 groupId = testGroup,
                 appId = testApp,
-                namePattern = method3.name
+                namePattern = method4.name
             )
         }.expectThat {
             client.get("/metrics/build-changes") {
@@ -67,7 +67,7 @@ class BuildChangesApiTest : MetricsApiTests() {
                 parameter("baselineBuildVersion", "1.0.0")
             }.returns { data ->
                 assertEquals(2, data.size)
-                assertTrue(data.none { it["name"] == method3.name })
+                assertTrue(data.none { it["name"] == method4.name }, "Ignored method should not be present in the response")
             }
         }
     }
