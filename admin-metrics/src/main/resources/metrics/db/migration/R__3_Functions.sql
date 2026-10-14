@@ -412,8 +412,8 @@ BEGIN
                     b.app_id,
                     b.build_id,
                     bm.method_id,
-                    (CASE WHEN baseline_bm.method_id IS NULL AND m.ignore = FALSE THEN m.probes_count ELSE 0 END) AS change_probes_count,
-                    (CASE WHEN baseline_bm.method_id IS NULL AND m.ignore = FALSE THEN 1 ELSE 0 END) AS change_methods_count,
+                    (CASE WHEN baseline_bm.method_id IS NULL THEN m.probes_count ELSE 0 END) AS change_probes_count,
+                    (CASE WHEN baseline_bm.method_id IS NULL THEN 1 ELSE 0 END) AS change_methods_count,
                     REPEAT(CASE WHEN baseline_bm.method_id IS NULL THEN '1' ELSE '0' END, m.probes_count::INT)::VARBIT AS mask
                 FROM metrics.builds b
                 JOIN metrics.build_methods bm ON b.group_id = bm.group_id AND b.app_id = bm.app_id AND b.build_id = bm.build_id
@@ -433,8 +433,8 @@ BEGIN
                     m.build_id,
                     SUM(m.change_probes_count) AS total_change_probes,
                     SUM(m.change_methods_count) AS total_change_methods,
-                    STRING_AGG(m.mask::TEXT, '' ORDER BY m.method_id)::VARBIT AS code_mask,
-                    STRING_AGG(CASE WHEN m.change_methods_count = 1 THEN '1' ELSE '0' END, '' ORDER BY m.method_id)::VARBIT AS method_mask
+                    STRING_AGG(m.mask::TEXT, '' ORDER BY m.method_id)::VARBIT AS code_change_mask,
+                    STRING_AGG(CASE WHEN m.change_methods_count = 1 THEN '1' ELSE '0' END, '' ORDER BY m.method_id)::VARBIT AS method_change_mask
                 FROM build_method_changes m
                 GROUP BY m.group_id, m.app_id, m.build_id
                 HAVING SUM(m.change_methods_count) > 0
@@ -481,15 +481,30 @@ BEGIN
                     MIN(b.total_methods) AS total_methods,
                     BIT_COUNT(BIT_OR(ic.code_probes & b.code_ignore_mask)) AS isolated_covered_probes,
                     BIT_COUNT(BIT_OR(ic.method_probes & b.method_ignore_mask)) AS isolated_tested_methods,
-                    BIT_COUNT(BIT_OR(COALESCE(sc.code_probes, REPEAT('0', b.total_probes::INT)::VARBIT) | COALESCE(ic.code_probes & b.code_ignore_mask, REPEAT('0', b.total_probes::INT)::VARBIT))) AS covered_probes,
-                    BIT_COUNT(BIT_OR(COALESCE(sc.method_probes, REPEAT('0', b.total_methods::INT)::VARBIT) | COALESCE(ic.method_probes & b.method_ignore_mask, REPEAT('0', b.total_methods::INT)::VARBIT))) AS tested_methods,
-
+                    BIT_COUNT(BIT_OR(
+                            (COALESCE(sc.code_probes, REPEAT('0', BIT_LENGTH(b.code_ignore_mask)::INT)::VARBIT)
+                                | COALESCE(ic.code_probes, REPEAT('0', BIT_LENGTH(b.code_ignore_mask)::INT)::VARBIT)
+                            ) & b.code_ignore_mask
+                    )) AS covered_probes,
+                    BIT_COUNT(BIT_OR(
+                            (COALESCE(sc.method_probes, REPEAT('0', BIT_LENGTH(b.method_ignore_mask)::INT)::VARBIT)
+                                 | COALESCE(ic.method_probes, REPEAT('0', BIT_LENGTH(b.method_ignore_mask)::INT)::VARBIT)
+                            ) & b.method_ignore_mask
+                    )) AS tested_methods,
                     MIN(bc.total_change_probes) AS total_change_probes,
                     MIN(bc.total_change_methods) AS total_change_methods,
-                    BIT_COUNT(BIT_OR(ic.code_probes & bc.code_mask)) AS isolated_covered_change_probes,
-                    BIT_COUNT(BIT_OR(ic.method_probes & bc.method_mask)) AS isolated_tested_change_methods,
-                    BIT_COUNT(BIT_OR(COALESCE(sc.code_probes, REPEAT('0', b.total_probes::INT)::VARBIT) | COALESCE(ic.code_probes, REPEAT('0', b.total_probes::INT)::VARBIT) & bc.code_mask)) AS covered_change_probes,
-                    BIT_COUNT(BIT_OR(COALESCE(sc.method_probes, REPEAT('0', b.total_methods::INT)::VARBIT) | COALESCE(ic.method_probes, REPEAT('0', b.total_methods::INT)::VARBIT) & bc.method_mask)) AS tested_change_methods
+                    BIT_COUNT(BIT_OR(ic.code_probes & b.code_ignore_mask & bc.code_change_mask)) AS isolated_covered_change_probes,
+                    BIT_COUNT(BIT_OR(ic.method_probes & b.method_ignore_mask & bc.method_change_mask)) AS isolated_tested_change_methods,
+                    BIT_COUNT(BIT_OR(
+                            (COALESCE(sc.code_probes, REPEAT('0', BIT_LENGTH(b.code_ignore_mask)::INT)::VARBIT)
+                                 | COALESCE(ic.code_probes, REPEAT('0', BIT_LENGTH(b.code_ignore_mask)::INT)::VARBIT)
+                            ) & b.code_ignore_mask & bc.code_change_mask
+                    )) AS covered_change_probes,
+                    BIT_COUNT(BIT_OR(
+                            (COALESCE(sc.method_probes, REPEAT('0', BIT_LENGTH(b.method_ignore_mask)::INT)::VARBIT)
+                                 | COALESCE(ic.method_probes, REPEAT('0', BIT_LENGTH(b.method_ignore_mask)::INT)::VARBIT)
+                            ) & b.method_ignore_mask & bc.method_change_mask
+                    )) AS tested_change_methods
                 FROM metrics.builds b
                 LEFT JOIN metrics.build_coverage ic ON ic.group_id = b.group_id AND ic.app_id = b.app_id AND ic.build_id = b.build_id
                     -- Filters by isolated coverage
