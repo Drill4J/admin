@@ -98,6 +98,33 @@ class TestSessionDetailApiTest : MetricsApiTests() {
         }
     }
     @Test
+    fun `given method ignore rule, session coverage summary should exclude ignored methods`() {
+        havingData {
+            build1 has listOf(method1, method2, method3)
+            test1 of session1 covers method1 with probesOf(1, 1) on build1
+            test1 of session1 covers method3 with probesOf(1) on build1
+            client.postMethodIgnoreRule(
+                groupId = testGroup,
+                appId = testApp,
+                namePattern = method3.name
+            )
+        }.expectThat {
+            client.get("/metrics/test-sessions/${session1.id}/coverage-summary") {
+                parameter("groupId", testGroup)
+                parameter("buildId", build1Id)
+            }.returnsSingle { data ->
+                @Suppress("UNCHECKED_CAST")
+                val methodsSlices = (data["methods"] as Map<String, Any>)["slices"] as List<Map<String, Any>>
+                val methodsByMetric =
+                    methodsSlices.associate { it["metric"] as String to (it["value"] as Number).toInt() }
+                assertEquals(2, methodsSlices.sumOf { (it["value"] as Number).toInt() })
+                assertEquals(1, methodsByMetric["covered"])
+                assertEquals(1, methodsByMetric["missed"])
+            }
+        }
+    }
+
+    @Test
     fun `given test definition with partial coverage, coverage summary totals should match build`() {
         havingData {
             build1 has listOf(method1, method2)

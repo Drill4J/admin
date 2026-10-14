@@ -47,6 +47,27 @@ class ImpactedMethodsApiTest : MetricsApiTests() {
     }
 
     @Test
+    fun `given method ignore rule, impacted methods should exclude ignored methods`() {
+        havingData {
+            build1 has listOf(method1, method2)
+            test1 covers method1 on build1
+            test1 covers method2 on build1
+            build2 hasModified method1 comparedTo build1
+            build2 hasModified method2 comparedTo build1
+            client.postMethodIgnoreRule(
+                groupId = testGroup,
+                appId = testApp,
+                namePattern = method2.name
+            )
+        }.expectThat { client ->
+            client.getBuildChanges(build2, build1, hasImpactedTests = true).returns { data ->
+                assertEquals(1, data.size)
+                assertEquals(method1.name, data.first()["name"])
+            }
+        }
+    }
+
+    @Test
     fun `given page and size, build-changes should paginate impacted methods`() {
         havingData {
             build1 has listOf(method1, method2)
