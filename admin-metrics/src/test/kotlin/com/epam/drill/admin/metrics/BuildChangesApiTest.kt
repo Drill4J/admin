@@ -51,6 +51,28 @@ class BuildChangesApiTest : MetricsApiTests() {
     }
 
     @Test
+    fun `given method ignore rule, build-changes should exclude ignored methods`() {
+        havingData {
+            initBuildsAndMethodsData()
+            client.postMethodIgnoreRule(
+                groupId = testGroup,
+                appId = testApp,
+                namePattern = method3.name
+            )
+        }.expectThat {
+            client.get("/metrics/build-changes") {
+                parameter("groupId", testGroup)
+                parameter("appId", testApp)
+                parameter("buildVersion", "3.0.0")
+                parameter("baselineBuildVersion", "1.0.0")
+            }.returns { data ->
+                assertEquals(2, data.size)
+                assertTrue(data.none { it["name"] == method3.name })
+            }
+        }
+    }
+
+    @Test
     fun `given isolated tested target build, build-changes should return coverage in current build`() {
         havingData {
             initBuildsAndMethodsData()

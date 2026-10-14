@@ -62,6 +62,37 @@ class CoverageAggregationApiTest : MetricsApiTests() {
     }
 
     @Test
+    fun `coverage by package should exclude ignored methods from methodsCount`() {
+        havingData {
+            val classAMethod = SingleMethodPayload(
+                classname = "com/example/foo/ClassA",
+                name = "methodA", params = "()", returnType = "void",
+                probesCount = 2, probesStartPos = 0, bodyChecksum = "A00",
+            )
+            val classBMethod = SingleMethodPayload(
+                classname = "com/example/foo/ClassB",
+                name = "methodB", params = "()", returnType = "void",
+                probesCount = 3, probesStartPos = 2, bodyChecksum = "B00",
+            )
+            build1 has listOf(classAMethod, classBMethod)
+            client.postMethodIgnoreRule(
+                groupId = testGroup,
+                appId = testApp,
+                namePattern = "methodB"
+            )
+        }.expectThat {
+            client.get("/metrics/coverage/by-package") {
+                parameter("buildId", build1Id)
+            }.apply {
+                assertEquals(HttpStatusCode.OK, status)
+                val data = JsonPath.parse(bodyAsText()).read<List<Map<String, Any>>>("$.data")
+                assertEquals(1, data.size)
+                assertEquals(1, (data.first()["methodsCount"] as Number).toInt())
+            }
+        }
+    }
+
+    @Test
     fun `coverage by package should split slash-separated class names`() {
         havingData {
             val classAMethod = SingleMethodPayload(

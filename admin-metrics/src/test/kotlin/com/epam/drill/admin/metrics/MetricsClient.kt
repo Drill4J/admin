@@ -145,6 +145,23 @@ suspend fun HttpClient.getCoverage(
     }.assertSuccessStatus()
 }
 
+suspend fun HttpClient.postMethodIgnoreRule(
+    groupId: String,
+    appId: String,
+    namePattern: String? = null,
+    classnamePattern: String? = null,
+): HttpResponse {
+    return post("/data-management/method-ignore-rules") {
+        contentType(ContentType.Application.Json)
+        setBody(buildJsonObject {
+            put("groupId", groupId)
+            put("appId", appId)
+            namePattern?.let { put("namePattern", it) }
+            classnamePattern?.let { put("classnamePattern", it) }
+        }.toString())
+    }.assertSuccessStatus()
+}
+
 fun TestDetails.assertTestIsImpacted(data: List<Map<String, Any?>>) {
     assertTrue(data.any {
         it["testName"] == this.testName && it["testPath"] == this.path && it["impactStatus"] == TestImpactStatus.IMPACTED.name

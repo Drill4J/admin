@@ -34,7 +34,7 @@ import com.epam.drill.admin.writer.rawdata.config.dataManagementServicesDIModule
 import com.epam.drill.admin.writer.rawdata.config.rawDataServicesDIModule
 import com.epam.drill.admin.writer.rawdata.route.dataIngestRoutes
 import com.epam.drill.admin.writer.rawdata.route.dataManagementRoutes
-import com.epam.drill.admin.writer.rawdata.route.payload.BuildPayload
+import com.epam.drill.admin.writer.rawdata.route.dataManagementWriteRoutes
 import com.epam.drill.admin.writer.rawdata.route.payload.InstancePayload
 import com.epam.drill.admin.writer.rawdata.route.payload.TestSessionPayload
 import com.epam.drill.admin.writer.rawdata.route.payload.SingleMethodPayload
@@ -77,6 +77,7 @@ fun havingData(testsData: suspend TestDataDsl.() -> Unit): HttpClient {
             }) {
             dataIngestRoutes()
             dataManagementRoutes()
+            dataManagementWriteRoutes()
             metricsRoutes()
             route("/metrics") {
                 etlManagementRoutes()

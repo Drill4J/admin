@@ -39,6 +39,27 @@ class CoverageApiTest : MetricsApiTests() {
         }
     }
     @Test
+    fun `given method ignore rule, coverage service should not return ignored methods`() {
+        havingData {
+            build1 has listOf(method1, method2, method3)
+            client.postMethodIgnoreRule(
+                groupId = testGroup,
+                appId = testApp,
+                namePattern = method2.name
+            )
+        }.expectThat {
+            client.get("/metrics/coverage") {
+                parameter("groupId", build1.groupId)
+                parameter("appId", build1.appId)
+                parameter("buildVersion", build1.buildVersion)
+            }.returns { data ->
+                assertEquals(2, data.size)
+                assertTrue(data.none { it["name"] == method2.name })
+            }
+        }
+    }
+
+    @Test
     fun `given build with coverage, coverage service should return methods list with coverage data`() {
         havingData {
             build1 has listOf(method1, method2)
