@@ -56,6 +56,24 @@ class BuildDetailApiTest : MetricsApiTests() {
     }
 
     @Test
+    fun `get build by id should exclude ignored methods`() {
+        havingData {
+            build1 has listOf(method1, method2, method3)
+            client.postMethodIgnoreRule(
+                groupId = testGroup,
+                appId = testApp,
+                namePattern = "method2"
+            )
+        }.expectThat {
+            client.get("/metrics/builds/$build1Id").apply {
+                assertEquals(HttpStatusCode.OK, status)
+                val data = JsonPath.parse(bodyAsText()).read<Map<String, Any>>("$.data")
+                assertEquals(2, data["totalMethods"])
+            }
+        }
+    }
+
+    @Test
     fun `get build by id should return status and agent metadata`() {
         val build = InstancePayload(
             groupId = testGroup,
