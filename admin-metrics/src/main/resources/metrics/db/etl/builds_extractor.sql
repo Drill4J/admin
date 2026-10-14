@@ -60,42 +60,34 @@ build_masks AS (
         bm.group_id,
         bm.app_id,
         bm.build_id,
-        CAST(
-            string_agg(
-                CASE
-                    WHEN NOT EXISTS (
-                        SELECT 1
-                        FROM raw_data.method_ignore_rules r
-                        WHERE r.group_id = m.group_id
-                          AND r.app_id   = m.app_id
-                          AND (r.classname_pattern IS NULL
-                               OR m.class_name::text ~ r.classname_pattern::text)
-                          AND (r.name_pattern IS NULL
-                               OR m.method_name::text ~ r.name_pattern::text)
-                    ) THEN '1'
-                    ELSE '0'
-                END,
-                '' ORDER BY bm.method_id
-            ) AS varbit
-        ) AS method_ignore_mask,
-        CAST(
-            string_agg(
-                CASE
-                    WHEN NOT EXISTS (
-                        SELECT 1
-                        FROM raw_data.method_ignore_rules r
-                        WHERE r.group_id = m.group_id
-                          AND r.app_id   = m.app_id
-                          AND (r.classname_pattern IS NULL
-                               OR m.class_name::text ~ r.classname_pattern::text)
-                          AND (r.name_pattern IS NULL
-                               OR m.method_name::text ~ r.name_pattern::text)
-                    ) THEN repeat('1', m.probes_count)
-                    ELSE repeat('0', m.probes_count)
-                END,
-                '' ORDER BY bm.method_id
-            ) AS varbit
-        ) AS code_ignore_mask
+        STRING_AGG(
+            CASE WHEN NOT EXISTS (
+                SELECT 1
+                FROM raw_data.method_ignore_rules r
+                WHERE r.group_id = m.group_id
+                  AND r.app_id   = m.app_id
+                  AND (r.classname_pattern IS NULL
+                       OR m.class_name::text ~ r.classname_pattern::text)
+                  AND (r.name_pattern IS NULL
+                       OR m.method_name::text ~ r.name_pattern::text)
+            ) THEN '1'
+            ELSE '0' END,
+            '' ORDER BY bm.method_id
+        )::VARBIT AS method_ignore_mask,
+        STRING_AGG(
+            CASE WHEN NOT EXISTS (
+                SELECT 1
+                FROM raw_data.method_ignore_rules r
+                WHERE r.group_id = m.group_id
+                  AND r.app_id   = m.app_id
+                  AND (r.classname_pattern IS NULL
+                       OR m.class_name::text ~ r.classname_pattern::text)
+                  AND (r.name_pattern IS NULL
+                       OR m.method_name::text ~ r.name_pattern::text)
+            ) THEN repeat('1', m.probes_count)
+            ELSE repeat('0', m.probes_count) END,
+            '' ORDER BY bm.method_id
+        )::VARBIT AS code_ignore_mask
     FROM raw_data.build_methods bm
     JOIN raw_data.methods m
         ON m.method_id  = bm.method_id
