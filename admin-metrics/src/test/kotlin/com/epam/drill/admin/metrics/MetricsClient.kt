@@ -24,12 +24,14 @@ import io.ktor.client.request.HttpRequestBuilder
 import io.ktor.client.request.get
 import io.ktor.client.request.parameter
 import io.ktor.client.request.post
+import io.ktor.client.request.put
 import io.ktor.client.request.setBody
 import io.ktor.client.statement.HttpResponse
 import io.ktor.http.ContentType
 import io.ktor.http.contentType
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.buildJsonArray
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
 import kotlin.test.assertEquals
@@ -159,6 +161,45 @@ suspend fun HttpClient.postMethodIgnoreRule(
             namePattern?.let { put("namePattern", it) }
             classnamePattern?.let { put("classnamePattern", it) }
         }.toString())
+    }.assertSuccessStatus()
+}
+
+suspend fun HttpClient.syncMethodIgnoreRules(
+    groupId: String,
+    appId: String,
+    namePatterns: List<String> = emptyList(),
+    classnamePatterns: List<String> = emptyList(),
+    classnameAndNamePatterns: List<Pair<String, String>> = emptyList(),
+): HttpResponse {
+    val rules = buildJsonArray {
+        namePatterns.forEach { pattern ->
+            add(buildJsonObject {
+                put("groupId", groupId)
+                put("appId", appId)
+                put("namePattern", pattern)
+            })
+        }
+        classnamePatterns.forEach { pattern ->
+            add(buildJsonObject {
+                put("groupId", groupId)
+                put("appId", appId)
+                put("classnamePattern", pattern)
+            })
+        }
+        classnameAndNamePatterns.forEach { (classnamePattern, namePattern) ->
+            add(buildJsonObject {
+                put("groupId", groupId)
+                put("appId", appId)
+                put("classnamePattern", classnamePattern)
+                put("namePattern", namePattern)
+            })
+        }
+    }
+    return put("/data-management/method-ignore-rules") {
+        parameter("groupId", groupId)
+        parameter("appId", appId)
+        contentType(ContentType.Application.Json)
+        setBody(rules.toString())
     }.assertSuccessStatus()
 }
 

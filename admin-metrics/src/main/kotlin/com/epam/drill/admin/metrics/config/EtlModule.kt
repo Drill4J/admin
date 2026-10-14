@@ -51,6 +51,7 @@ const val HISTORICAL_ETL = "historical"
 const val TEST_SESSION_COVERAGE_ETL = "testSessionCoverage"
 const val MERGED_COVERAGE_ETL = "merged_coverage"
 const val BUILD_COVERAGE_ETL = "build_coverage"
+const val BUILD_METHODS_ETL = "buildMethods"
 
 val etlDIModule
     get() = DI.Module("etlServices") {
@@ -194,6 +195,23 @@ val etlDIModule
                 )
             }
         }
+        bind<EtlOrchestrator>(tag = BUILD_METHODS_ETL) with singleton {
+            val etlConfig = instance<EtlConfig>()
+            with(etlConfig) {
+                EtlOrchestratorImpl(
+                    name = BUILD_METHODS_ETL,
+                    pipelines = listOf(
+                        buildsPipeline,
+                        buildMethodsPipeline,
+                        methodsPipeline,
+                    ),
+                    metadataRepository = instance(),
+                    jobsRepository = instance(),
+                    metrics = metrics,
+                    lockLeaseSeconds = lockLeaseSeconds,
+                )
+            }
+        }
 
         bind<EtlWorkerPool>() with singleton {
             val etlConfig = instance<EtlConfig>()
@@ -208,6 +226,7 @@ val etlDIModule
                     instance<EtlOrchestrator>(tag = TEST_SESSION_COVERAGE_ETL),
                     instance<EtlOrchestrator>(tag = MERGED_COVERAGE_ETL),
                     instance<EtlOrchestrator>(tag = BUILD_COVERAGE_ETL),
+                    instance<EtlOrchestrator>(tag = BUILD_METHODS_ETL),
                 ),
                 jobsRepository = instance(),
                 lockLeaseSeconds = etlConfig.lockLeaseSeconds,
@@ -224,6 +243,7 @@ val etlDIModule
                 testSessionCoverageEtlName = TEST_SESSION_COVERAGE_ETL,
                 mergedCoverageEtlName = MERGED_COVERAGE_ETL,
                 buildCoverageEtlName = BUILD_COVERAGE_ETL,
+                buildMethodsEtlName = BUILD_METHODS_ETL,
                 settingsService = instance(),
                 maxWorkers = instance<EtlConfig>().maxWorkers,
             )

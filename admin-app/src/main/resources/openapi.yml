@@ -418,6 +418,43 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/MethodIgnoreRulesDataResponse'
+    put:
+      summary: Sync method ignore rules
+      description: |
+        Replaces all existing method ignore rules for the specified group and application with the provided list.
+        Rules not present in the request body are deleted; rules in the request body are created fresh.
+        Sending an empty array clears all rules for the given group and application.
+      operationId: syncMethodIgnoreRules
+      tags:
+        - data-management
+      security:
+        - apiKeyAuth: [ ]
+      parameters:
+        - name: groupId
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: appId
+          in: query
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: array
+              items:
+                $ref: '#/components/schemas/MethodIgnoreRulePayload'
+      responses:
+        '200':
+          description: Method ignore rules updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
   /api/data-management/method-ignore-rules/{id}:
     delete:
       summary: Delete method ignore rule by ID
