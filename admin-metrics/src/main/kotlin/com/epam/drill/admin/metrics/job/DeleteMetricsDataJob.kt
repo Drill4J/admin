@@ -74,6 +74,10 @@ class DeleteMetricsDataJob(
                 "group" -> {
                     metricsRepository.deleteAllGroupDataByGroupId(groupId)
                 }
+                "methodIgnoreRules" -> {
+                    val appId = context.mergedJobDataMap.getString("appId")
+                    etlService.reloadBuildMethods(groupId, appId)
+                }
                 else -> throw IllegalArgumentException("Unknown dataType: $dataType")
             }
         }

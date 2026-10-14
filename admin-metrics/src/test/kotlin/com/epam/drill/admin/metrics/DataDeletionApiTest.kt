@@ -22,6 +22,7 @@ import com.epam.drill.admin.writer.rawdata.route.payload.TestSessionPayload
 import io.ktor.client.request.*
 import kotlinx.datetime.Clock
 import kotlin.test.Test
+import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
@@ -244,6 +245,37 @@ class DataDeletionApiTest : MetricsApiTests() {
             assertThatTableHas("metrics.test_to_code_mapping", groupId, signature = method2.signature)
         }
     }
+
+    @Test
+    fun `changing method ignore rules should update ignored methods and metrics`() {
+        val groupId = testGroup
+        val appId = testApp
+
+        havingData {
+            build1 has listOf(method1, method2)
+            test1 covers method1 on build1
+            test2 covers method2 on build1
+        }.expectThat {
+            assertFalse(isMethodIgnored(groupId, appId, method1.methodId))
+            assertFalse(isMethodIgnored(groupId, appId, method2.methodId))
+        }.whenExecuting {
+            syncMethodIgnoreRules(groupId, appId, namePatterns = listOf(method1.name))
+        }.expectThat {
+            assertTrue(isMethodIgnored(groupId, appId, method1.methodId), "method1 should be ignored")
+            assertFalse(isMethodIgnored(groupId, appId, method2.methodId), "method2 should not be ignored")
+        }
+    }
+
+    private suspend fun isMethodIgnored(groupId: String, appId: String, methodId: String): Boolean =
+        MetricsDatabaseConfig.transaction {
+            executeQueryReturnMap {
+                append("SELECT ignore FROM metrics.methods")
+                append(" WHERE group_id = ?", groupId)
+                append(" AND app_id = ?", appId)
+                append(" AND method_id = ?", methodId)
+                append(" LIMIT 1")
+            }.firstOrNull()?.get("ignore") as? Boolean ?: false
+        }
 
     private suspend fun tableHas(
         table: String, groupId: String,

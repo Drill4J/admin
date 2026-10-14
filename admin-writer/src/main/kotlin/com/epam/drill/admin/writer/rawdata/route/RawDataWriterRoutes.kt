@@ -262,9 +262,10 @@ internal val jsonConfig = Json {
 
 internal suspend inline fun <reified T : Any> ApplicationCall.decompressAndReceive(): T {
     val body: ByteArray = decompress()
+    val ser = serializer<T>()
     return when (request.headers[HttpHeaders.ContentType]) {
-        ContentType.Application.ProtoBuf.toString() -> ProtoBuf.decodeFromByteArray(T::class.serializer(), body)
-        ContentType.Application.Json.toString() -> jsonConfig.decodeFromString(T::class.serializer(), String(body))
+        ContentType.Application.ProtoBuf.toString() -> ProtoBuf.decodeFromByteArray(ser, body)
+        ContentType.Application.Json.toString() -> jsonConfig.decodeFromString(ser, String(body))
         else -> throw request.headers[HttpHeaders.ContentType]?.let {
             UnsupportedMediaTypeException(ContentType.parse(it))
         } ?: BadRequestException("Content-Type header is missing")

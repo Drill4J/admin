@@ -55,4 +55,39 @@ class MethodIgnoreRuleRepositoryTest : DatabaseTests({ RawDataWriterDatabaseConf
         repository.deleteById("group", "app", appRules.data.single().id)
         assertEquals(0, repository.getAll("group", "app", page = 1, pageSize = 20).total)
     }
+
+    @Test
+    fun `syncAll replaces existing rules for the given scope`() = withRollback {
+        repository.create(MethodIgnoreRule(groupId = "group", appId = "app", namePattern = "old.*"))
+        repository.create(MethodIgnoreRule(groupId = "group", appId = "app", classnamePattern = "com\\.old\\..*"))
+        repository.create(MethodIgnoreRule(groupId = "group", appId = "other-app", namePattern = "unrelated.*"))
+
+        assertEquals(2, repository.getAll("group", "app", 1, 20).total)
+
+        repository.syncAll(
+            groupId = "group",
+            appId = "app",
+            rules = listOf(
+                MethodIgnoreRule(groupId = "group", appId = "app", namePattern = "new.*", classnamePattern = "com\\.new\\..*"),
+            )
+        )
+
+        val result = repository.getAll("group", "app", 1, 20)
+        assertEquals(1, result.total)
+        assertEquals("new.*", result.data.single().namePattern)
+        assertEquals("com\\.new\\..*", result.data.single().classnamePattern)
+
+        assertEquals(1, repository.getAll("group", "other-app", 1, 20).total, "other-app rules must be untouched")
+    }
+
+    @Test
+    fun `syncAll with empty list clears all rules for the scope`() = withRollback {
+        repository.create(MethodIgnoreRule(groupId = "group", appId = "app", namePattern = "get.*"))
+        repository.create(MethodIgnoreRule(groupId = "group", appId = "other-app", namePattern = "set.*"))
+
+        repository.syncAll(groupId = "group", appId = "app", rules = emptyList())
+
+        assertEquals(0, repository.getAll("group", "app", 1, 20).total)
+        assertEquals(1, repository.getAll("group", "other-app", 1, 20).total, "other-app rules must be untouched")
+    }
 }
