@@ -22,6 +22,7 @@ import com.epam.drill.admin.common.scheduler.deleteMetricsDataJobKey
 import com.epam.drill.admin.common.scheduler.getAppDataDeletionDataMap
 import com.epam.drill.admin.common.scheduler.getGroupDataDeletionDataMap
 import com.epam.drill.admin.common.scheduler.getBuildDataDeletionDataMap
+import com.epam.drill.admin.common.scheduler.getMethodIgnoreRulesDataMap
 import com.epam.drill.admin.common.scheduler.getTestSessionDataDeletionDataMap
 import com.epam.drill.admin.common.scheduler.getTestProjectDataDeletionDataMap
 import com.epam.drill.admin.writer.rawdata.config.RawDataWriterDatabaseConfig.transaction
@@ -151,6 +152,21 @@ class DataManagementServiceImpl(
         transaction {
             methodIgnoreRuleRepository.deleteById(groupId, appId, ruleId)
         }
+    }
+
+    override suspend fun syncMethodIgnoreRules(groupId: String, appId: String, rules: List<MethodIgnoreRulePayload>) {
+        val entities = rules.map { payload ->
+            MethodIgnoreRule(
+                groupId = payload.groupId,
+                appId = payload.appId,
+                namePattern = payload.namePattern,
+                classnamePattern = payload.classnamePattern,
+            )
+        }
+        transaction {
+            methodIgnoreRuleRepository.syncAll(groupId, appId, entities)
+        }
+        scheduler.triggerJob(deleteMetricsDataJobKey, getMethodIgnoreRulesDataMap(groupId, appId))
     }
 
     override suspend fun saveTestLaunchCoverageRequest(groupId: String, testSessionId: String, testDefinitionId: String?) {

@@ -22,6 +22,7 @@ import com.epam.drill.admin.writer.rawdata.service.RawMethodBrowseService
 import io.ktor.resources.Resource
 import io.ktor.server.application.call
 import io.ktor.server.auth.principal
+import com.epam.drill.admin.writer.rawdata.route.payload.MethodIgnoreRulePayload
 import io.ktor.server.resources.delete
 import io.ktor.server.resources.get
 import io.ktor.server.resources.post
@@ -113,9 +114,10 @@ fun Route.dataManagementReadRoutes() {
     }
 }
 
-/** Create/delete method ignore rules (ADMIN). */
+/** Create/delete/sync method ignore rules (ADMIN). */
 fun Route.dataManagementWriteRoutes() {
     route("/data-management") {
+        putMethodIgnoreRules()
         postMethodIgnoreRules()
         deleteMethodIgnoreRule()
     }
@@ -197,12 +199,25 @@ fun Route.deleteTestSessionData() {
     }
 }
 
+@Deprecated("Use PUT /data-management/method-ignore-rules instead")
 fun Route.postMethodIgnoreRules() {
     val dataManagementService by closestDI().instance<DataManagementService>()
 
     post<MethodIgnoreRulesRoute> {
         dataManagementService.saveMethodIgnoreRule(call.decompressAndReceive())
         call.ok("Method ignore rule saved")
+    }
+}
+
+fun Route.putMethodIgnoreRules() {
+    val dataManagementService by closestDI().instance<DataManagementService>()
+
+    put<MethodIgnoreRulesRoute> { params ->
+        val groupId = requireNotNull(params.groupId) { "Query parameter 'groupId' is required" }
+        val appId = requireNotNull(params.appId) { "Query parameter 'appId' is required" }
+        val rules = call.decompressAndReceive<List<MethodIgnoreRulePayload>>()
+        dataManagementService.syncMethodIgnoreRules(groupId, appId, rules)
+        call.ok("Method ignore rules updated")
     }
 }
 
@@ -223,6 +238,7 @@ fun Route.getMethodIgnoreRules() {
     }
 }
 
+@Deprecated("Use PUT /data-management/method-ignore-rules instead")
 fun Route.deleteMethodIgnoreRule() {
     val dataManagementService by closestDI().instance<DataManagementService>()
 

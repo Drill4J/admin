@@ -60,6 +60,15 @@ interface DataManagementService {
      */
     suspend fun deleteTestSessionData(groupId: String, testProjectId: String?, testSessionId: String, user: User?)
 
+    /**
+     * Synchronizes the method ignore rules for a specific application within a group.
+     * This will replace any existing rules with the provided list of rules.
+     * @param groupId The ID of the group.
+     * @param appId The ID of the application.
+     * @param rules The list of method ignore rules to synchronize.
+     */
+    suspend fun syncMethodIgnoreRules(groupId: String, appId: String, rules: List<MethodIgnoreRulePayload>)
+    @Deprecated("Use syncMethodIgnoreRules instead")
     suspend fun saveMethodIgnoreRule(rulePayload: MethodIgnoreRulePayload)
     suspend fun getAllMethodIgnoreRules(
         groupId: String,
@@ -67,6 +76,7 @@ interface DataManagementService {
         page: Int,
         pageSize: Int,
     ): MethodIgnoreRulesPageView
+    @Deprecated("Use syncMethodIgnoreRules instead")
     suspend fun deleteMethodIgnoreRuleById(groupId: String, appId: String, ruleId: Int)
 
     suspend fun saveTestLaunchCoverageRequest(groupId: String, testSessionId: String, testDefinitionId: String?)
