@@ -174,30 +174,22 @@ suspend fun HttpClient.syncMethodIgnoreRules(
     val rules = buildJsonArray {
         namePatterns.forEach { pattern ->
             add(buildJsonObject {
-                put("groupId", groupId)
-                put("appId", appId)
                 put("namePattern", pattern)
             })
         }
         classnamePatterns.forEach { pattern ->
             add(buildJsonObject {
-                put("groupId", groupId)
-                put("appId", appId)
                 put("classnamePattern", pattern)
             })
         }
         classnameAndNamePatterns.forEach { (classnamePattern, namePattern) ->
             add(buildJsonObject {
-                put("groupId", groupId)
-                put("appId", appId)
                 put("classnamePattern", classnamePattern)
                 put("namePattern", namePattern)
             })
         }
     }
-    return put("/data-management/method-ignore-rules") {
-        parameter("groupId", groupId)
-        parameter("appId", appId)
+    return put("/data-management/groups/${groupId}/apps/${appId}/exclusion-rules") {
         contentType(ContentType.Application.Json)
         setBody(rules.toString())
     }.assertSuccessStatus()
