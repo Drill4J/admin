@@ -85,4 +85,20 @@ class MethodIgnoreRuleRepositoryImpl : MethodIgnoreRuleRepository {
             this[MethodIgnoreRulesTable.classnamePattern] = rule.classnamePattern
         }
     }
+
+    override fun getList(
+        groupId: String,
+        appId: String
+    ): List<MethodIgnoreRule> {
+        return MethodIgnoreRulesTable.selectAll()
+            .where { (MethodIgnoreRulesTable.groupId eq groupId) and (MethodIgnoreRulesTable.appId eq appId) }
+            .map {
+                MethodIgnoreRule(
+                    groupId = it[MethodIgnoreRulesTable.groupId],
+                    appId = it[MethodIgnoreRulesTable.appId],
+                    namePattern = it[MethodIgnoreRulesTable.namePattern],
+                    classnamePattern = it[MethodIgnoreRulesTable.classnamePattern],
+                )
+            }
+    }
 }

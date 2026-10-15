@@ -341,6 +341,7 @@ paths:
   /api/data-management/method-ignore-rules:
     post:
       summary: Save method ignore rule
+      deprecated: true
       description: |
         Creates a new rule for excluding methods from coverage analysis and metrics computation.
         All populated fields within one rule are AND-ed; separate rules are OR-ed.
@@ -372,6 +373,7 @@ paths:
                 $ref: '#/components/schemas/MessageResponse'
     get:
       summary: Get method ignore rules for an app
+      deprecated: true
       description: |
         Retrieves method ignore rules for the requested group and application.
         Each rule defines class name and/or method name patterns used to exclude matching methods
@@ -418,46 +420,10 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/MethodIgnoreRulesDataResponse'
-    put:
-      summary: Sync method ignore rules
-      description: |
-        Replaces all existing method ignore rules for the specified group and application with the provided list.
-        Rules not present in the request body are deleted; rules in the request body are created fresh.
-        Sending an empty array clears all rules for the given group and application.
-      operationId: syncMethodIgnoreRules
-      tags:
-        - data-management
-      security:
-        - apiKeyAuth: [ ]
-      parameters:
-        - name: groupId
-          in: query
-          required: true
-          schema:
-            type: string
-        - name: appId
-          in: query
-          required: true
-          schema:
-            type: string
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: array
-              items:
-                $ref: '#/components/schemas/MethodIgnoreRulePayload'
-      responses:
-        '200':
-          description: Method ignore rules updated
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/MessageResponse'
   /api/data-management/method-ignore-rules/{id}:
     delete:
       summary: Delete method ignore rule by ID
+      deprecated: true
       description: |
         Removes a specific method ignore rule by its unique identifier.
 
@@ -488,6 +454,73 @@ paths:
       responses:
         '200':
           description: Method ignore rule deleted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+  /api/data-management/groups/{groupId}/apps/{appId}/exclusion-rules:
+    get:
+      summary: Get method exclusion rules for an app
+      description: |
+        Retrieves method exclusion rules for the requested group and application.
+        Each rule defines class name and/or method name patterns used to exclude matching methods
+        from coverage analysis and metrics computation.
+      operationId: getAllExclusionRules
+      tags:
+        - data-management
+      security:
+        - apiKeyAuth: [ ]
+      parameters:
+        - name: groupId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: appId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: List of method exclusion rules for the specified group and application
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MethodIgnoreRulesDataResponse'
+    put:
+      summary: Sync method exclusion rules
+      description: |
+        Replaces all existing method exclusion rules for the specified group and application with the provided list.
+        Rules not present in the request body are deleted; rules in the request body are created fresh.
+        Sending an empty array clears all rules for the given group and application.
+      operationId: syncMethodIgnoreRules
+      tags:
+        - data-management
+      security:
+        - apiKeyAuth: [ ]
+      parameters:
+        - name: groupId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: appId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: array
+              items:
+                $ref: '#/components/schemas/ExclusionRulePayload'
+      responses:
+        '200':
+          description: Method exclusion rules updated
           content:
             application/json:
               schema:
@@ -4088,6 +4121,24 @@ components:
         message:
           type: string
           nullable: true
+    ExclusionRulePayload:
+      type: object
+      description: |
+        Rule definition for excluding methods from coverage analysis and metrics computation.
+        At least one of namePattern or classnamePattern must be a non-empty valid regular expression.
+        Populated pattern fields within one rule are AND-ed; separate rules are OR-ed.
+      anyOf:
+        - required: [ namePattern ]
+        - required: [ classnamePattern ]
+      properties:
+        namePattern:
+          type: string
+          nullable: true
+          description: Regular expression for matching method names. Must be valid regex when non-empty.
+        classnamePattern:
+          type: string
+          nullable: true
+          description: Regular expression for matching fully qualified class names. Must be valid regex when non-empty.
     RawMethodTreeNodeView:
       type: object
       description: |

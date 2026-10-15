@@ -17,18 +17,16 @@ package com.epam.drill.admin.writer.rawdata.route
 
 import com.epam.drill.admin.common.principal.User
 import com.epam.drill.admin.common.route.ok
+import com.epam.drill.admin.writer.rawdata.route.payload.ExclusionRulePayload
 import com.epam.drill.admin.writer.rawdata.service.DataManagementService
 import com.epam.drill.admin.writer.rawdata.service.RawMethodBrowseService
 import io.ktor.resources.Resource
-import io.ktor.server.application.call
 import io.ktor.server.auth.principal
-import com.epam.drill.admin.writer.rawdata.route.payload.MethodIgnoreRulePayload
 import io.ktor.server.resources.delete
 import io.ktor.server.resources.get
 import io.ktor.server.resources.post
 import io.ktor.server.resources.put
 import io.ktor.server.routing.Route
-import io.ktor.server.routing.delete
 import io.ktor.server.routing.route
 import org.kodein.di.instance
 import org.kodein.di.ktor.closestDI
@@ -61,6 +59,8 @@ class Groups() {
                         }
                     }
                 }
+                @Resource("exclusion-rules")
+                class ExclusionRules(val parent: Apps.Id, val page: Int = 1, val pageSize: Int = 20)
             }
         }
         @Resource("/tests")
@@ -109,6 +109,7 @@ fun Route.dataManagementRoutes() {
 fun Route.dataManagementReadRoutes() {
     route("/data-management") {
         getMethodIgnoreRules()
+        getExclusionRules()
         getRawMethodTree()
         getRawMethods()
     }
@@ -117,7 +118,7 @@ fun Route.dataManagementReadRoutes() {
 /** Create/delete/sync method ignore rules (ADMIN). */
 fun Route.dataManagementWriteRoutes() {
     route("/data-management") {
-        putMethodIgnoreRules()
+        putExclusionRules()
         postMethodIgnoreRules()
         deleteMethodIgnoreRule()
     }
@@ -199,7 +200,7 @@ fun Route.deleteTestSessionData() {
     }
 }
 
-@Deprecated("Use PUT /data-management/method-ignore-rules instead")
+@Deprecated("Use PUT /data-management/groups/{groupId}/apps/{appId}/exclusion-rules instead")
 fun Route.postMethodIgnoreRules() {
     val dataManagementService by closestDI().instance<DataManagementService>()
 
@@ -209,18 +210,34 @@ fun Route.postMethodIgnoreRules() {
     }
 }
 
-fun Route.putMethodIgnoreRules() {
+fun Route.putExclusionRules() {
     val dataManagementService by closestDI().instance<DataManagementService>()
 
-    put<MethodIgnoreRulesRoute> { params ->
-        val groupId = requireNotNull(params.groupId) { "Query parameter 'groupId' is required" }
-        val appId = requireNotNull(params.appId) { "Query parameter 'appId' is required" }
-        val rules = call.decompressAndReceive<List<MethodIgnoreRulePayload>>()
-        dataManagementService.syncMethodIgnoreRules(groupId, appId, rules)
-        call.ok("Method ignore rules updated")
+    put<Groups.Id.Apps.Id.ExclusionRules> { params ->
+        val groupId = params.parent.parent.parent.groupId
+        val appId = params.parent.appId
+        val rules = call.decompressAndReceive<List<ExclusionRulePayload>>()
+        dataManagementService.syncExclusionRules(groupId, appId, rules)
+        call.ok("Method exclusion rules updated")
     }
 }
 
+fun Route.getExclusionRules() {
+    val dataManagementService by closestDI().instance<DataManagementService>()
+
+    get<Groups.Id.Apps.Id.ExclusionRules> { params ->
+        call.ok(
+            dataManagementService.getAllMethodIgnoreRules(
+                params.parent.parent.parent.groupId,
+                params.parent.appId,
+                params.page,
+                params.pageSize,
+            )
+        )
+    }
+}
+
+@Deprecated("Use GET /data-management/groups/{groupId}/apps/{appId}/exclusion-rules instead")
 fun Route.getMethodIgnoreRules() {
     val dataManagementService by closestDI().instance<DataManagementService>()
 
