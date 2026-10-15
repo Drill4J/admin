@@ -37,6 +37,7 @@ import com.epam.drill.admin.writer.rawdata.repository.TestLaunchCoverageRequestR
 import com.epam.drill.admin.writer.rawdata.repository.TestLaunchRepository
 import com.epam.drill.admin.writer.rawdata.repository.TestSessionBuildRepository
 import com.epam.drill.admin.writer.rawdata.repository.TestSessionRepository
+import com.epam.drill.admin.writer.rawdata.route.payload.ExclusionRulePayload
 import com.epam.drill.admin.writer.rawdata.route.payload.MethodIgnoreRulePayload
 import com.epam.drill.admin.writer.rawdata.service.DataManagementService
 import com.epam.drill.admin.writer.rawdata.views.MethodIgnoreRulesPageView
@@ -154,11 +155,11 @@ class DataManagementServiceImpl(
         }
     }
 
-    override suspend fun syncMethodIgnoreRules(groupId: String, appId: String, rules: List<MethodIgnoreRulePayload>) {
+    override suspend fun syncExclusionRules(groupId: String, appId: String, rules: List<ExclusionRulePayload>) {
         val entities = rules.map { payload ->
             MethodIgnoreRule(
-                groupId = payload.groupId,
-                appId = payload.appId,
+                groupId = groupId,
+                appId = appId,
                 namePattern = payload.namePattern,
                 classnamePattern = payload.classnamePattern,
             )
@@ -167,6 +168,20 @@ class DataManagementServiceImpl(
             methodIgnoreRuleRepository.syncAll(groupId, appId, entities)
         }
         scheduler.triggerJob(deleteMetricsDataJobKey, getMethodIgnoreRulesDataMap(groupId, appId))
+    }
+
+    override suspend fun getExclusionRules(
+        groupId: String,
+        appId: String
+    ): List<ExclusionRulePayload> {
+        return transaction {
+            methodIgnoreRuleRepository.getList(groupId, appId).map { rule ->
+                ExclusionRulePayload(
+                    namePattern = rule.namePattern,
+                    classnamePattern = rule.classnamePattern
+                )
+            }
+        }
     }
 
     override suspend fun saveTestLaunchCoverageRequest(groupId: String, testSessionId: String, testDefinitionId: String?) {

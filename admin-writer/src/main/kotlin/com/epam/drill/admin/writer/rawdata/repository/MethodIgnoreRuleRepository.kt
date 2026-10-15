@@ -23,4 +23,5 @@ interface MethodIgnoreRuleRepository {
     fun getAll(groupId: String, appId: String, page: Int, pageSize: Int): MethodIgnoreRulesPageView
     fun deleteById(groupId: String, appId: String, ruleId: Int)
     fun syncAll(groupId: String, appId: String, rules: List<MethodIgnoreRule>)
+    fun getList(groupId: String, appId: String): List<MethodIgnoreRule>
 }
