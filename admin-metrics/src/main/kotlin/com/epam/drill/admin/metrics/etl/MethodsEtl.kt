@@ -31,7 +31,7 @@ val EtlConfig.buildMethodsExtractor
         database = RawDataWriterDatabaseConfig.database,
         fetchSize = fetchSize,
         extractionLimit = extractionLimit,
-        lastExtractedAtColumnName = "created_at",
+        lastExtractedAtColumnName = "updated_at",
         metrics = metrics,
     )
 
