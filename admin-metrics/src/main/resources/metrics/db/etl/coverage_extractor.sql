@@ -23,6 +23,8 @@ WITH coverage AS (
 	WHERE c.created_at > :since_timestamp
 	    AND c.created_at <= :until_timestamp
 	    AND c.group_id = :group_id
+	    AND (:app_id::TEXT IS NULL OR c.app_id = :app_id)
+        AND (:build_id::TEXT IS NULL OR c.build_id = :build_id)
 	ORDER BY c.created_at
 	LIMIT :limit
 )

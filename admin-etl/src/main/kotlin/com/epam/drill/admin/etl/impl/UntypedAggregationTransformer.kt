@@ -59,7 +59,7 @@ class UntypedAggregationTransformer(
                     }
 
                     val groupKey = groupKeys.map { row[it] }
-                    val evicted = buffer.compute(groupKey) { value ->
+                    val (_, evicted) = buffer.compute(groupKey) { value ->
                         if (value == null) {
                             row
                         } else {

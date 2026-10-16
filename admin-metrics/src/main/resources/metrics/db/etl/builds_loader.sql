@@ -10,12 +10,21 @@ INSERT INTO metrics.builds (
     commit_author,
     commit_message,
     committed_at,
+    validation_status,
+    agent_version,
+    agent_env,
+    agent_params,
     created_at,
     updated_at,
     created_at_day,
     updated_at_day,
     first_instance_created_at,
-    last_instance_heartbeat_at
+    last_instance_heartbeat_at,
+    total_classes,
+    total_methods,
+    total_probes,
+    method_ignore_mask,
+    code_ignore_mask
 )
 VALUES (
     :group_id,
@@ -29,12 +38,21 @@ VALUES (
     :commit_author,
     :commit_message,
     :committed_at,
+    :validation_status,
+    :agent_version,
+    :agent_env,
+    :agent_params,
     :created_at,
     :updated_at,
     :created_at_day,
     :updated_at_day,
     :first_instance_created_at,
-    :last_instance_heartbeat_at
+    :last_instance_heartbeat_at,
+    :total_classes,
+    :total_methods,
+    :total_probes,
+    :method_ignore_mask,
+    :code_ignore_mask
 )
 ON CONFLICT (
     group_id,
@@ -50,7 +68,16 @@ SET
     commit_author = EXCLUDED.commit_author,
     commit_message = EXCLUDED.commit_message,
     committed_at = EXCLUDED.committed_at,
+    validation_status = EXCLUDED.validation_status,
+    agent_version = EXCLUDED.agent_version,
+    agent_env = EXCLUDED.agent_env,
+    agent_params = EXCLUDED.agent_params,
     updated_at = EXCLUDED.updated_at,
     updated_at_day = EXCLUDED.updated_at_day,
     first_instance_created_at = EXCLUDED.first_instance_created_at,
-    last_instance_heartbeat_at = EXCLUDED.last_instance_heartbeat_at
+    last_instance_heartbeat_at = EXCLUDED.last_instance_heartbeat_at,
+    total_classes = EXCLUDED.total_classes,
+    total_methods = EXCLUDED.total_methods,
+    total_probes = EXCLUDED.total_probes,
+    method_ignore_mask = EXCLUDED.method_ignore_mask,
+    code_ignore_mask   = EXCLUDED.code_ignore_mask

@@ -82,4 +82,8 @@ interface EtlService {
     suspend fun cancelJobs(groupId: String?, from: LocalDate?, to: LocalDate?): List<EtlJobView>
 
     suspend fun reloadMergedCoverage(groupId: String, appId: String, from: LocalDate?, to: LocalDate?): List<EtlJobView>
+
+    suspend fun reloadBuildCoverage(groupId: String, appId: String, buildId: String, from: LocalDate?, to: LocalDate?): List<EtlJobView>
+
+    suspend fun reloadBuildMethods(groupId: String, appId: String): List<EtlJobView>
 }

@@ -49,5 +49,11 @@ fun getGroupDataDeletionDataMap(groupId: String) = JobDataMap().apply {
     put("groupId", groupId)
 }
 
+fun getMethodIgnoreRulesDataMap(groupId: String, appId: String) = JobDataMap().apply {
+    put("dataType", "methodIgnoreRules")
+    put("groupId", groupId)
+    put("appId", appId)
+}
+
 val deleteMetricsDataJobKey: JobKey
     get() = JobKey.jobKey("metricsDeletionDataJob", "drill")

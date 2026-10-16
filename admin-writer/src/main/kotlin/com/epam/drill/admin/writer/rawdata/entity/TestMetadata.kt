@@ -15,6 +15,7 @@
  */
 package com.epam.drill.admin.writer.rawdata.entity
 
+import com.epam.drill.admin.writer.rawdata.route.payload.TestSessionStatus
 import kotlinx.serialization.json.JsonElement
 import java.time.LocalDateTime
 
@@ -52,4 +53,11 @@ class TestSession (
     val testTaskId: String?,
     val startedAt: LocalDateTime,
     val createdBy: String? = null
+)
+
+class TestSessionHeartbeat(
+    val id: String,
+    val groupId: String,
+    val testProjectId: String,
+    val status: TestSessionStatus,
 )

@@ -15,29 +15,47 @@
  */
 package com.epam.drill.admin.metrics
 
-import com.epam.drill.admin.etl.EtlJobStatus
-import com.epam.drill.admin.metrics.config.MERGED_COVERAGE_ETL
+import com.epam.drill.admin.test.waitUntilIn
+import com.epam.drill.admin.test.waitUntilInBlocking
 import com.epam.drill.admin.writer.rawdata.route.payload.*
+import com.epam.drill.admin.writer.rawdata.util.combineChecksumsCrc64
 import com.jayway.jsonpath.JsonPath
 import io.ktor.client.*
 import io.ktor.client.request.*
 import io.ktor.client.statement.*
 import io.ktor.http.*
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.runBlocking
-import kotlinx.coroutines.time.delay
-import kotlinx.coroutines.time.withTimeout
-import kotlinx.coroutines.withTimeout
 import java.util.concurrent.atomic.AtomicInteger
 import kotlin.test.assertEquals
-import kotlin.time.Duration.Companion.milliseconds
-import kotlin.time.Duration.Companion.seconds
 
 private val counter = AtomicInteger(0)
 
+suspend fun HttpClient.sendBuild(
+    build: BuildPayload,
+    methods: Collection<SingleMethodPayload>
+) {
+    putBuild(build)
+    putMethods(
+        MethodsPayload(
+            groupId = build.groupId,
+            appId = build.appId,
+            buildVersion = build.buildVersion,
+            methods = methods.toTypedArray()
+        )
+    )
+    finalizeBuild(
+        BuildFinalizePayload(
+            groupId = build.groupId,
+            appId = build.appId,
+            buildVersion = build.buildVersion,
+            methodsCount = methods.size,
+            methodsChecksum = combineChecksumsCrc64(methods.map { it.bodyChecksum })
+        )
+    )
+}
+
 suspend fun HttpClient.deployInstance(
     instance: InstancePayload,
-    methods: Array<SingleMethodPayload>
+    methods: Collection<SingleMethodPayload>
 ) {
     putInstance(instance)
     putMethods(
@@ -45,13 +63,22 @@ suspend fun HttpClient.deployInstance(
             groupId = instance.groupId,
             appId = instance.appId,
             buildVersion = instance.buildVersion,
-            methods = methods
+            methods = methods.toTypedArray()
+        )
+    )
+    finalizeBuild(
+        BuildFinalizePayload(
+            groupId = instance.groupId,
+            appId = instance.appId,
+            buildVersion = instance.buildVersion,
+            methodsCount = methods.size,
+            methodsChecksum = combineChecksumsCrc64(methods.map { it.bodyChecksum })
         )
     )
 }
 
 suspend fun HttpClient.launchTest(
-    session: SessionPayload,
+    session: TestSessionPayload,
     test: TestDetails,
     instance: InstancePayload,
     coverage: Array<Pair<SingleMethodPayload, IntArray>>,
@@ -75,7 +102,7 @@ suspend fun HttpClient.launchTest(
     )
 }
 suspend fun HttpClient.launchTest(
-    session: SessionPayload,
+    session: TestSessionPayload,
     testDefinition: TestDefinitionPayload,
     instance: InstancePayload,
     coverage: Array<Pair<SingleMethodPayload, IntArray>>,
@@ -143,6 +170,16 @@ suspend fun HttpClient.putBuild(payload: BuildPayload): HttpResponse {
     }.assertSuccessStatus()
 }
 
+fun HttpClient.finalizeBuild(payload: BuildFinalizePayload) {
+    waitUntilInBlocking {
+        put("/data-ingest/builds/finalize") {
+            setBody(payload)
+        }.returnsSingle {
+            assertEquals("VALID", it["status"])
+        }
+    }
+}
+
 suspend fun HttpClient.putBuildInfo(payload: BuildInfoPayload): HttpResponse {
     return put("/data-ingest/builds/info") {
         setBody(payload)
@@ -186,7 +223,7 @@ suspend fun HttpClient.postTestMetadata(payload: AddTestsPayload): HttpResponse 
     }.assertSuccessStatus()
 }
 
-suspend fun HttpClient.putTestSession(payload: SessionPayload): HttpResponse {
+suspend fun HttpClient.putTestSession(payload: TestSessionPayload): HttpResponse {
     return put("/data-ingest/sessions") {
         setBody(payload)
     }.assertSuccessStatus()

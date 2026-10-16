@@ -23,12 +23,14 @@ WITH coverage AS (
 	            FROM raw_data.method_ignore_rules r
 	            WHERE r.group_id = m.group_id
 	                AND r.app_id = m.app_id
-	                AND (r.classname_pattern IS NOT NULL AND m.class_name::text ~ r.classname_pattern::text
-	                    OR r.name_pattern IS NOT NULL AND m.method_name::text ~ r.name_pattern::text)
+                    AND (r.classname_pattern IS NULL OR m.class_name::text ~ r.classname_pattern::text)
+                    AND (r.name_pattern IS NULL OR m.method_name::text ~ r.name_pattern::text)
 	        )
 	WHERE c.created_at > :since_timestamp
 	    AND c.created_at <= :until_timestamp
 	    AND c.group_id = :group_id
+        AND (:app_id::TEXT IS NULL OR c.app_id = :app_id)
+        AND (:build_id::TEXT IS NULL OR c.build_id = :build_id)
 	    AND c.test_id IS NULL
         AND (:test_session_id::TEXT IS NULL OR c.test_session_id = :test_session_id)
 	ORDER BY c.created_at, c.method_id

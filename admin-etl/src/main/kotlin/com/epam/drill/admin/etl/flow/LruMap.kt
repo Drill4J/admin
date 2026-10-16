@@ -27,12 +27,13 @@ class LruMap<K, V>(
     val size: Int
         get() = map.size
 
-    fun compute(key: K, update: (V?) -> V): V? {
-        map[key] = update(map[key])
+    suspend fun compute(key: K, update: suspend (V?) -> V): Pair<V, V?> {
+        val newValue = update(map[key])
+        map[key] = newValue
         return if (map.size > maxSize) {
-            evictOldest()
+            newValue to evictOldest()
         } else {
-            null
+            newValue to null
         }
     }
 

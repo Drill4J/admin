@@ -21,6 +21,7 @@ import com.epam.drill.admin.writer.rawdata.service.RawDataWriter
 import com.epam.drill.admin.writer.rawdata.service.QueuedRawDataWriter
 import com.epam.drill.admin.writer.rawdata.route.payload.BuildFinalizePayload
 import com.epam.drill.admin.writer.rawdata.route.payload.AgentHeartbeatPayload
+import com.epam.drill.admin.writer.rawdata.route.payload.TestSessionHeartbeatPayload
 import com.epam.drill.admin.writer.rawdata.views.BuildFinalizationResultView
 import io.ktor.client.*
 import io.ktor.client.engine.apache.*
@@ -81,6 +82,9 @@ class TestMetadataRoute(): DataIngestRoute
 @Resource("sessions")
 class TestSessionRoute(): DataIngestRoute
 
+@Resource("sessions/heartbeat")
+class TestSessionHeartbeatRoute()
+
 @Resource("test-definitions")
 class TestDefinitionsRoute(): DataIngestRoute
 
@@ -101,6 +105,7 @@ fun Route.dataIngestRoutes() {
         putMethods()
         postTestMetadata()
         putTestSessions()
+        putTestSessionHeartbeat()
         postTestDefinitions()
         postTestLaunches()
     }
@@ -190,6 +195,16 @@ fun Route.putTestSessions() {
     }
 }
 
+fun Route.putTestSessionHeartbeat() {
+    val rawDataWriter by closestDI().instance<RawDataWriter>()
+
+    put<TestSessionHeartbeatRoute> {
+        val payload = call.decompressAndReceive<TestSessionHeartbeatPayload>()
+        rawDataWriter.saveTestSessionHeartbeat(payload)
+        call.ok("Test session heartbeat saved")
+    }
+}
+
 fun Route.postTestDefinitions() {
     val queuedRawDataWriter by closestDI().instance<QueuedRawDataWriter>()
 
@@ -247,9 +262,10 @@ internal val jsonConfig = Json {
 
 internal suspend inline fun <reified T : Any> ApplicationCall.decompressAndReceive(): T {
     val body: ByteArray = decompress()
+    val ser = serializer<T>()
     return when (request.headers[HttpHeaders.ContentType]) {
-        ContentType.Application.ProtoBuf.toString() -> ProtoBuf.decodeFromByteArray(T::class.serializer(), body)
-        ContentType.Application.Json.toString() -> jsonConfig.decodeFromString(T::class.serializer(), String(body))
+        ContentType.Application.ProtoBuf.toString() -> ProtoBuf.decodeFromByteArray(ser, body)
+        ContentType.Application.Json.toString() -> jsonConfig.decodeFromString(ser, String(body))
         else -> throw request.headers[HttpHeaders.ContentType]?.let {
             UnsupportedMediaTypeException(ContentType.parse(it))
         } ?: BadRequestException("Content-Type header is missing")

@@ -38,6 +38,7 @@ import io.micrometer.core.instrument.simple.SimpleMeterRegistry
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import org.jetbrains.exposed.sql.Database
+import org.jetbrains.exposed.sql.Transaction
 import org.kodein.di.allInstances
 import org.kodein.di.bind
 import org.kodein.di.ktor.closestDI
@@ -57,7 +58,7 @@ fun withRollback(test: suspend () -> Unit) {
     }
 }
 
-fun withTransaction(db: Database? = null, test: suspend () -> Unit) {
+fun withTransaction(db: Database? = null, test: suspend Transaction.() -> Unit) {
     runBlocking {
         newSuspendedTransaction(db = db) {
             test()
@@ -73,6 +74,7 @@ fun Application.environment(configuration: MapApplicationConfig.() -> Unit) {
 
 fun drillApplication(
     vararg diModules: DI.Module = emptyArray(),
+    configuration: MapApplicationConfig.() -> Unit = {},
     routes: Route.() -> Unit = {}
 ) = TestApplication {
     install(Resources)
@@ -84,10 +86,7 @@ fun drillApplication(
     }
     application {
         environment {
-            put("drill.etl.lockLeaseSeconds", "5")
-            put("drill.etl.lockRetryDelaySeconds", "1")
-            put("drill.etl.lockAttempts", "1")
-            put("drill.etl.maxWorkers", "1")
+            configuration()
         }
         di {
             import(meterModule)

@@ -15,33 +15,16 @@
  */
 package com.epam.drill.admin.metrics
 
-import com.epam.drill.admin.metrics.config.MetricsDatabaseConfig
-import com.epam.drill.admin.test.MetricsDatabaseTests
-import com.epam.drill.admin.test.withTransaction
-import com.epam.drill.admin.writer.rawdata.config.RawDataWriterDatabaseConfig
 import com.epam.drill.admin.writer.rawdata.route.payload.SingleMethodPayload
-import com.epam.drill.admin.writer.rawdata.table.BuildMethodTable
-import com.epam.drill.admin.writer.rawdata.table.BuildTable
-import com.epam.drill.admin.writer.rawdata.table.MethodCoverageTable
-import com.epam.drill.admin.writer.rawdata.table.InstanceTable
-import com.epam.drill.admin.writer.rawdata.table.MethodTable
-import com.epam.drill.admin.writer.rawdata.table.TestDefinitionTable
-import com.epam.drill.admin.writer.rawdata.table.TestLaunchTable
-import com.epam.drill.admin.writer.rawdata.table.TestSessionTable
 import io.ktor.client.request.*
 import io.ktor.client.statement.*
-import org.jetbrains.exposed.sql.deleteAll
-import org.junit.jupiter.api.AfterEach
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
-class CoverageApiTest : MetricsDatabaseTests({ default, metrics ->
-    RawDataWriterDatabaseConfig.init(default)
-    MetricsDatabaseConfig.init(metrics)
-}) {
+class CoverageApiTest : MetricsApiTests() {
     @Test
-    fun `given build with no coverage, coverage service should return methods list with zero coverage`(): Unit =
+    fun `given build with no coverage, coverage service should return methods list with zero coverage`() {
         havingData {
             build1 has listOf(method1, method2)
         }.expectThat {
@@ -54,9 +37,30 @@ class CoverageApiTest : MetricsDatabaseTests({ default, metrics ->
                 assertTrue(data.all { it["coveredProbes"] == 0 })
             }
         }
+    }
+    @Test
+    fun `given method ignore rule, coverage service should not return ignored methods`() {
+        havingData {
+            build1 has listOf(method1, method2, method3)
+            client.postMethodIgnoreRule(
+                groupId = testGroup,
+                appId = testApp,
+                namePattern = method2.name
+            )
+        }.expectThat {
+            client.get("/metrics/coverage") {
+                parameter("groupId", build1.groupId)
+                parameter("appId", build1.appId)
+                parameter("buildVersion", build1.buildVersion)
+            }.returns { data ->
+                assertEquals(2, data.size)
+                assertTrue(data.none { it["name"] == method2.name })
+            }
+        }
+    }
 
     @Test
-    fun `given build with coverage, coverage service should return methods list with coverage data`(): Unit =
+    fun `given build with coverage, coverage service should return methods list with coverage data`() {
         havingData {
             build1 has listOf(method1, method2)
             test1 covers method1 with probesOf(1, 1) on build1
@@ -72,9 +76,9 @@ class CoverageApiTest : MetricsDatabaseTests({ default, metrics ->
                 assertTrue(data.any { it["name"] == method2.name && it["coveredProbes"] == 1 })
             }
         }
-
+    }
     @Test
-    fun `given testProjectIds filter, coverage should return only matching test project coverage`(): Unit =
+    fun `given testProjectIds filter, coverage should return only matching test project coverage`() {
         havingData {
             build1 has listOf(method1, method2)
             test1 of session1.testProjectId("project-a") covers method1 with probesOf(1, 1) on build1
@@ -90,9 +94,9 @@ class CoverageApiTest : MetricsDatabaseTests({ default, metrics ->
                 assertTrue(data.any { it["name"] == method2.name && it["coveredProbes"] == 0 })
             }
         }
-
+    }
     @Test
-    fun `given page and size, coverage service should return methods only for specified page and size`(): Unit =
+    fun `given page and size, coverage service should return methods only for specified page and size`() {
         havingData {
             val methods = (1..15).map { idx ->
                 SingleMethodPayload(
@@ -127,16 +131,5 @@ class CoverageApiTest : MetricsDatabaseTests({ default, metrics ->
                 assertEquals(5, data.size)
             }
         }
-
-    @AfterEach
-    fun clearAll() = withTransaction(RawDataWriterDatabaseConfig.database) {
-        MethodCoverageTable.deleteAll()
-        InstanceTable.deleteAll()
-        MethodTable.deleteAll()
-        BuildMethodTable.deleteAll()
-        BuildTable.deleteAll()
-        TestLaunchTable.deleteAll()
-        TestSessionTable.deleteAll()
-        TestDefinitionTable.deleteAll()
     }
 }
