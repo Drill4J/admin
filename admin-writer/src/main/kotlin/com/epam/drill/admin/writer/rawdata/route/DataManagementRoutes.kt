@@ -227,11 +227,9 @@ fun Route.getExclusionRules() {
 
     get<Groups.Id.Apps.Id.ExclusionRules> { params ->
         call.ok(
-            dataManagementService.getAllMethodIgnoreRules(
+            dataManagementService.getExclusionRules(
                 params.parent.parent.parent.groupId,
-                params.parent.appId,
-                params.page,
-                params.pageSize,
+                params.parent.appId
             )
         )
     }
