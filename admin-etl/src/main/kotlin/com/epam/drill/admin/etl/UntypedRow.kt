@@ -20,4 +20,9 @@ import java.time.Instant
 class UntypedRow(
     timestamp: Instant,
     map: Map<String, Any?>
-): EtlRow(timestamp), Map<String, Any?> by HashMap(map)
+) : EtlRow(timestamp), Map<String, Any?> by HashMap(map) {
+    override fun toString(): String {
+        val stringMap = this.map { "${it.key} = ${it.value}" }.joinToString(", ")
+        return "UntypedRow(timestamp=$timestamp, $stringMap)"
+    }
+}
