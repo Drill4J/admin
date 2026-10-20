@@ -22,4 +22,5 @@ data class EtlJob(
     val etlName: String,
     val context: EtlContext,
     val period: EtlPeriod,
+    val lockName: String = etlName,
 )

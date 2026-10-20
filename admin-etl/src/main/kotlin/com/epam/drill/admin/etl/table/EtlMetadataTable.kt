@@ -26,14 +26,11 @@ class EtlMetadataTable(tableName: String) : Table(tableName) {
     val groupId = varchar("group_id", 225)
     val appId = varchar("app_id", 225)
     val buildId = varchar("build_id", 225)
-    val instanceId = varchar("instance_id", 225)
     val testSessionId = varchar("test_session_id", 225)
-    val testDefinitionId = varchar("test_definition_id", 225)
-    val testLaunchId = varchar("test_launch_id", 225)
     val periodFrom = date("period_from")
     val periodTo = date("period_to")
     override val primaryKey = PrimaryKey(pipelineName,
-        groupId, appId, buildId, instanceId, testSessionId, testDefinitionId, testLaunchId,
+        groupId, appId, buildId, testSessionId,
         periodFrom, periodTo)
 
     val extractorName = varchar("extractor_name", 225)
