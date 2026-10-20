@@ -42,7 +42,6 @@ class UntypedAggregationTransformer(
         sinceTimestamp: Instant,
         untilTimestamp: Instant,
         collector: Flow<UntypedRow>,
-        onTransformationProgress: suspend (Instant) -> Unit
     ): Flow<UntypedRow> = flow {
         var isTransformationStarted = false
         val transformedRows = AtomicInteger()

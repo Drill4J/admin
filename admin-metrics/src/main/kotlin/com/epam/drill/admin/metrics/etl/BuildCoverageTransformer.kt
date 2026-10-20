@@ -51,7 +51,6 @@ class BuildCoverageTransformer(
         sinceTimestamp: Instant,
         untilTimestamp: Instant,
         collector: Flow<UntypedRow>,
-        onTransformationProgress: suspend (Instant) -> Unit,
     ): Flow<UntypedRow> = flow {
         val buildProbeLayout = LruMap<Triple<String, String, String>, BuildProbeLayout>(maxSize = buildProbeLayoutCacheSize)
 
@@ -68,7 +67,6 @@ class BuildCoverageTransformer(
 
             val info = layout.methods[methodId] ?: run {
                 logger.warn { "ETL transformer [$name] skipping method [$methodId] because it is not found in build [$buildId]" }
-                onTransformationProgress(row.timestamp)
                 return@collect
             }
 

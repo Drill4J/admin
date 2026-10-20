@@ -397,7 +397,7 @@ open class EtlOrchestratorImpl(
                 sinceTimestamp = sinceTimestamp,
                 untilTimestamp = untilTimestamp,
                 extractionFlow = sharedFlow,
-                onTransformationProgress = { lastProcessedAt ->
+                onExtractionProgress = { lastProcessedAt ->
                     progressTracker.register(pipeline.name, lastProcessedAt)
                 },
                 onLoadingProgress = { result ->

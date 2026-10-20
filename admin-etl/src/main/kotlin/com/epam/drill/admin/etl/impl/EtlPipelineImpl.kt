@@ -50,7 +50,7 @@ class EtlPipelineImpl<T : EtlRow, R : EtlRow>(
         sinceTimestamp: Instant,
         untilTimestamp: Instant,
         extractionFlow: ClosableFlow<T>,
-        onTransformationProgress: suspend (Instant) -> Unit,
+        onExtractionProgress: suspend (Instant) -> Unit,
         onLoadingProgress: suspend (EtlLoadingResult) -> Unit,
         onStatusChanged: suspend (EtlStatus) -> Unit
     ): EtlProcessingResult = withContext(Dispatchers.IO) {
@@ -62,7 +62,7 @@ class EtlPipelineImpl<T : EtlRow, R : EtlRow>(
                 sinceTimestamp,
                 untilTimestamp,
                 extractionFlow,
-                onTransformationProgress,
+                onExtractionProgress,
                 onLoadingProgress,
                 onStatusChanged
             )
@@ -94,7 +94,7 @@ class EtlPipelineImpl<T : EtlRow, R : EtlRow>(
         sinceTimestamp: Instant,
         untilTimestamp: Instant,
         extractionFlow: ClosableFlow<T>,
-        onTransformationProgress: suspend (Instant) -> Unit,
+        onExtractionProgress: suspend (Instant) -> Unit,
         onLoadingProgress: suspend (EtlLoadingResult) -> Unit,
         onStatusChanged: suspend (EtlStatus) -> Unit,
     ): EtlLoadingResult = try {
@@ -103,7 +103,7 @@ class EtlPipelineImpl<T : EtlRow, R : EtlRow>(
             sinceTimestamp,
             untilTimestamp,
             extractionFlow,
-            onTransformationProgress = onTransformationProgress,
+            onExtractionProgress,
             onTransformationError = { errorMessage, lastProcessedAt ->
                 onLoadingProgress(
                     EtlLoadingResult(
@@ -116,7 +116,6 @@ class EtlPipelineImpl<T : EtlRow, R : EtlRow>(
         transformer.transform(
             context, sinceTimestamp, untilTimestamp,
             collector = transformationFlow,
-            onTransformationProgress
         ).let { loadingFlow ->
             loader.load(
                 context, sinceTimestamp, untilTimestamp, loadingFlow,
@@ -139,7 +138,7 @@ class EtlPipelineImpl<T : EtlRow, R : EtlRow>(
         sinceTimestamp: Instant,
         untilTimestamp: Instant,
         extractionFlow: ClosableFlow<T>,
-        onTransformationProgress: suspend (Instant) -> Unit,
+        onExtractionProgress: suspend (Instant) -> Unit,
         onTransformationError: suspend (String, Instant) -> Unit
     ): Flow<T> {
         var previousTimestamp: Instant? = null
@@ -152,6 +151,7 @@ class EtlPipelineImpl<T : EtlRow, R : EtlRow>(
         return flow {
             extractionFlow.collect { row ->
                 val currentTimestamp = row.timestamp
+                onExtractionProgress(currentTimestamp)
                 rowsExtracted.increment()
                 if (previousTimestamp != null && currentTimestamp < previousTimestamp) {
                     extractionFlow.closeWithMessage("Timestamps in the extracted data are not in ascending order: $currentTimestamp < $previousTimestamp")
@@ -165,7 +165,6 @@ class EtlPipelineImpl<T : EtlRow, R : EtlRow>(
                 if (currentTimestamp <= sinceTimestamp) {
                     previousTimestamp = currentTimestamp
                     skippedRows.increment()
-                    onTransformationProgress(currentTimestamp)
                     return@collect
                 }
                 emit(row)
