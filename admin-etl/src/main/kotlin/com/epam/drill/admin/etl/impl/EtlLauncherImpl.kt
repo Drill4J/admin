@@ -247,9 +247,10 @@ class EtlLauncherImpl(
         if (covering.isEmpty()) return EtlDailyStatus.UNLOADED
         val coveredJob = covering.first()
         val startOfCurrentDay = day.atStartOfDay(ZoneId.systemDefault()).toInstant()
+        val endOfCurrentDay = day.plusDays(1).atStartOfDay(ZoneId.systemDefault()).toInstant().minusMillis(1)
 
         val isFirstDayOfPeriod = coveredJob.processedUntilTimestamp == null && day == coveredJob.job.period.from
-        val hasAlreadyProcessedDataForDay = coveredJob.processedUntilTimestamp?.isAfter(startOfCurrentDay) ?: false
+        val hasAlreadyProcessedDataForDay = coveredJob.processedUntilTimestamp?.isAfter(endOfCurrentDay) ?: false
         val hasNotYetProcessedDataForDay = coveredJob.processedUntilTimestamp?.isBefore(startOfCurrentDay) ?: true
 
         if (isFirstDayOfPeriod) {
