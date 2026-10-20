@@ -23,6 +23,7 @@ import com.epam.drill.admin.writer.rawdata.views.MethodIgnoreRulesPageView
 import org.jetbrains.exposed.sql.SortOrder
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
 import org.jetbrains.exposed.sql.and
+import org.jetbrains.exposed.sql.batchInsert
 import org.jetbrains.exposed.sql.deleteWhere
 import org.jetbrains.exposed.sql.insertAndGetId
 import org.jetbrains.exposed.sql.selectAll
@@ -70,5 +71,34 @@ class MethodIgnoreRuleRepositoryImpl : MethodIgnoreRuleRepository {
                 (MethodIgnoreRulesTable.groupId eq groupId) and
                 (MethodIgnoreRulesTable.appId eq appId)
         }
+    }
+
+    override fun syncAll(groupId: String, appId: String, rules: List<MethodIgnoreRule>) {
+        MethodIgnoreRulesTable.deleteWhere {
+            (MethodIgnoreRulesTable.groupId eq groupId) and
+                (MethodIgnoreRulesTable.appId eq appId)
+        }
+        MethodIgnoreRulesTable.batchInsert(rules) { rule ->
+            this[MethodIgnoreRulesTable.groupId] = rule.groupId
+            this[MethodIgnoreRulesTable.appId] = rule.appId
+            this[MethodIgnoreRulesTable.namePattern] = rule.namePattern
+            this[MethodIgnoreRulesTable.classnamePattern] = rule.classnamePattern
+        }
+    }
+
+    override fun getList(
+        groupId: String,
+        appId: String
+    ): List<MethodIgnoreRule> {
+        return MethodIgnoreRulesTable.selectAll()
+            .where { (MethodIgnoreRulesTable.groupId eq groupId) and (MethodIgnoreRulesTable.appId eq appId) }
+            .map {
+                MethodIgnoreRule(
+                    groupId = it[MethodIgnoreRulesTable.groupId],
+                    appId = it[MethodIgnoreRulesTable.appId],
+                    namePattern = it[MethodIgnoreRulesTable.namePattern],
+                    classnamePattern = it[MethodIgnoreRulesTable.classnamePattern],
+                )
+            }
     }
 }

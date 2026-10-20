@@ -29,7 +29,6 @@ import java.sql.Timestamp
 import java.time.Instant
 import java.time.LocalDateTime
 import java.time.ZoneId
-import java.time.ZoneOffset
 
 class MetricsRepositoryImpl : MetricsRepository {
 
@@ -89,6 +88,10 @@ class MetricsRepositoryImpl : MetricsRepository {
                 b.commit_author,
                 b.commit_message,
                 b.committed_at,
+                b.validation_status,
+                b.agent_version,
+                b.agent_env,
+                b.agent_params,
                 b.created_at
             FROM metrics.builds b
             WHERE b.group_id = ? AND b.app_id = ?
@@ -266,8 +269,12 @@ class MetricsRepositoryImpl : MetricsRepository {
                 app_env_ids,
                 total_classes,
                 total_methods,
-                total_probes
-            FROM metrics.builds_with_statistics
+                total_probes,
+                validation_status,
+                agent_version,
+                agent_env,
+                agent_params
+            FROM metrics.builds
             WHERE build_id = ?
             """.trimIndent(),
             buildId
@@ -292,7 +299,7 @@ class MetricsRepositoryImpl : MetricsRepository {
                     total_methods,
                     isolated_tested_methods,
                     aggregated_tested_methods
-                FROM metrics.get_builds_with_coverage(
+                FROM metrics.get_builds_with_coverage_v2(
                     input_build_id => ?
                 """.trimIndent(), buildId
             )
@@ -349,7 +356,7 @@ class MetricsRepositoryImpl : MetricsRepository {
                     COALESCE(c.isolated_probes_coverage_ratio, 0) AS isolated_probes_coverage_ratio,
                     COALESCE(c.aggregated_probes_coverage_ratio, 0) AS aggregated_probes_coverage_ratio
                 FROM builds b
-                LEFT JOIN metrics.get_builds_with_coverage(
+                LEFT JOIN metrics.get_builds_with_coverage_v2(
                     input_build_ids => ARRAY(SELECT build_id FROM builds)
                 """.trimIndent(),
                 size,
@@ -427,7 +434,7 @@ class MetricsRepositoryImpl : MetricsRepository {
                     COALESCE(c.isolated_tested_methods, 0) AS isolated_tested_methods,
                     COALESCE(c.aggregated_tested_methods, 0) AS aggregated_tested_methods
                 FROM builds b
-                LEFT JOIN metrics.get_builds_with_coverage(
+                LEFT JOIN metrics.get_builds_with_coverage_v2(
                     input_build_ids => ARRAY(SELECT build_id FROM builds),
                     input_baseline_build_id => ?
                 """.trimIndent(),
@@ -690,6 +697,26 @@ class MetricsRepositoryImpl : MetricsRepository {
         } ?: 0L
     }
 
+    override suspend fun getAllTestSessionBuilds(
+        groupId: String,
+        testSessionId: String
+    ): List<Map<String, Any?>>  = transaction {
+        executeQueryReturnMap {
+            append(
+                """
+            SELECT
+                tsb.app_id,
+                tsb.build_id    
+            FROM metrics.test_session_builds tsb   
+            WHERE tsb.group_id = ?
+                AND tsb.test_session_id = ?
+                """.trimIndent(),
+                groupId,
+                testSessionId,
+            )
+        }
+    }
+
     override suspend fun getTestSessionBuilds(
         groupId: String,
         testSessionId: String,
@@ -709,7 +736,7 @@ class MetricsRepositoryImpl : MetricsRepository {
                 COALESCE(cov.tested_methods, 0) AS covered_methods,
                 COALESCE(cov.total_methods, 0) AS total_methods
             FROM metrics.test_session_builds tsb
-            LEFT JOIN metrics.builds_with_statistics bws
+            LEFT JOIN metrics.builds bws
                 ON bws.group_id = tsb.group_id
                 AND bws.app_id = tsb.app_id
                 AND bws.build_id = tsb.build_id
@@ -855,7 +882,7 @@ class MetricsRepositoryImpl : MetricsRepository {
             JOIN metrics.test_sessions_with_statistics tss
                 ON tss.group_id = tsb.group_id
                 AND tss.test_session_id = tsb.test_session_id
-            LEFT JOIN metrics.builds_with_statistics bws
+            LEFT JOIN metrics.builds bws
                 ON bws.group_id = tsb.group_id
                 AND bws.app_id = tsb.app_id
                 AND bws.build_id = tsb.build_id
@@ -2456,9 +2483,11 @@ class MetricsRepositoryImpl : MetricsRepository {
                 """
                     Coverage AS (
                         SELECT
-                            isolated_probes_coverage_ratio,
-                            aggregated_probes_coverage_ratio                            
-                        FROM metrics.get_builds_with_coverage(
+                            isolated_probes_coverage_ratio,  
+                            aggregated_probes_coverage_ratio,
+                            isolated_change_probes_coverage_ratio,
+                            aggregated_change_probes_coverage_ratio                            
+                        FROM metrics.get_builds_with_coverage_v2(
                             input_build_id => ?,
                             input_baseline_build_id => ?                            
                         )
@@ -2513,8 +2542,10 @@ class MetricsRepositoryImpl : MetricsRepository {
                         (SELECT deleted FROM Changes) as changes_deleted_methods,
                         COALESCE((SELECT tested_methods FROM TestedChanges WHERE change_type = 'new'), 0) as tested_new_methods,
                         COALESCE((SELECT tested_methods FROM TestedChanges WHERE change_type = 'modified'), 0) as tested_modified_methods,
-                        (SELECT isolated_probes_coverage_ratio FROM Coverage) as coverage,                                                                        
-                        (SELECT aggregated_probes_coverage_ratio FROM Coverage) as aggregated_coverage,
+                        (SELECT isolated_probes_coverage_ratio FROM Coverage) as total_coverage,                                                                        
+                        (SELECT aggregated_probes_coverage_ratio FROM Coverage) as total_aggregated_coverage,
+                        (SELECT isolated_change_probes_coverage_ratio FROM Coverage) as coverage,                                                                        
+                        (SELECT aggregated_change_probes_coverage_ratio FROM Coverage) as aggregated_coverage,
                         (SELECT impacted_tests FROM ImpactedTestsWithResults) AS impacted_tests,
                     	(SELECT passed_impacted_tests FROM ImpactedTestsWithResults) AS passed_impacted_tests,
                     	(SELECT failed_impacted_tests FROM ImpactedTestsWithResults) AS failed_impacted_tests
@@ -2893,6 +2924,33 @@ class MetricsRepositoryImpl : MetricsRepository {
         }
     }
 
+    override suspend fun getTestSessionDateRange(
+        groupId: String,
+        testSessionId: String
+    ): Pair<Instant, Instant>? {
+        return transaction {
+            val result = executeQueryReturnMap(
+                """
+                SELECT 
+                    session_started_at,
+                    last_session_heartbeat_at
+                FROM metrics.test_sessions
+                WHERE group_id = ? AND test_session_id = ?
+                """.trimIndent(), groupId, testSessionId
+            )
+            val firstStartedAt = result.firstOrNull()?.get("session_started_at") as? LocalDateTime
+            val lastStoppedAt = result.firstOrNull()?.get("last_session_heartbeat_at") as? LocalDateTime
+            if (firstStartedAt != null && lastStoppedAt != null) {
+                Pair(
+                    firstStartedAt.atZone(ZoneId.systemDefault()).toInstant(),
+                    lastStoppedAt.atZone(ZoneId.systemDefault()).toInstant()
+                )
+            } else {
+                null
+            }
+        }
+    }
+
     override suspend fun deleteAllBuildDataCreatedBefore(groupId: String, timestamp: Instant) = transaction {
         val timestamp = Timestamp.from(timestamp)
         executeUpdate(
@@ -3060,8 +3118,6 @@ class MetricsRepositoryImpl : MetricsRepository {
         deleteBuildMethodTestDefinitionCoverage(groupId, appId = appId, buildId = buildId, testProjectId = null, testSessionId = null)
         deleteBuildMethodTestSessionCoverage(groupId, appId = appId, buildId = buildId, testProjectId = null, testSessionId = null)
         deleteBuildMethodCoverage(groupId, appId = appId, buildId = buildId, testProjectId = null)
-        // deleting from metrics.method_daily_coverage is impossible because the table does not reference build_id
-        // deleting from metrics.test_to_code_mapping is impossible because the table does not reference build_id
         deleteTestSessionBuilds(groupId, appId = appId, buildId = buildId, testProjectId = null, testSessionId = null)
         deleteBuildMethods(groupId, appId = appId, buildId = buildId)
         deleteBuilds(groupId, appId = appId, buildId = buildId)
@@ -3074,9 +3130,6 @@ class MetricsRepositoryImpl : MetricsRepository {
     ) = transaction {
         deleteBuildMethodTestDefinitionCoverage(groupId, appId = null, buildId = null, testProjectId = testProjectId, testSessionId = testSessionId)
         deleteBuildMethodTestSessionCoverage(groupId, appId = null, buildId = null, testProjectId = testProjectId, testSessionId = testSessionId)
-        // deleting from metrics.build_method_coverage is impossible because the table does not reference test_session_id
-        // deleting from metrics.method_daily_coverage is impossible because the table does not linked to test_session_id
-        // deleting from metrics.test_to_code_mapping is impossible because the table does not reference test_session_id
         deleteTestLaunches(groupId, testProjectId = testProjectId, testSessionId = testSessionId)
         deleteTestSessionBuilds(groupId, appId = null, buildId = null, testProjectId = testProjectId, testSessionId = testSessionId)
         deleteTestSessions(groupId, testProjectId = testProjectId, testSessionId = testSessionId)

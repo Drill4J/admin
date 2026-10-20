@@ -15,20 +15,7 @@
  */
 package com.epam.drill.admin.metrics
 
-import com.epam.drill.admin.metrics.config.MetricsDatabaseConfig
-import com.epam.drill.admin.test.MetricsDatabaseTests
-import com.epam.drill.admin.test.withTransaction
-import com.epam.drill.admin.writer.rawdata.config.RawDataWriterDatabaseConfig
 import com.epam.drill.admin.writer.rawdata.route.payload.TestDetails
-import com.epam.drill.admin.writer.rawdata.table.BuildMethodTable
-import com.epam.drill.admin.writer.rawdata.table.BuildTable
-import com.epam.drill.admin.writer.rawdata.table.MethodCoverageTable
-import com.epam.drill.admin.writer.rawdata.table.InstanceTable
-import com.epam.drill.admin.writer.rawdata.table.MethodTable
-import com.epam.drill.admin.writer.rawdata.table.TestDefinitionTable
-import com.epam.drill.admin.writer.rawdata.table.TestLaunchTable
-import com.epam.drill.admin.writer.rawdata.table.TestSessionTable
-import kotlin.test.AfterTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
@@ -41,14 +28,10 @@ import io.ktor.http.HttpStatusCode
 import io.ktor.http.contentType
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
-import org.jetbrains.exposed.sql.deleteAll
 
-class ImpactedMethodsApiTest : MetricsDatabaseTests({ default, metrics ->
-    RawDataWriterDatabaseConfig.init(default)
-    MetricsDatabaseConfig.init(metrics)
-}) {
+class ImpactedMethodsApiTest : MetricsApiTests() {
     @Test
-    fun `given a build with changes, build-changes with hasImpactedTests should return impacted methods`() =
+    fun `given a build with changes, build-changes with hasImpactedTests should return impacted methods`() {
         havingData {
             build1 has listOf(method1, method2)
             test1 covers method1 on build1
@@ -61,9 +44,31 @@ class ImpactedMethodsApiTest : MetricsDatabaseTests({ default, metrics ->
                 assertTrue(data.none { it["name"] == method2.name })
             }
         }
+    }
 
     @Test
-    fun `given page and size, build-changes should paginate impacted methods`() =
+    fun `given method ignore rule, impacted methods should exclude ignored methods`() {
+        havingData {
+            build1 has listOf(method1, method2)
+            test1 covers method1 on build1
+            test1 covers method2 on build1
+            build2 hasModified method1 comparedTo build1
+            build2 hasModified method2 comparedTo build1
+            client.postMethodIgnoreRule(
+                groupId = testGroup,
+                appId = testApp,
+                namePattern = method2.name
+            )
+        }.expectThat { client ->
+            client.getBuildChanges(build2, build1, hasImpactedTests = true).returns { data ->
+                assertEquals(1, data.size)
+                assertEquals(method1.name, data.first()["name"])
+            }
+        }
+    }
+
+    @Test
+    fun `given page and size, build-changes should paginate impacted methods`() {
         havingData {
             build1 has listOf(method1, method2)
             repeat(15) { i ->
@@ -88,9 +93,10 @@ class ImpactedMethodsApiTest : MetricsDatabaseTests({ default, metrics ->
                 assertTrue(data.isEmpty(), "Expected no records on second page, but got ${data.size}")
             }
         }
+    }
 
     @Test
-    fun `given testProjectId filter, impacted methods service should count only tests from matching project`() =
+    fun `given testProjectId filter, impacted methods service should count only tests from matching project`() {
         havingData {
             build1 has listOf(method1)
             test1 of session1.testProjectId("project-a") covers method1 on build1
@@ -104,9 +110,10 @@ class ImpactedMethodsApiTest : MetricsDatabaseTests({ default, metrics ->
                 assertEquals(1, (methodRow?.get("impactedTests") as Number?)?.toInt())
             }
         }
+    }
 
     @Test
-    fun `given invalid sortBy, should return BadRequest`(): Unit =
+    fun `given invalid sortBy, should return BadRequest`(): Unit {
         havingData {
             build1 has listOf(method1)
             test1 covers method1 on build1
@@ -127,16 +134,5 @@ class ImpactedMethodsApiTest : MetricsDatabaseTests({ default, metrics ->
             assertEquals(HttpStatusCode.BadRequest, response.status)
             assertTrue(response.bodyAsText().contains("Invalid sortBy"))
         }
-
-    @AfterTest
-    fun clearAll() = withTransaction(RawDataWriterDatabaseConfig.database) {
-        MethodCoverageTable.deleteAll()
-        InstanceTable.deleteAll()
-        MethodTable.deleteAll()
-        BuildMethodTable.deleteAll()
-        BuildTable.deleteAll()
-        TestLaunchTable.deleteAll()
-        TestSessionTable.deleteAll()
-        TestDefinitionTable.deleteAll()
     }
 }

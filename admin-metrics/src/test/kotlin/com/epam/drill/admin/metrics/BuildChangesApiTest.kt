@@ -15,30 +15,15 @@
  */
 package com.epam.drill.admin.metrics
 
-import com.epam.drill.admin.metrics.config.MetricsDatabaseConfig
 import com.epam.drill.admin.metrics.views.ChangeType
 import com.epam.drill.admin.test.*
-import com.epam.drill.admin.writer.rawdata.config.RawDataWriterDatabaseConfig
 import com.epam.drill.admin.writer.rawdata.route.payload.SingleMethodPayload
-import com.epam.drill.admin.writer.rawdata.table.BuildMethodTable
-import com.epam.drill.admin.writer.rawdata.table.BuildTable
-import com.epam.drill.admin.writer.rawdata.table.MethodCoverageTable
-import com.epam.drill.admin.writer.rawdata.table.InstanceTable
-import com.epam.drill.admin.writer.rawdata.table.MethodTable
-import com.epam.drill.admin.writer.rawdata.table.TestDefinitionTable
-import com.epam.drill.admin.writer.rawdata.table.TestLaunchTable
-import com.epam.drill.admin.writer.rawdata.table.TestSessionTable
 import io.ktor.client.request.*
-import org.jetbrains.exposed.sql.deleteAll
-import org.junit.jupiter.api.AfterEach
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
-class BuildChangesApiTest : MetricsDatabaseTests({ default, metrics ->
-    RawDataWriterDatabaseConfig.init(default)
-    MetricsDatabaseConfig.init(metrics)
-}) {
+class BuildChangesApiTest : MetricsApiTests() {
     private suspend fun TestDataDsl.initBuildsAndMethodsData() {
         build1 has listOf(method1, method2, method4)
         build2 hasModified method2 comparedTo build1
@@ -47,7 +32,7 @@ class BuildChangesApiTest : MetricsDatabaseTests({ default, metrics ->
     }
 
     @Test
-    fun `given target and baseline build, build-changes should return diff with coverage and impact`(): Unit =
+    fun `given target and baseline build, build-changes should return diff with coverage and impact`() {
         havingData {
             initBuildsAndMethodsData()
         }.expectThat {
@@ -63,9 +48,32 @@ class BuildChangesApiTest : MetricsDatabaseTests({ default, metrics ->
                 assertTrue(data.any { it["name"] == method4.name && it["changeType"] == ChangeType.DELETED.name })
             }
         }
+    }
 
     @Test
-    fun `given isolated tested target build, build-changes should return coverage in current build`(): Unit =
+    fun `given method ignore rule, build-changes should exclude ignored methods`() {
+        havingData {
+            initBuildsAndMethodsData()
+            client.postMethodIgnoreRule(
+                groupId = testGroup,
+                appId = testApp,
+                namePattern = method4.name
+            )
+        }.expectThat {
+            client.get("/metrics/build-changes") {
+                parameter("groupId", testGroup)
+                parameter("appId", testApp)
+                parameter("buildVersion", "3.0.0")
+                parameter("baselineBuildVersion", "1.0.0")
+            }.returns { data ->
+                assertEquals(2, data.size)
+                assertTrue(data.none { it["name"] == method4.name }, "Ignored method should not be present in the response")
+            }
+        }
+    }
+
+    @Test
+    fun `given isolated tested target build, build-changes should return coverage in current build`() {
         havingData {
             initBuildsAndMethodsData()
             test1 covers method2 with probesOf(1, 1, 0) on build3
@@ -79,9 +87,10 @@ class BuildChangesApiTest : MetricsDatabaseTests({ default, metrics ->
                 assertTrue(data.any { it["name"] == method2.name && (it["coveredProbes"] as Int) == 2 })
             }
         }
+    }
 
     @Test
-    fun `given aggregated tested builds, build-changes should return coverage in other builds`(): Unit =
+    fun `given aggregated tested builds, build-changes should return coverage in other builds`() {
         havingData {
             initBuildsAndMethodsData()
             test1 covers method2 with probesOf(1, 1, 0) on build2
@@ -97,9 +106,10 @@ class BuildChangesApiTest : MetricsDatabaseTests({ default, metrics ->
                 assertTrue(data.any { it["name"] == method2.name && (it["coveredProbesInOtherBuilds"] as Int) == 3 })
             }
         }
+    }
 
     @Test
-    fun `given testProjectIds filter, build-changes should include only matching test project coverage`(): Unit =
+    fun `given testProjectIds filter, build-changes should include only matching test project coverage`() {
         havingData {
             initBuildsAndMethodsData()
             test1 of session1.testProjectId("project-a") covers method2 with probesOf(1, 1, 0) on build3
@@ -115,9 +125,10 @@ class BuildChangesApiTest : MetricsDatabaseTests({ default, metrics ->
                 assertTrue(data.any { it["name"] == method2.name && (it["coveredProbes"] as Int) == 2 })
             }
         }
+    }
 
     @Test
-    fun `given changeTypes filter, build-changes should return only matching rows`(): Unit =
+    fun `given changeTypes filter, build-changes should return only matching rows`() {
         havingData {
             initBuildsAndMethodsData()
         }.expectThat {
@@ -132,9 +143,10 @@ class BuildChangesApiTest : MetricsDatabaseTests({ default, metrics ->
                 assertTrue(data.all { it["changeType"] == ChangeType.DELETED.name })
             }
         }
+    }
 
     @Test
-    fun `given page and size, build-changes should paginate`(): Unit =
+    fun `given page and size, build-changes should paginate`() {
         havingData {
             val methods = (1..15).map { idx ->
                 SingleMethodPayload(
@@ -148,7 +160,7 @@ class BuildChangesApiTest : MetricsDatabaseTests({ default, metrics ->
                 )
             }
             build1 has methods.toList()
-            client.deployInstance(instance = build2, methods = methods.map { it.changeChecksum() }.toTypedArray())
+            client.deployInstance(instance = build2, methods = methods.map { it.changeChecksum() })
 
         }.expectThat {
             client.get("/metrics/build-changes") {
@@ -173,16 +185,5 @@ class BuildChangesApiTest : MetricsDatabaseTests({ default, metrics ->
                 assertEquals(5, data.size)
             }
         }
-
-    @AfterEach
-    fun clearAll() = withTransaction(RawDataWriterDatabaseConfig.database) {
-        MethodCoverageTable.deleteAll()
-        InstanceTable.deleteAll()
-        MethodTable.deleteAll()
-        BuildMethodTable.deleteAll()
-        BuildTable.deleteAll()
-        TestLaunchTable.deleteAll()
-        TestSessionTable.deleteAll()
-        TestDefinitionTable.deleteAll()
     }
 }

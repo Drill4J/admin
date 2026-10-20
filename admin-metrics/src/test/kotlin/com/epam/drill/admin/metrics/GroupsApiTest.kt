@@ -15,22 +15,12 @@
  */
 package com.epam.drill.admin.metrics
 
-import com.epam.drill.admin.metrics.config.MetricsDatabaseConfig
-import com.epam.drill.admin.test.MetricsDatabaseTests
-import com.epam.drill.admin.test.withTransaction
-import com.epam.drill.admin.writer.rawdata.config.RawDataWriterDatabaseConfig
 import com.epam.drill.admin.writer.rawdata.route.payload.BuildPayload
-import com.epam.drill.admin.writer.rawdata.table.BuildTable
 import io.ktor.client.request.get
-import org.jetbrains.exposed.sql.deleteAll
-import org.junit.jupiter.api.AfterEach
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
-class GroupsApiTest : MetricsDatabaseTests({ default, metrics ->
-    RawDataWriterDatabaseConfig.init(default)
-    MetricsDatabaseConfig.init(metrics)
-}) {
+class GroupsApiTest : MetricsApiTests() {
     private suspend fun TestDataDsl.initTestData() {
         client.putBuild(BuildPayload(groupId = testGroup, appId = "app-1", buildVersion = "1.0.0"))
         client.putBuild(BuildPayload(groupId = testGroup, appId = "app-2", buildVersion = "0.1.0"))
@@ -38,16 +28,13 @@ class GroupsApiTest : MetricsDatabaseTests({ default, metrics ->
     }
 
     @Test
-    fun `get groups should return distinct group ids ordered`() = havingData {
-        initTestData()
-    }.expectThat {
-        client.get("/metrics/groups").returnsStrings { data ->
-            assertEquals(listOf("group-1", "group-2"), data)
+    fun `get groups should return distinct group ids ordered`() {
+        havingData {
+            initTestData()
+        }.expectThat {
+            client.get("/metrics/groups").returnsStrings { data ->
+                assertEquals(listOf("group-1", "group-2"), data)
+            }
         }
-    }
-
-    @AfterEach
-    fun clearAll() = withTransaction(RawDataWriterDatabaseConfig.database) {
-        BuildTable.deleteAll()
     }
 }

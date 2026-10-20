@@ -11,25 +11,26 @@
 DROP VIEW IF EXISTS metrics.builds_with_statistics CASCADE;
 CREATE OR REPLACE VIEW metrics.builds_with_statistics AS
 SELECT
-    b.group_id,
-    b.app_id,
-    b.build_id,
-    MIN(b.version_id) AS version_id,
-    MIN(b.build_version) AS build_version,
-    MIN(b.commit_sha) AS commit_sha,
-    MIN(b.branch) AS branch,
-    MIN(b.committed_at) AS committed_at,
-    MIN(b.commit_author) AS commit_author,
-    MIN(b.commit_message) AS commit_message,
-    MIN(b.created_at) AS created_at,
-    MIN(b.app_env_ids) AS app_env_ids,
-    COUNT(DISTINCT m.class_name) AS total_classes,
-    COUNT(DISTINCT m.signature) AS total_methods,
-    SUM(COALESCE(m.probes_count, 0)) AS total_probes
-FROM metrics.builds b
-LEFT JOIN metrics.build_methods bm ON b.group_id = bm.group_id AND b.app_id = bm.app_id AND b.build_id = bm.build_id
-LEFT JOIN metrics.methods m ON bm.group_id = m.group_id AND bm.app_id = m.app_id AND bm.method_id = m.method_id
-GROUP BY b.group_id, b.app_id, b.build_id;
+    group_id,
+    app_id,
+    build_id,
+    version_id,
+    build_version,
+    commit_sha,
+    branch,
+    committed_at,
+    commit_author,
+    commit_message,
+    created_at,
+    app_env_ids,
+    COALESCE(total_classes, 0) AS total_classes,
+    COALESCE(total_methods, 0) AS total_methods,
+    COALESCE(total_probes,  0) AS total_probes,
+    validation_status,
+    agent_version,
+    agent_env,
+    agent_params
+FROM metrics.builds;
 
 -----------------------------------------------------------------
 -- Create a view of test definitions with information about

@@ -42,7 +42,6 @@ class UntypedAggregationTransformer(
         sinceTimestamp: Instant,
         untilTimestamp: Instant,
         collector: Flow<UntypedRow>,
-        onTransformationProgress: suspend (Instant) -> Unit
     ): Flow<UntypedRow> = flow {
         var isTransformationStarted = false
         val transformedRows = AtomicInteger()
@@ -59,7 +58,7 @@ class UntypedAggregationTransformer(
                     }
 
                     val groupKey = groupKeys.map { row[it] }
-                    val evicted = buffer.compute(groupKey) { value ->
+                    val (_, evicted) = buffer.compute(groupKey) { value ->
                         if (value == null) {
                             row
                         } else {

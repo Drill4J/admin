@@ -15,24 +15,13 @@
  */
 package com.epam.drill.admin.metrics
 
-import com.epam.drill.admin.metrics.config.MetricsDatabaseConfig
-import com.epam.drill.admin.metrics.config.executeQueryReturnMap
-import com.epam.drill.admin.test.MetricsDatabaseTests
-import com.epam.drill.admin.test.withTransaction
-import com.epam.drill.admin.writer.rawdata.config.RawDataWriterDatabaseConfig
 import com.epam.drill.admin.writer.rawdata.route.payload.BuildPayload
-import com.epam.drill.admin.writer.rawdata.table.BuildTable
 import io.ktor.client.request.get
 import io.ktor.client.request.parameter
-import org.jetbrains.exposed.sql.deleteAll
-import org.junit.jupiter.api.AfterEach
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
-class ApplicationsApiTest : MetricsDatabaseTests({ default, metrics ->
-    RawDataWriterDatabaseConfig.init(default)
-    MetricsDatabaseConfig.init(metrics)
-}) {
+class ApplicationsApiTest : MetricsApiTests() {
     private suspend fun TestDataDsl.initTestData() {
         client.putBuild(BuildPayload(groupId = testGroup, appId = "app-1", buildVersion = "1.0.0"))
         client.putBuild(BuildPayload(groupId = testGroup, appId = "app-1", buildVersion = "2.0.0"))
@@ -41,30 +30,28 @@ class ApplicationsApiTest : MetricsDatabaseTests({ default, metrics ->
     }
 
     @Test
-    fun `given groupId, get applications service should return applications for specified group`() = havingData {
-        initTestData()
-    }.expectThat {
-        client.get("/metrics/applications") {
-            parameter("groupId", testGroup)
-        }.returns { data ->
-            assertEquals(2, data.size)
-            assertEquals(setOf("app-1", "app-2"), data.map { it["appId"] }.toSet())
+    fun `given groupId, get applications service should return applications for specified group`() {
+        havingData {
+            initTestData()
+        }.expectThat {
+            client.get("/metrics/applications") {
+                parameter("groupId", testGroup)
+            }.returns { data ->
+                assertEquals(2, data.size)
+                assertEquals(setOf("app-1", "app-2"), data.map { it["appId"] }.toSet())
+            }
         }
     }
 
     @Test
-    fun `given no parameters, get applications service should return all applications`() = havingData {
-        initTestData()
-    }.expectThat {
-        client.get("/metrics/applications").returns { data ->
-            assertEquals(3, data.size)
-            assertEquals(setOf("app-1", "app-2", "app-3"), data.map { it["appId"] }.toSet())
+    fun `given no parameters, get applications service should return all applications`() {
+        havingData {
+            initTestData()
+        }.expectThat {
+            client.get("/metrics/applications").returns { data ->
+                assertEquals(3, data.size)
+                assertEquals(setOf("app-1", "app-2", "app-3"), data.map { it["appId"] }.toSet())
+            }
         }
     }
-
-    @AfterEach
-    fun clearAll() = withTransaction(RawDataWriterDatabaseConfig.database) {
-        BuildTable.deleteAll()
-    }
-
 }

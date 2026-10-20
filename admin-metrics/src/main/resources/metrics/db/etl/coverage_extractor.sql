@@ -3,16 +3,17 @@ WITH coverage AS (
         c.group_id,
         c.app_id,
         c.test_id AS test_launch_id,
-        c.build_id,
+        b.id AS build_id,
+        b.branch,
         c.instance_id,
         c.test_session_id,
         m.method_id,
         m.signature,
         c.created_at,
         c.probes
-	FROM raw_data.method_coverage c
-	JOIN raw_data.methods m ON m.method_id = c.method_id AND m.app_id = c.app_id AND m.group_id = c.group_id
-	    AND NOT EXISTS (
+    FROM raw_data.method_coverage c
+    JOIN raw_data.methods m ON m.method_id = c.method_id AND m.app_id = c.app_id AND m.group_id = c.group_id
+        AND NOT EXISTS (
             SELECT 1
             FROM raw_data.method_ignore_rules r
             WHERE r.group_id = m.group_id
@@ -20,9 +21,12 @@ WITH coverage AS (
               AND (r.classname_pattern IS NULL OR m.class_name::text ~ r.classname_pattern::text)
               AND (r.name_pattern IS NULL OR m.method_name::text ~ r.name_pattern::text)
         )
-	WHERE c.created_at > :since_timestamp
+    JOIN raw_data.builds b ON b.group_id = c.group_id AND b.app_id = c.app_id AND b.id = c.build_id
+    WHERE c.created_at > :since_timestamp
 	    AND c.created_at <= :until_timestamp
 	    AND c.group_id = :group_id
+	    AND (:app_id::TEXT IS NULL OR c.app_id = :app_id)
+        AND (:build_id::TEXT IS NULL OR c.build_id = :build_id)
 	ORDER BY c.created_at
 	LIMIT :limit
 )
@@ -40,15 +44,14 @@ SELECT
     c.created_at,
     DATE_TRUNC('day', c.created_at) AS created_at_day,
     c.probes AS probes,
-    b.id AS build_id,
-    b.branch,
+    c.build_id,
+    c.branch,
     i.env_id AS app_env_id,
     ts.id AS test_session_id,
 	ts.test_task_id,
 	ts.test_project_id
 FROM coverage c
 LEFT JOIN raw_data.instances i ON i.id = c.instance_id AND i.app_id = c.app_id AND i.group_id = c.group_id
-LEFT JOIN raw_data.builds b ON b.group_id = c.group_id AND b.app_id = c.app_id AND b.id = c.build_id
 LEFT JOIN raw_data.test_sessions ts ON ts.id = c.test_session_id AND ts.group_id = c.group_id
 LEFT JOIN raw_data.test_launches tl ON tl.group_id = c.group_id AND tl.id = c.test_launch_id
 LEFT JOIN raw_data.test_definitions td ON td.id = tl.test_definition_id AND td.group_id = tl.group_id

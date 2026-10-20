@@ -25,6 +25,5 @@ interface DataTransformer<in T: EtlRow, out R: EtlRow> {
         sinceTimestamp: Instant,
         untilTimestamp: Instant,
         collector: Flow<T>,
-        onTransformationProgress: suspend (Instant) -> Unit = {},
     ): Flow<R>
 }
