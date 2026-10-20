@@ -270,7 +270,6 @@ private class PbPassThroughTransformer(override val name: String = "pass") :
         sinceTimestamp: Instant,
         untilTimestamp: Instant,
         collector: Flow<UntypedRow>,
-        onTransformationProgress: suspend (Instant) -> Unit
     ): Flow<UntypedRow> = flow {
         collector.collect { emit(it) }
     }

@@ -183,14 +183,12 @@ internal class SequencedTransformer<T : EtlRow, M : EtlRow, R : EtlRow>(
         sinceTimestamp: Instant,
         untilTimestamp: Instant,
         collector: Flow<T>,
-        onTransformationProgress: suspend (Instant) -> Unit
     ): Flow<R> =
         second.transform(
             context,
             sinceTimestamp,
             untilTimestamp,
-            first.transform(context, sinceTimestamp, untilTimestamp, collector, onTransformationProgress),
-            onTransformationProgress
+            first.transform(context, sinceTimestamp, untilTimestamp, collector)
         )
 }
 
@@ -204,7 +202,6 @@ internal object NoOpTransformer : DataTransformer<UntypedRow, UntypedRow> {
         sinceTimestamp: Instant,
         untilTimestamp: Instant,
         collector: Flow<UntypedRow>,
-        onTransformationProgress: suspend (Instant) -> Unit
     ): Flow<UntypedRow> = collector
 }
 
