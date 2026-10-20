@@ -205,7 +205,6 @@ class EtlPipelineImplTest {
             sinceTimestamp: Instant,
             untilTimestamp: Instant,
             collector: Flow<TestItem>,
-            onTransformationProgress: suspend (Instant) -> Unit
         ): Flow<TestItem> = flow {
             collector.collect { emit(it) }
         }
@@ -218,7 +217,6 @@ class EtlPipelineImplTest {
             sinceTimestamp: Instant,
             untilTimestamp: Instant,
             collector: Flow<TestItem>,
-            onTransformationProgress: suspend (Instant) -> Unit
         ): Flow<TransformedItem> = flow {
             collector.collect { emit(TransformedItem(it.timestamp, "transformed-${it.data}")) }
         }
