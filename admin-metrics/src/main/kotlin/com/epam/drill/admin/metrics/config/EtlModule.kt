@@ -53,6 +53,9 @@ const val MERGED_COVERAGE_ETL = "merged_coverage"
 const val BUILD_COVERAGE_ETL = "build_coverage"
 const val BUILD_METHODS_ETL = "buildMethods"
 
+const val METRICS_ETL_LOCK = "metrics"
+const val TEST_SESSION_COVERAGE_ETL_LOCK = "test_session_coverage"
+
 val etlDIModule
     get() = DI.Module("etlServices") {
         importOnce(settingsServicesDIModule)
@@ -78,6 +81,7 @@ val etlDIModule
             with(etlConfig) {
                 EtlOrchestratorImpl(
                     name = DEFAULT_ETL,
+                    lockName = METRICS_ETL_LOCK,
                     pipelines = listOf(
                         // Reference data
                         buildsPipeline,
@@ -114,6 +118,7 @@ val etlDIModule
             with(etlConfig) {
                 EtlOrchestratorImpl(
                     name = HISTORICAL_ETL,
+                    lockName = METRICS_ETL_LOCK,
                     pipelines = listOf(
                         // Reference data
                         buildsPipeline,
@@ -145,6 +150,7 @@ val etlDIModule
             with(etlConfig) {
                 EtlOrchestratorImpl(
                     name = TEST_SESSION_COVERAGE_ETL,
+                    lockName = TEST_SESSION_COVERAGE_ETL_LOCK,
                     pipelines = listOf(
                         buildMethodTestSessionCoveragePipeline,
                         buildMethodTestSessionCoverageFromTestLaunchesPipeline,
@@ -162,6 +168,7 @@ val etlDIModule
             with(etlConfig) {
                 EtlOrchestratorImpl(
                     name = MERGED_COVERAGE_ETL,
+                    lockName = METRICS_ETL_LOCK,
                     pipelines = listOf(
                         historicalMethodCoveragePipeline,
                         historicalTest2CodeMappingPipeline,
@@ -181,6 +188,7 @@ val etlDIModule
             with(etlConfig) {
                 EtlOrchestratorImpl(
                     name = BUILD_COVERAGE_ETL,
+                    lockName = METRICS_ETL_LOCK,
                     pipelines = listOf(
                         historicalBuildMethodCoveragePipeline,
                         historicalBuildCoveragePipeline,
@@ -200,6 +208,7 @@ val etlDIModule
             with(etlConfig) {
                 EtlOrchestratorImpl(
                     name = BUILD_METHODS_ETL,
+                    lockName = METRICS_ETL_LOCK,
                     pipelines = listOf(
                         buildsPipeline,
                         buildMethodsPipeline,

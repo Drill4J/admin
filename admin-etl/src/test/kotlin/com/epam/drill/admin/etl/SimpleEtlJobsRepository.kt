@@ -57,14 +57,16 @@ class SimpleEtlJobsRepository : EtlJobsRepository {
         etlName: String,
         context: EtlContext,
         period: EtlPeriod,
+        lockName: String,
     ): EtlJob? = mutex.withLock {
         val overlapping = jobs.any { (job, state) ->
-            matchesEtlAndContext(job, etlName, context) &&
+            job.lockName == lockName &&
+                    job.context.conflictsWith(context) &&
                     job.period.overlaps(period) &&
                     state.status in EtlJobStatus.ACTIVE
         }
         if (overlapping) return@withLock null
-        val job = EtlJob(etlName = etlName, context = context, period = period)
+        val job = EtlJob(etlName = etlName, context = context, period = period, lockName = lockName)
         jobs[job] = JobState(status = EtlJobStatus.IDLE)
         job
     }
@@ -86,12 +88,13 @@ class SimpleEtlJobsRepository : EtlJobsRepository {
     }
 
     override suspend fun cancelJobs(
-        etlName: String,
+        lockName: String,
         context: EtlContext,
         period: EtlPeriod,
     ): List<EtlJobResult> = mutex.withLock {
         val toCancel = jobs.filter { (job, state) ->
-            matchesEtlAndContext(job, etlName, context) &&
+            job.lockName == lockName &&
+                    job.context.conflictsWith(context) &&
                     job.period.overlaps(period) &&
                     (state.status == EtlJobStatus.IDLE || state.status == EtlJobStatus.RUNNING)
         }.keys.toList()

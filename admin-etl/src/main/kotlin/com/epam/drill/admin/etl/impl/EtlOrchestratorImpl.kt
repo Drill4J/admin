@@ -60,6 +60,7 @@ open class EtlOrchestratorImpl(
     open val processingDelay: Long = 0,
     open val bufferSize: Int = 2000,
     open val lockLeaseSeconds: Long = 180,
+    override val lockName: String = name,
 ) : EtlOrchestrator {
     private val logger = KotlinLogging.logger {}
 
