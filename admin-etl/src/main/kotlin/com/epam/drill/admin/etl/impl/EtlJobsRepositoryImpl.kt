@@ -16,8 +16,6 @@
 package com.epam.drill.admin.etl.impl
 
 import com.epam.drill.admin.etl.EtlContext
-import com.epam.drill.admin.etl.EtlDailyStatus
-import com.epam.drill.admin.etl.EtlDailyStatusRow
 import com.epam.drill.admin.etl.EtlJob
 import com.epam.drill.admin.etl.EtlJobResult
 import com.epam.drill.admin.etl.EtlJobStatus
@@ -27,10 +25,12 @@ import com.epam.drill.admin.etl.table.DateRangeValue
 import com.epam.drill.admin.etl.table.DaterangeOverlaps
 import com.epam.drill.admin.etl.table.EtlJobsTable
 import com.epam.drill.admin.etl.table.TimestampPlusSeconds
+import org.jetbrains.exposed.sql.Column
 import org.jetbrains.exposed.sql.Database
 import org.jetbrains.exposed.sql.Op
 import org.jetbrains.exposed.sql.ResultRow
 import org.jetbrains.exposed.sql.SortOrder
+import org.jetbrains.exposed.sql.TextColumnType
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.less
 import org.jetbrains.exposed.sql.and
@@ -44,8 +44,6 @@ import org.jetbrains.exposed.sql.transactions.experimental.newSuspendedTransacti
 import org.jetbrains.exposed.sql.update
 import org.jetbrains.exposed.sql.updateReturning
 import java.time.Instant
-import java.time.LocalDate
-import java.time.ZoneId
 
 class EtlJobsRepositoryImpl(
     private val database: Database,
@@ -59,15 +57,16 @@ class EtlJobsRepositoryImpl(
         etlName: String,
         context: EtlContext,
         period: EtlPeriod,
+        lockName: String,
     ): EtlJob? = newSuspendedTransaction(db = database) {
         runCatching {
             jobsTable.insert {
                 it[jobsTable.etlName] = etlName
+                it[jobsTable.lockName] = lockName
                 it[groupId] = context.groupId
                 it[appId] = context.appId ?: ""
                 it[buildId] = context.buildId ?: ""
                 it[testSessionId] = context.testSessionId ?: ""
-                it[testDefinitionId] = context.testDefinitionId ?: ""
                 it[jobsTable.period] = period.toDateRangeValue()
                 it[status] = EtlJobStatus.IDLE.name
                 it[createdAt] = CurrentDateTime
@@ -77,6 +76,7 @@ class EtlJobsRepositoryImpl(
                 etlName = etlName,
                 context = context,
                 period = period,
+                lockName = lockName,
             )
         }.getOrNull()
     }
@@ -92,12 +92,12 @@ class EtlJobsRepositoryImpl(
     }
 
     override suspend fun cancelJobs(
-        etlName: String,
+        lockName: String,
         context: EtlContext,
         period: EtlPeriod,
     ): List<EtlJobResult> = newSuspendedTransaction(db = database) {
         jobsTable.updateReturning(
-            where = { sameEtl(etlName) and sameContext(context) and overlaps(period) and activeStatus() },
+            where = { sameLock(lockName) and conflictingContext(context) and overlaps(period) and activeStatus() },
         ) {
             it[status] = EtlJobStatus.CANCELLING.name
             it[updatedAt] = CurrentDateTime
@@ -255,9 +255,9 @@ class EtlJobsRepositoryImpl(
                 appId = row[jobsTable.appId].ifEmpty { null },
                 buildId = row[jobsTable.buildId].ifEmpty { null },
                 testSessionId = row[jobsTable.testSessionId].ifEmpty { null },
-                testDefinitionId = row[jobsTable.testDefinitionId].ifEmpty { null },
             ),
             period = EtlPeriod.fromStored(range.from, range.to),
+            lockName = row[jobsTable.lockName],
         )
     }
 
@@ -280,9 +280,19 @@ class EtlJobsRepositoryImpl(
         (jobsTable.groupId eq context.groupId) and
                 (jobsTable.appId eq context.appId.orEmpty()) and
                 (jobsTable.buildId eq context.buildId.orEmpty()) and
-                (jobsTable.testSessionId eq context.testSessionId.orEmpty()) and
-                (jobsTable.testDefinitionId eq context.testDefinitionId.orEmpty())
+                (jobsTable.testSessionId eq context.testSessionId.orEmpty())
     } ?: Op.TRUE
+
+    private fun sameLock(lockName: String): Op<Boolean> = jobsTable.lockName eq lockName
+
+    private fun conflictingContext(context: EtlContext): Op<Boolean> =
+        (jobsTable.groupId eq context.groupId) and
+                fieldConflicts(jobsTable.appId, context.appId) and
+                fieldConflicts(jobsTable.buildId, context.buildId) and
+                fieldConflicts(jobsTable.testSessionId, context.testSessionId)
+
+    private fun fieldConflicts(column: Column<String>, value: String?): Op<Boolean> =
+        if (value.isNullOrEmpty()) Op.TRUE else (column eq "") or (column eq value)
 
     private fun sameJob(job: EtlJob): Op<Boolean> =
         sameEtl(job.etlName) and sameContext(job.context) and (jobsTable.period eq job.period.toDateRangeValue())

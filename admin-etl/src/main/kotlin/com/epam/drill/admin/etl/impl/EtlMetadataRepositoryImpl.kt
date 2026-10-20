@@ -91,10 +91,7 @@ class EtlMetadataRepositoryImpl(
             it[groupId] = context.groupId
             it[appId] = context.appId ?: ""
             it[buildId] = context.buildId ?: ""
-            it[instanceId] = context.instanceId ?: ""
             it[testSessionId] = context.testSessionId ?: ""
-            it[testDefinitionId] = context.testDefinitionId ?: ""
-            it[testLaunchId] = context.testLaunchId ?: ""
 
             it[periodFrom] = metadata.period.storedFrom
             it[periodTo] = metadata.period.storedTo
@@ -207,10 +204,7 @@ class EtlMetadataRepositoryImpl(
             groupId = row[metadataTable.groupId],
             appId = row[metadataTable.appId].ifEmpty { null },
             buildId = row[metadataTable.buildId].ifEmpty { null },
-            instanceId = row[metadataTable.instanceId].ifEmpty { null },
             testSessionId = row[metadataTable.testSessionId].ifEmpty { null },
-            testDefinitionId = row[metadataTable.testDefinitionId].ifEmpty { null },
-            testLaunchId = row[metadataTable.testLaunchId].ifEmpty { null },
         ),
         period = EtlPeriod.fromStored(row[metadataTable.periodFrom], row[metadataTable.periodTo]),
     )
@@ -219,10 +213,7 @@ class EtlMetadataRepositoryImpl(
         return (metadataTable.groupId eq context.groupId) and
                 (metadataTable.appId eq (context.appId ?: "")) and
                 (metadataTable.buildId eq (context.buildId ?: "")) and
-                (metadataTable.instanceId eq (context.instanceId ?: "")) and
                 (metadataTable.testSessionId eq (context.testSessionId ?: "")) and
-                (metadataTable.testDefinitionId eq (context.testDefinitionId ?: "")) and
-                (metadataTable.testLaunchId eq (context.testLaunchId ?: "")) and
                 (metadataTable.periodFrom eq period.storedFrom) and
                 (metadataTable.periodTo eq period.storedTo)
     }
