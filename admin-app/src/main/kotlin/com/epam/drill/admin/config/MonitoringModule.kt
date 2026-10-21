@@ -50,11 +50,6 @@ private val prometheusRegistry: PrometheusMeterRegistry by lazy {
         if (Metrics.globalRegistry.registries.none { it === registry }) {
             Metrics.addRegistry(registry)
         }
-        ClassLoaderMetrics().bindTo(registry)
-        JvmMemoryMetrics().bindTo(registry)
-        JvmGcMetrics().bindTo(registry)
-        JvmThreadMetrics().bindTo(registry)
-        ProcessorMetrics().bindTo(registry)
         FileDescriptorMetrics().bindTo(registry)
         UptimeMetrics().bindTo(registry)
     }
