@@ -47,11 +47,15 @@ class EtlMeter(val registry: MeterRegistry) {
     }
 
     fun aggregationBufferOccupancyRatio(jobName: String, context: EtlContext): GaugeSample {
-        return registerDoubleGauge("etl_aggregation_buffer_occupancy_ratio", jobName, context)
+        return registerDoubleGauge("etl_aggregation_buffer_occupancy_ratio", jobName, context) {
+            it.maxOrNull() ?: 0.0
+        }
     }
 
     fun buildProbeLayoutBufferOccupancyRatio(jobName: String, context: EtlContext): GaugeSample {
-        return registerDoubleGauge("etl_build_probe_layout_buffer_occupancy_ratio", jobName, context)
+        return registerDoubleGauge("etl_build_probe_layout_buffer_occupancy_ratio", jobName, context) {
+            it.maxOrNull() ?: 0.0
+        }
     }
 
     fun buildProbeLayoutLoadingDuration(jobName: String, context: EtlContext): Timer {
@@ -97,8 +101,13 @@ class EtlMeter(val registry: MeterRegistry) {
             .register(registry)
     }
 
+    fun jobCompletionRatio(jobName: String, context: EtlContext): GaugeSample {
+        return registerDoubleGauge("etl_job_completion_ratio", jobName, context) {
+            it.minOrNull() ?: 0.0
+        }
+    }
 
-    private fun registerDoubleGauge(metricName: String, jobName: String, context: EtlContext): GaugeSample {
+    private fun registerDoubleGauge(metricName: String, jobName: String, context: EtlContext, aggregation: (List<Double>) -> Double): GaugeSample {
         val key = gaugeKey(metricName, jobName, context)
         val sample = GaugeSample(AtomicReference(0.0))
         gauges.compute(key) { _, list ->
@@ -108,7 +117,7 @@ class EtlMeter(val registry: MeterRegistry) {
                 list
             } else {
                 val newList = mutableListOf(sample)
-                Gauge.builder(metricName) { newList.maxOfOrNull { it.get() } ?: 0.0 }
+                Gauge.builder(metricName) { aggregation(newList.map { it.get() }) }
                     .tag("jobName", jobName)
                     .tagContext(context)
                     .register(registry)
