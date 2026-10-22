@@ -15,6 +15,7 @@
  */
 package com.epam.drill.admin.metrics.etl
 
+import com.epam.drill.admin.common.config.recordSuspend
 import com.epam.drill.admin.etl.DataTransformer
 import com.epam.drill.admin.etl.EtlContext
 import com.epam.drill.admin.etl.UntypedRow
@@ -35,7 +36,7 @@ import java.time.Instant
 class BuildCoverageTransformer(
     override val name: String,
     private val database: Database,
-    private val buildProbeLayoutCacheSize: Int,
+    private val bufferSize: Int,
     private val metrics: EtlMeter,
 ) : DataTransformer<UntypedRow, UntypedRow> {
 
@@ -52,38 +53,50 @@ class BuildCoverageTransformer(
         untilTimestamp: Instant,
         collector: Flow<UntypedRow>,
     ): Flow<UntypedRow> = flow {
-        val buildProbeLayout = LruMap<Triple<String, String, String>, BuildProbeLayout>(maxSize = buildProbeLayoutCacheSize)
+        val buildProbeLayout = LruMap<Triple<String, String, String>, BuildProbeLayout>(maxSize = bufferSize)
+        val loadingTimer = metrics.buildProbeLayoutLoadingDuration(name, context)
+        val bufferOccupancy = metrics.buildProbeLayoutBufferOccupancyRatio(name, context)
 
-        collector.collect { row ->
-            val groupId = row["group_id"] as? String ?: error("Missing group_id in row: $row")
-            val appId = row["app_id"] as? String ?: error("Missing app_id in row: $row")
-            val buildId = row["build_id"] as? String ?: error("Missing build_id in row: $row")
-            val methodId = row["method_id"] as? String ?: error("Missing method_id in row: $row")
-            val probes = row["probes"] as? PGobject ?: error("Missing probes in row: $row")
+        try {
+            collector.collect { row ->
+                val groupId = row["group_id"] as? String ?: error("Missing group_id in row: $row")
+                val appId = row["app_id"] as? String ?: error("Missing app_id in row: $row")
+                val buildId = row["build_id"] as? String ?: error("Missing build_id in row: $row")
+                val methodId = row["method_id"] as? String ?: error("Missing method_id in row: $row")
+                val probes = row["probes"] as? PGobject ?: error("Missing probes in row: $row")
 
-            val (layout, _) = buildProbeLayout.compute(Triple(groupId, appId, buildId)) { value ->
-                value ?: loadBuildProbeLayout(groupId, appId, buildId)
-            }
+                val (layout, _) = buildProbeLayout.compute(Triple(groupId, appId, buildId)) { value ->
+                    value ?: loadingTimer.recordSuspend {
+                        loadBuildProbeLayout(groupId, appId, buildId)
+                    }
+                }
+                bufferOccupancy.set(if (bufferSize == 0) 0.0 else buildProbeLayout.size.toDouble() / bufferSize.toDouble())
 
-            val info = layout.methods[methodId] ?: run {
-                logger.warn { "ETL transformer [$name] skipping method [$methodId] because it is not found in build [$buildId]" }
-                return@collect
-            }
+                val info = layout.methods[methodId] ?: run {
+                    logger.warn { "ETL transformer [$name] skipping method [$methodId] because it is not found in build [$buildId]" }
+                    return@collect
+                }
 
-            val codeProbes = positionProbes(probes, info.probeStartPos, info.probesCount, layout.totalProbes)
-            val testedMethod = probes.value?.contains('1') ?: false
-            val singleProbe = PGobject().apply {
-                type = "varbit"
-                value = if (testedMethod) "1" else "0"
-            }
-            val methodProbes = positionProbes(singleProbe, info.methodPos, 1, layout.totalMethods)
+                val codeProbes = positionProbes(probes, info.probeStartPos, info.probesCount, layout.totalProbes)
+                val testedMethod = probes.value?.contains('1') ?: false
+                val singleProbe = PGobject().apply {
+                    type = "varbit"
+                    value = if (testedMethod) "1" else "0"
+                }
+                val methodProbes = positionProbes(singleProbe, info.methodPos, 1, layout.totalMethods)
 
-            emit(
-                UntypedRow(
-                    row.timestamp,
-                    (row as Map<String, Any?>) + ("code_probes" to codeProbes) + ("method_probes" to methodProbes)
+                emit(
+                    UntypedRow(
+                        row.timestamp,
+                        (row as Map<String, Any?>) + ("code_probes" to codeProbes) + ("method_probes" to methodProbes)
+                    )
                 )
-            )
+            }
+        } catch (e: Exception) {
+            logger.error(e) { "ETL transformer [$name] failed during transformation: ${e.message}" }
+            throw e
+        } finally {
+            bufferOccupancy.close()
         }
     }
 
