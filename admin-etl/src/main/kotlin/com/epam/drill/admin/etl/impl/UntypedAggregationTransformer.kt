@@ -45,10 +45,9 @@ class UntypedAggregationTransformer(
     ): Flow<UntypedRow> = flow {
         var isTransformationStarted = false
         val transformedRows = AtomicInteger()
-        val aggregatedRows = metrics.rowsAggregated(name, context, sinceTimestamp)
+        val aggregatedRows = metrics.rowsAggregated(name, context)
         val bufferOccupancy = metrics.aggregationBufferOccupancyRatio(name, context)
         val buffer = LruMap<List<Any?>, UntypedRow>(maxSize = bufferSize)
-
         trackProgressOf {
             try {
                 collector.collect { row ->
@@ -82,6 +81,9 @@ class UntypedAggregationTransformer(
                 logger.error(e) { "ETL transformer [$name] failed during transformation: ${e.message}" }
                 throw e
             }
+            finally {
+                bufferOccupancy.close()
+            }
         }.every(loggingFrequency.seconds) {
             if (isTransformationStarted)
                 logger.debug {
@@ -95,6 +97,5 @@ class UntypedAggregationTransformer(
                 "ETL transformer [$name] completed transformation for ${transformedRows.get()} rows"
             }
         }
-        bufferOccupancy.set(0.0)
     }
 }

@@ -142,8 +142,8 @@ class EtlPipelineImpl<T : EtlRow, R : EtlRow>(
         onTransformationError: suspend (String, Instant) -> Unit
     ): Flow<T> {
         var previousTimestamp: Instant? = null
-        val rowsExtracted = metrics.rowsExtracted(name, context, sinceTimestamp)
-        val skippedRows = metrics.rowsSkipped(name, context, sinceTimestamp)
+        val rowsExtracted = metrics.rowsExtracted(name, context)
+        val skippedRows = metrics.rowsSkipped(name, context)
         suspend fun <T> ClosableFlow<T>.closeWithMessage(message: String) {
             close()
             onTransformationError(message, previousTimestamp ?: sinceTimestamp)
