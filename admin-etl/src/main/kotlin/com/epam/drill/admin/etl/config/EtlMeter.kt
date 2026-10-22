@@ -94,17 +94,15 @@ class EtlMeter(val registry: MeterRegistry) {
         return registerTimer("etl_extraction_duration", jobName, context)
     }
 
-    fun etlDuration(jobName: String, context: EtlContext): LongTaskTimer {
-        return LongTaskTimer.builder("etl_duration")
+    fun jobDuration(jobName: String, context: EtlContext): LongTaskTimer {
+        return LongTaskTimer.builder("etl_job_duration")
             .tag("jobName", jobName)
             .tagContext(context)
             .register(registry)
     }
 
-    fun jobCompletionRatio(jobName: String, context: EtlContext): GaugeSample {
-        return registerDoubleGauge("etl_job_completion_ratio", jobName, context) {
-            it.minOrNull() ?: 0.0
-        }
+    fun transformationDuration(jobName: String, context: EtlContext): Timer {
+        return registerTimer("etl_transformation_duration", jobName, context)
     }
 
     private fun registerDoubleGauge(metricName: String, jobName: String, context: EtlContext, aggregation: (List<Double>) -> Double): GaugeSample {

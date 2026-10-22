@@ -54,8 +54,9 @@ class BuildCoverageTransformer(
         collector: Flow<UntypedRow>,
     ): Flow<UntypedRow> = flow {
         val buildProbeLayout = LruMap<Triple<String, String, String>, BuildProbeLayout>(maxSize = bufferSize)
-        val loadingTimer = metrics.buildProbeLayoutLoadingDuration(name, context)
         val bufferOccupancy = metrics.buildProbeLayoutBufferOccupancyRatio(name, context)
+        val filtered = metrics.rowsFiltered(name, context)
+        val timer = metrics.transformationDuration(name, context)
 
         try {
             collector.collect { row ->
@@ -65,26 +66,29 @@ class BuildCoverageTransformer(
                 val methodId = row["method_id"] as? String ?: error("Missing method_id in row: $row")
                 val probes = row["probes"] as? PGobject ?: error("Missing probes in row: $row")
 
-                val (layout, _) = buildProbeLayout.compute(Triple(groupId, appId, buildId)) { value ->
-                    value ?: loadingTimer.recordSuspend {
-                        loadBuildProbeLayout(groupId, appId, buildId)
+                val (codeProbes, methodProbes) = timer.recordSuspend {
+                    val (layout, _) = buildProbeLayout.compute(Triple(groupId, appId, buildId)) { value ->
+                        value ?: loadBuildProbeLayout(groupId, appId, buildId)
                     }
-                }
-                bufferOccupancy.set(if (bufferSize == 0) 0.0 else buildProbeLayout.size.toDouble() / bufferSize.toDouble())
+                    bufferOccupancy.set(if (bufferSize == 0) 0.0 else buildProbeLayout.size.toDouble() / bufferSize.toDouble())
 
-                val info = layout.methods[methodId] ?: run {
-                    logger.warn { "ETL transformer [$name] skipping method [$methodId] because it is not found in build [$buildId]" }
+                    layout.methods[methodId]?.let { info ->
+                        val codeProbes = positionProbes(probes, info.probeStartPos, info.probesCount, layout.totalProbes)
+                        val testedMethod = probes.value?.contains('1') ?: false
+                        val singleProbe = PGobject().apply {
+                            type = "varbit"
+                            value = if (testedMethod) "1" else "0"
+                        }
+                        val methodProbes = positionProbes(singleProbe, info.methodPos, 1, layout.totalMethods)
+                        codeProbes to methodProbes
+                    } ?: (null to null)
+                }
+
+                if (codeProbes == null || methodProbes == null) {
+                    logger.debug { "ETL transformer [$name] skipping row because probes could not be enriched: $row" }
+                    filtered.increment()
                     return@collect
                 }
-
-                val codeProbes = positionProbes(probes, info.probeStartPos, info.probesCount, layout.totalProbes)
-                val testedMethod = probes.value?.contains('1') ?: false
-                val singleProbe = PGobject().apply {
-                    type = "varbit"
-                    value = if (testedMethod) "1" else "0"
-                }
-                val methodProbes = positionProbes(singleProbe, info.methodPos, 1, layout.totalMethods)
-
                 emit(
                     UntypedRow(
                         row.timestamp,
