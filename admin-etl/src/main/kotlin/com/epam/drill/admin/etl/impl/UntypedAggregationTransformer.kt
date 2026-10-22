@@ -15,6 +15,7 @@
  */
 package com.epam.drill.admin.etl.impl
 
+import com.epam.drill.admin.common.config.recordSuspend
 import com.epam.drill.admin.etl.DataTransformer
 import com.epam.drill.admin.etl.EtlContext
 import com.epam.drill.admin.etl.UntypedRow
@@ -47,6 +48,7 @@ class UntypedAggregationTransformer(
         val transformedRows = AtomicInteger()
         val aggregatedRows = metrics.rowsAggregated(name, context)
         val bufferOccupancy = metrics.aggregationBufferOccupancyRatio(name, context)
+        val timer = metrics.transformationDuration(name, context)
         val buffer = LruMap<List<Any?>, UntypedRow>(maxSize = bufferSize)
         trackProgressOf {
             try {
@@ -56,17 +58,21 @@ class UntypedAggregationTransformer(
                         isTransformationStarted = true
                     }
 
-                    val groupKey = groupKeys.map { row[it] }
-                    val (_, evicted) = buffer.compute(groupKey) { value ->
-                        if (value == null) {
-                            row
-                        } else {
-                            aggregatedRows.increment()
-                            aggregate(value, row)
+                    val evicted = timer.recordSuspend {
+                        val groupKey = groupKeys.map { row[it] }
+                        val (_, evicted) = buffer.compute(groupKey) { value ->
+                            if (value == null) {
+                                row
+                            } else {
+                                aggregatedRows.increment()
+                                aggregate(value, row)
+                            }
                         }
+                        transformedRows.incrementAndGet()
+                        bufferOccupancy.set(if (bufferSize == 0) 0.0 else buffer.size.toDouble() / bufferSize.toDouble())
+                        evicted
                     }
-                    transformedRows.incrementAndGet()
-                    bufferOccupancy.set(if (bufferSize == 0) 0.0 else buffer.size.toDouble() / bufferSize.toDouble())
+
                     if (evicted != null) {
                         emit(evicted)
                     }
