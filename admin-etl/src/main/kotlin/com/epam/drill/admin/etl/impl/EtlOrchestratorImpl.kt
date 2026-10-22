@@ -110,7 +110,7 @@ open class EtlOrchestratorImpl(
         check(finalTimestamp.isAfter(initTimestamp)) {
             "ETL [$name] worker [$workerId] has no new data to process (init=$initTimestamp, final=$finalTimestamp)"
         }
-        val timer = metrics.etlDuration(name, job.context).start()
+        val timer = metrics.jobDuration(name, job.context).start()
         try {
             return extendLeaseOf(job, workerId) {
                 val results = runPipelines(job, workerId, initTimestamp, finalTimestamp)
@@ -221,7 +221,6 @@ open class EtlOrchestratorImpl(
         finalTimestamp: Instant,
     ): List<EtlProcessingResult> = withContext(Dispatchers.IO) {
         logger.info("ETL [$name] worker [$workerId] is starting ${job.period}...")
-        val jobCompletion = metrics.jobCompletionRatio(name, job.context)
         val results = Collections.synchronizedList(mutableListOf<EtlProcessingResult>())
         val progressTracker = ProgressTracker()
         val duration = measureTimeMillis {
@@ -248,8 +247,7 @@ open class EtlOrchestratorImpl(
                 val total = Duration.between(initTimestamp, finalTimestamp).toMillis()
                 val processed = Duration.between(initTimestamp, processedUntilTimestamp).toMillis()
                 val progress = processed.toDouble() / total
-                jobCompletion.set(progress)
-                logger.info { "ETL [$name] worker [$workerId] is still running ${job.period}... Processed until $processedUntilTimestamp, progress: ${(progress / 100).toInt()}%" }
+                logger.info { "ETL [$name] worker [$workerId] is still running ${job.period}... Processed until $processedUntilTimestamp, progress: ${(progress * 100).toInt()}%" }
                 jobsRepository.updateProcessedUntilTimestamp(
                     job,
                     workerId,
@@ -257,7 +255,6 @@ open class EtlOrchestratorImpl(
                 )
             }
         }
-        jobCompletion.close()
         logger.info {
             val rowsProcessed = results.sumOf { it.rowsProcessed }
             val failures = results.count { it.status == EtlStatus.FAILED }
