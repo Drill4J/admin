@@ -62,9 +62,9 @@ class EtlLauncherImpl(
     }
 
     override suspend fun schedule(etlName: String, context: EtlContext, period: EtlPeriod, workers: Int): List<EtlJob> {
-        checkOrchestrator(etlName)
+        val lockName = getOrchestrator(etlName).lockName
         val chunks = partition(period, workers)
-        return chunks.mapNotNull { jobsRepository.scheduleJob(etlName, context, it) }
+        return chunks.mapNotNull { jobsRepository.scheduleJob(etlName, context, it, lockName) }
     }
 
     override suspend fun resume(
@@ -86,8 +86,8 @@ class EtlLauncherImpl(
     }
 
     override suspend fun cancel(etlName: String, context: EtlContext, period: EtlPeriod): List<EtlJobResult> {
-        checkOrchestrator(etlName)
-        val cancelling = jobsRepository.cancelJobs(etlName, context, period)
+        val lockName = getOrchestrator(etlName).lockName
+        val cancelling = jobsRepository.cancelJobs(lockName, context, period)
         if (cancelling.isEmpty()) return emptyList()
 
         val settled = mutableMapOf<EtlJob, EtlJobResult>()
@@ -246,18 +246,20 @@ class EtlLauncherImpl(
         }
         if (covering.isEmpty()) return EtlDailyStatus.UNLOADED
         val coveredJob = covering.first()
-        val startOfNextDay = day.plusDays(1).atStartOfDay(ZoneId.systemDefault()).toInstant()
         val startOfCurrentDay = day.atStartOfDay(ZoneId.systemDefault()).toInstant()
-        //job is extracting data for the first day of the period
-        if (coveredJob.processedUntilTimestamp == null && day == coveredJob.job.period.from) {
+        val endOfCurrentDay = day.plusDays(1).atStartOfDay(ZoneId.systemDefault()).toInstant().minusMillis(1)
+
+        val isFirstDayOfPeriod = coveredJob.processedUntilTimestamp == null && day == coveredJob.job.period.from
+        val hasAlreadyProcessedDataForDay = coveredJob.processedUntilTimestamp?.isAfter(endOfCurrentDay) ?: false
+        val hasNotYetProcessedDataForDay = coveredJob.processedUntilTimestamp?.isBefore(startOfCurrentDay) ?: true
+
+        if (isFirstDayOfPeriod) {
             return EtlDailyStatus.RUNNING
         }
-        //job has already processed data for the day
-        if (coveredJob.processedUntilTimestamp?.isAfter(startOfNextDay) ?: false) {
+        if (hasAlreadyProcessedDataForDay) {
             return EtlDailyStatus.COMPLETED
         }
-        //job has not yet processed data for the day
-        if (coveredJob.processedUntilTimestamp?.isBefore(startOfCurrentDay) ?: true) {
+        if (hasNotYetProcessedDataForDay) {
             return when (coveredJob.status) {
                 EtlJobStatus.RUNNING -> EtlDailyStatus.SCHEDULED
                 EtlJobStatus.IDLE -> EtlDailyStatus.SCHEDULED
@@ -267,7 +269,6 @@ class EtlLauncherImpl(
                 EtlJobStatus.CANCELLED -> EtlDailyStatus.UNLOADED
             }
         }
-        //job is processing data for the day
         return when (coveredJob.status) {
             EtlJobStatus.RUNNING -> EtlDailyStatus.RUNNING
             EtlJobStatus.IDLE -> EtlDailyStatus.COMPLETED

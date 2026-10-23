@@ -17,21 +17,17 @@ package com.epam.drill.admin.metrics
 
 import com.epam.drill.admin.metrics.config.MetricsDatabaseConfig
 import com.epam.drill.admin.metrics.config.executeQueryReturnMap
-import com.epam.drill.admin.test.MetricsDatabaseTests
-import com.epam.drill.admin.writer.rawdata.config.RawDataWriterDatabaseConfig
 import com.epam.drill.admin.writer.rawdata.route.payload.InstancePayload
-import com.epam.drill.admin.writer.rawdata.route.payload.SessionPayload
+import com.epam.drill.admin.writer.rawdata.route.payload.TestSessionPayload
 import io.ktor.client.request.*
 import kotlinx.datetime.Clock
 import kotlin.test.Test
+import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 
-class DataDeletionApiTest : MetricsDatabaseTests({ default, metrics ->
-    MetricsDatabaseConfig.init(metrics)
-    RawDataWriterDatabaseConfig.init(default)
-}) {
+class DataDeletionApiTest : MetricsApiTests() {
 
     @Test
     fun `delete group should remove all metrics for the group`() {
@@ -42,13 +38,13 @@ class DataDeletionApiTest : MetricsDatabaseTests({ default, metrics ->
         val keepBuild =
             InstancePayload(groupId = keepGroupId, appId = "app-1", instanceId = "inst-1", buildVersion = "1.0.0")
         val delSession =
-            SessionPayload(
+            TestSessionPayload(
                 groupId = delGroupId,
                 id = "sess1",
                 testTaskId = "task",
                 startedAt = Clock.System.now()
             )
-        val keepSession = SessionPayload(
+        val keepSession = TestSessionPayload(
             groupId = keepGroupId,
             id = "sess2",
             testTaskId = "task",
@@ -60,9 +56,9 @@ class DataDeletionApiTest : MetricsDatabaseTests({ default, metrics ->
             keepBuild has listOf(method1)
             test1 of delSession covers method1 on delBuild
             test1 of keepSession covers method1 on keepBuild
-        }.afterCalling {
+        }.whenExecuting {
             delete("/data-management/groups/$delGroupId").assertSuccessStatus()
-        }.expectThat {
+        }.expectThat(onFailed = {}) {
             assertThatTableHasNot("metrics.builds", delGroupId)
             assertThatTableHasNot("metrics.methods", delGroupId)
             assertThatTableHasNot("metrics.test_sessions", delGroupId)
@@ -91,13 +87,13 @@ class DataDeletionApiTest : MetricsDatabaseTests({ default, metrics ->
             InstancePayload(groupId = groupId, appId = delAppId, instanceId = "inst-1", buildVersion = "1.0.0")
         val keepBuild =
             InstancePayload(groupId = groupId, appId = keepAppId, instanceId = "inst-1", buildVersion = "1.0.0")
-        val session1 = SessionPayload(
+        val session1 = TestSessionPayload(
             groupId = groupId,
             id = "sess1",
             testTaskId = "task",
             startedAt = Clock.System.now()
         )
-        val session2 = SessionPayload(
+        val session2 = TestSessionPayload(
             groupId = groupId,
             id = "sess2",
             testTaskId = "task",
@@ -109,9 +105,9 @@ class DataDeletionApiTest : MetricsDatabaseTests({ default, metrics ->
             keepBuild has listOf(method2)
             (test1 of session1) covers method1 on delBuild
             (test2 of session2) covers method2 on keepBuild
-        }.afterCalling {
+        }.whenExecuting {
             delete("/data-management/groups/$groupId/apps/$delAppId").assertSuccessStatus()
-        }.expectThat {
+        }.expectThat(onFailed = {}) {
             assertThatTableHasNot("metrics.builds", groupId, appId = delAppId)
             assertThatTableHasNot("metrics.methods", groupId, appId = delAppId)
             assertThatTableHasNot("metrics.method_daily_coverage", groupId, appId = delAppId)
@@ -130,22 +126,22 @@ class DataDeletionApiTest : MetricsDatabaseTests({ default, metrics ->
         val delTestProjectId = "tp-del"
         val keepTestProjectId = "tp-keep"
         val build = InstancePayload(groupId = groupId, appId = "app-1", instanceId = "inst-1", buildVersion = "1.0.0")
-        val delSession = SessionPayload(
+        val delSession = TestSessionPayload(
             groupId = groupId, id = "sess1", testTaskId = "task",
             startedAt = Clock.System.now(), testProjectId = delTestProjectId
         )
-        val keepSession = SessionPayload(
+        val keepSession = TestSessionPayload(
             groupId = groupId, id = "sess2", testTaskId = "task",
             startedAt = Clock.System.now(), testProjectId = keepTestProjectId
         )
 
         havingData {
-            build has listOf(method1)
+            build has listOf(method1, method2)
             (test1 of delSession) covers method1 on build
-            (test2 of keepSession) covers method1 on build
-        }.afterCalling {
+            (test2 of keepSession) covers method2 on build
+        }.whenExecuting {
             delete("/data-management/groups/$groupId/tests/$delTestProjectId").assertSuccessStatus()
-        }.expectThat {
+        }.expectThat(onFailed = {}) {
             assertThatTableHasNot("metrics.test_sessions", groupId, testProjectId = delTestProjectId)
             assertThatTableHasNot("metrics.test_launches", groupId, testProjectId = delTestProjectId)
             assertThatTableHasNot("metrics.test_definitions", groupId, testProjectId = delTestProjectId)
@@ -173,9 +169,9 @@ class DataDeletionApiTest : MetricsDatabaseTests({ default, metrics ->
             keepBuild has listOf(method1, method2)
             test1 covers method1 on delBuild
             test2 covers method2 on keepBuild
-        }.afterCalling {
+        }.whenExecuting {
             delete("/data-management/groups/$groupId/apps/$appId/builds/$delBuildId").assertSuccessStatus()
-        }.expectThat {
+        }.expectThat(onFailed = {}) {
             assertThatTableHasNot("metrics.builds", groupId, appId = appId, buildId = delBuildId)
             assertThatTableHasNot("metrics.build_methods", groupId, appId = appId, buildId = delBuildId)
             assertThatTableHasNot("metrics.test_session_builds", groupId, appId = appId, buildId = delBuildId)
@@ -210,13 +206,13 @@ class DataDeletionApiTest : MetricsDatabaseTests({ default, metrics ->
     @Test
     fun `delete test session should remove all raw data and metrics for the session`() {
         val groupId = testGroup
-        val delSession = SessionPayload(
+        val delSession = TestSessionPayload(
             groupId = groupId,
             id = "sess-del",
             testTaskId = "task",
             startedAt = Clock.System.now()
         )
-        val keepSession = SessionPayload(
+        val keepSession = TestSessionPayload(
             groupId = groupId,
             id = "sess-keep",
             testTaskId = "task",
@@ -227,22 +223,59 @@ class DataDeletionApiTest : MetricsDatabaseTests({ default, metrics ->
             build1 has listOf(method1, method2)
             (test1 of delSession) covers method1 on build1
             (test2 of keepSession) covers method2 on build1
-        }.afterCalling {
-            delete("/data-management/groups/$groupId/tests/sessions/${delSession.id}").assertSuccessStatus()
         }.expectThat {
+            assertThatTableHas("metrics.build_method_coverage", groupId, methodId = method1.methodId)
+        }.whenExecuting {
+            delete("/data-management/groups/$groupId/tests/sessions/${delSession.id}").assertSuccessStatus()
+        }.expectThat(onFailed = {}) {
             assertThatTableHasNot("metrics.test_sessions", groupId, testSessionId = delSession.id)
             assertThatTableHasNot("metrics.test_launches", groupId, testSessionId = delSession.id)
             assertThatTableHasNot("metrics.build_method_test_session_coverage", groupId, testSessionId = delSession.id)
-//            assertThatTableHasNot("metrics.method_daily_coverage", groupId, methodId = method1.methodId)
-//            assertThatTableHasNot("metrics.test_to_code_mapping", groupId, signature = method1.signature)
+            assertThatTableHasNot("metrics.build_method_test_definition_coverage", groupId, testSessionId = delSession.id)
+            assertThatTableHasNot("metrics.build_method_coverage", groupId, methodId = method1.methodId)
+            assertThatTableHasNot("metrics.method_daily_coverage", groupId, methodId = method1.methodId)
+            assertThatTableHasNot("metrics.test_to_code_mapping", groupId, signature = method1.signature)
 
             assertThatTableHas("metrics.test_sessions", groupId, testSessionId = keepSession.id)
             assertThatTableHas("metrics.test_launches", groupId, testSessionId = keepSession.id)
             assertThatTableHas("metrics.build_method_test_session_coverage", groupId, testSessionId = keepSession.id)
-//            assertThatTableHas("metrics.method_daily_coverage", groupId, methodId = method2.methodId)
-//            assertThatTableHas("metrics.test_to_code_mapping", groupId, signature = method2.signature)
+            assertThatTableHas("metrics.build_method_test_definition_coverage", groupId, testSessionId = keepSession.id)
+            assertThatTableHas("metrics.build_method_coverage", groupId, methodId = method2.methodId)
+            assertThatTableHas("metrics.method_daily_coverage", groupId, methodId = method2.methodId)
+            assertThatTableHas("metrics.test_to_code_mapping", groupId, signature = method2.signature)
         }
     }
+
+    @Test
+    fun `changing method ignore rules should update ignored methods and metrics`() {
+        val groupId = testGroup
+        val appId = testApp
+
+        havingData {
+            build1 has listOf(method1, method2)
+            test1 covers method1 on build1
+            test2 covers method2 on build1
+        }.expectThat {
+            assertFalse(isMethodIgnored(groupId, appId, method1.methodId))
+            assertFalse(isMethodIgnored(groupId, appId, method2.methodId))
+        }.whenExecuting {
+            syncMethodIgnoreRules(groupId, appId, namePatterns = listOf(method1.name))
+        }.expectThat {
+            assertTrue(isMethodIgnored(groupId, appId, method1.methodId), "method1 should be ignored")
+            assertFalse(isMethodIgnored(groupId, appId, method2.methodId), "method2 should not be ignored")
+        }
+    }
+
+    private suspend fun isMethodIgnored(groupId: String, appId: String, methodId: String): Boolean =
+        MetricsDatabaseConfig.transaction {
+            executeQueryReturnMap {
+                append("SELECT ignore FROM metrics.methods")
+                append(" WHERE group_id = ?", groupId)
+                append(" AND app_id = ?", appId)
+                append(" AND method_id = ?", methodId)
+                append(" LIMIT 1")
+            }.firstOrNull()?.get("ignore") as? Boolean ?: false
+        }
 
     private suspend fun tableHas(
         table: String, groupId: String,
@@ -310,7 +343,16 @@ class DataDeletionApiTest : MetricsDatabaseTests({ default, metrics ->
             signature?.let { "signature=$it" }
         ).joinToString(", ")
         assertTrue(
-            tableHas(table, groupId, appId, testProjectId, buildId, testSessionId, methodId, signature),
+            tableHas(
+                table = table,
+                groupId = groupId,
+                appId = appId,
+                testProjectId = testProjectId,
+                buildId = buildId,
+                testSessionId = testSessionId,
+                methodId = methodId,
+                signature = signature
+            ),
             "Expected table $table to have data for $params"
         )
     }

@@ -34,15 +34,13 @@ class UntypedFilterTransformer(
         sinceTimestamp: Instant,
         untilTimestamp: Instant,
         collector: Flow<UntypedRow>,
-        onTransformationProgress: suspend (Instant) -> Unit
     ): Flow<UntypedRow> {
-        val rowsFiltered = metrics.rowsFiltered(name, context, sinceTimestamp)
+        val rowsFiltered = metrics.rowsFiltered(name, context)
         return flow {
             collector.filter {
                 predicate(it).also { passed ->
                     if (!passed) {
                         rowsFiltered.increment()
-                        onTransformationProgress(it.timestamp)
                     }
                 }
             }.collect { row ->

@@ -10,19 +10,19 @@ SELECT
     m.method_params,
     m.return_type,
     m.created_at,
-    DATE_TRUNC('day',m.created_at) AS created_at_day
+    DATE_TRUNC('day',m.created_at) AS created_at_day,
+    EXISTS (
+        SELECT 1
+        FROM raw_data.method_ignore_rules r
+        WHERE r.group_id = m.group_id
+            AND r.app_id = m.app_id
+            AND (r.classname_pattern IS NULL OR m.class_name::text ~ r.classname_pattern::text)
+            AND (r.name_pattern IS NULL OR m.method_name::text ~ r.name_pattern::text)
+    ) AS ignore
 FROM raw_data.methods m
 WHERE m.group_id = :group_id
     AND m.created_at > :since_timestamp
     AND m.created_at <= :until_timestamp
     AND m.probes_count > 0
-    AND NOT EXISTS (
-        SELECT 1
-        FROM raw_data.method_ignore_rules r
-        WHERE r.group_id = m.group_id
-            AND r.app_id = m.app_id
-            AND (r.classname_pattern IS NOT NULL AND m.class_name::text ~ r.classname_pattern::text
-                OR r.name_pattern IS NOT NULL AND m.method_name::text ~ r.name_pattern::text)
-    )
-ORDER BY m.created_at ASC, m.method_id
+ORDER BY m.created_at, m.method_id
 LIMIT :limit

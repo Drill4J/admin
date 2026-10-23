@@ -15,36 +15,19 @@
  */
 package com.epam.drill.admin.metrics
 
-import com.epam.drill.admin.metrics.config.MetricsDatabaseConfig
-import com.epam.drill.admin.test.MetricsDatabaseTests
-import com.epam.drill.admin.test.withTransaction
-import com.epam.drill.admin.writer.rawdata.config.RawDataWriterDatabaseConfig
-import com.epam.drill.admin.writer.rawdata.table.BuildMethodTable
-import com.epam.drill.admin.writer.rawdata.table.BuildTable
-import com.epam.drill.admin.writer.rawdata.table.InstanceTable
-import com.epam.drill.admin.writer.rawdata.table.MethodCoverageTable
-import com.epam.drill.admin.writer.rawdata.table.MethodTable
-import com.epam.drill.admin.writer.rawdata.table.TestDefinitionTable
-import com.epam.drill.admin.writer.rawdata.table.TestLaunchTable
-import com.epam.drill.admin.writer.rawdata.table.TestSessionTable
 import com.jayway.jsonpath.JsonPath
 import io.ktor.client.request.*
 import io.ktor.client.statement.*
 import io.ktor.http.HttpStatusCode
-import org.jetbrains.exposed.sql.deleteAll
-import org.junit.jupiter.api.AfterEach
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
-class TestSessionsApiTest : MetricsDatabaseTests({ default, metrics ->
-    RawDataWriterDatabaseConfig.init(default)
-    MetricsDatabaseConfig.init(metrics)
-}) {
+class TestSessionsApiTest : MetricsApiTests() {
     private val build1Id = "${build1.groupId}:${build1.appId}:${build1.buildVersion}"
 
     @Test
-    fun `given build with test sessions, should return sessions for that build`(): Unit =
+    fun `given build with test sessions, should return sessions for that build`() {
         havingData {
             build1 has listOf(method1)
             test1 of session1 covers method1 with probesOf(1, 1) on build1
@@ -59,9 +42,9 @@ class TestSessionsApiTest : MetricsDatabaseTests({ default, metrics ->
                 assertTrue(data.any { it["testSessionId"] == session2.id })
             }
         }
-
+    }
     @Test
-    fun `given test sessions on different builds, group list returns all sessions`(): Unit =
+    fun `given test sessions on different builds, group list returns all sessions`() {
         havingData {
             build1 has listOf(method1)
             build2 has listOf(method1)
@@ -76,9 +59,10 @@ class TestSessionsApiTest : MetricsDatabaseTests({ default, metrics ->
                 assertTrue(data.any { it["testSessionId"] == session2.id })
             }
         }
+    }
 
     @Test
-    fun `given test sessions on different builds, build endpoint returns only matching sessions`(): Unit =
+    fun `given test sessions on different builds, build endpoint returns only matching sessions`() {
         havingData {
             build1 has listOf(method1)
             build2 has listOf(method1)
@@ -92,9 +76,10 @@ class TestSessionsApiTest : MetricsDatabaseTests({ default, metrics ->
                 assertEquals(session1.id, data[0]["testSessionId"])
             }
         }
+    }
 
     @Test
-    fun `given page and pageSize, should return paginated sessions with total`(): Unit =
+    fun `given page and pageSize, should return paginated sessions with total`() {
         havingData {
             build1 has listOf(method1)
             test1 of session1 covers method1 with probesOf(1, 1) on build1
@@ -112,9 +97,10 @@ class TestSessionsApiTest : MetricsDatabaseTests({ default, metrics ->
             val total = JsonPath.read<Number>(response.bodyAsText(), "$.paging.total")
             assertEquals(3, total.toInt())
         }
+    }
 
     @Test
-    fun `given sortBy successRate DESC, sessions should be ordered by success rate`(): Unit =
+    fun `given sortBy successRate DESC, sessions should be ordered by success rate`() {
         havingData {
             build1 has listOf(method1)
             test1 of session1 covers method1 with probesOf(1, 1) on build1
@@ -128,9 +114,10 @@ class TestSessionsApiTest : MetricsDatabaseTests({ default, metrics ->
                 assertTrue(data.size >= 2)
             }
         }
+    }
 
     @Test
-    fun `given invalid sortBy, should return BadRequest`(): Unit =
+    fun `given invalid sortBy, should return BadRequest`() {
         havingData {
             build1 has listOf(method1)
         }.expectThat {
@@ -141,9 +128,10 @@ class TestSessionsApiTest : MetricsDatabaseTests({ default, metrics ->
             assertEquals(HttpStatusCode.BadRequest, response.status)
             assertTrue(response.bodyAsText().contains("Invalid sortBy"))
         }
+    }
 
     @Test
-    fun `given filter options endpoint, should return distinct values for build`(): Unit =
+    fun `given filter options endpoint, should return distinct values for build`() {
         havingData {
             build1 has listOf(method1)
             test1 of session1 covers method1 with probesOf(1, 1) on build1
@@ -164,9 +152,10 @@ class TestSessionsApiTest : MetricsDatabaseTests({ default, metrics ->
                 assertTrue(data.contains("PASSED"))
             }
         }
+    }
 
     @Test
-    fun `given filter options without buildId, should return distinct values for group`(): Unit =
+    fun `given filter options without buildId, should return distinct values for group`() {
         havingData {
             build1 has listOf(method1)
             test1 of session1 covers method1 with probesOf(1, 1) on build1
@@ -191,9 +180,9 @@ class TestSessionsApiTest : MetricsDatabaseTests({ default, metrics ->
             }
             assertEquals(HttpStatusCode.BadRequest, invalid.status)
         }
-
+    }
     @Test
-    fun `given same session on multiple builds, group list returns one row per session`(): Unit =
+    fun `given same session on multiple builds, group list returns one row per session`() {
         havingData {
             build1 has listOf(method1)
             build2 has listOf(method1)
@@ -207,9 +196,10 @@ class TestSessionsApiTest : MetricsDatabaseTests({ default, metrics ->
                 assertEquals(session1.id, data[0]["testSessionId"])
             }
         }
+    }
 
     @Test
-    fun `given session with builds, builds endpoint returns linked builds`(): Unit =
+    fun `given session with builds, builds endpoint returns linked builds`() {
         havingData {
             build1 has listOf(method1)
             build2 has listOf(method1)
@@ -227,9 +217,10 @@ class TestSessionsApiTest : MetricsDatabaseTests({ default, metrics ->
             val total = JsonPath.read<Number>(response.bodyAsText(), "$.paging.total")
             assertEquals(2, total.toInt())
         }
+    }
 
     @Test
-    fun `given session with builds, builds endpoint respects pageSize`(): Unit =
+    fun `given session with builds, builds endpoint respects pageSize`() {
         havingData {
             build1 has listOf(method1)
             build2 has listOf(method1)
@@ -247,9 +238,9 @@ class TestSessionsApiTest : MetricsDatabaseTests({ default, metrics ->
             val total = JsonPath.read<Number>(response.bodyAsText(), "$.paging.total")
             assertEquals(2, total.toInt())
         }
-
+    }
     @Test
-    fun `given testProjectIds filter, group list should return only matching sessions`(): Unit =
+    fun `given testProjectIds filter, group list should return only matching sessions`() {
         havingData {
             build1 has listOf(method1)
             test1 of session1.testProjectId("project-a") covers method1 with probesOf(1, 1) on build1
@@ -264,9 +255,10 @@ class TestSessionsApiTest : MetricsDatabaseTests({ default, metrics ->
                 assertEquals("project-a", data[0]["testProjectId"])
             }
         }
+    }
 
     @Test
-    fun `given testProjectIds filter option, should return distinct values`(): Unit =
+    fun `given testProjectIds filter option, should return distinct values`() {
         havingData {
             build1 has listOf(method1)
             test1 of session1.testProjectId("project-a") covers method1 with probesOf(1, 1) on build1
@@ -278,9 +270,10 @@ class TestSessionsApiTest : MetricsDatabaseTests({ default, metrics ->
                 assertTrue(data.contains("project-a"))
             }
         }
+    }
 
     @Test
-    fun `given testProjectIds filter, build test-sessions should return only matching sessions`(): Unit =
+    fun `given testProjectIds filter, build test-sessions should return only matching sessions`() {
         havingData {
             build1 has listOf(method1)
             test1 of session1.testProjectId("project-a") covers method1 with probesOf(1, 1) on build1
@@ -294,16 +287,5 @@ class TestSessionsApiTest : MetricsDatabaseTests({ default, metrics ->
                 assertEquals(session1.id, data[0]["testSessionId"])
             }
         }
-
-    @AfterEach
-    fun cleanup() = withTransaction(RawDataWriterDatabaseConfig.database) {
-        MethodCoverageTable.deleteAll()
-        TestLaunchTable.deleteAll()
-        TestDefinitionTable.deleteAll()
-        TestSessionTable.deleteAll()
-        BuildMethodTable.deleteAll()
-        MethodTable.deleteAll()
-        BuildTable.deleteAll()
-        InstanceTable.deleteAll()
     }
 }

@@ -15,21 +15,11 @@
  */
 package com.epam.drill.admin.metrics
 
-import com.epam.drill.admin.metrics.config.MetricsDatabaseConfig
-import com.epam.drill.admin.test.MetricsDatabaseTests
-import com.epam.drill.admin.test.withTransaction
-import com.epam.drill.admin.writer.rawdata.config.RawDataWriterDatabaseConfig
-import com.epam.drill.admin.writer.rawdata.table.*
 import io.ktor.client.request.*
-import org.jetbrains.exposed.sql.deleteAll
-import org.junit.jupiter.api.AfterEach
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
-class BuildDiffReportApiTest : MetricsDatabaseTests({ default, metrics ->
-    RawDataWriterDatabaseConfig.init(default)
-    MetricsDatabaseConfig.init(metrics)
-}) {
+class BuildDiffReportApiTest : MetricsApiTests() {
     @Test
     fun `given builds with different methods, build-diff-report service should calculate total changes`() {
         havingData {
@@ -47,6 +37,31 @@ class BuildDiffReportApiTest : MetricsDatabaseTests({ default, metrics ->
                 assertEquals(1, metrics["changes_new_methods"])
                 assertEquals(1, metrics["changes_modified_methods"])
                 assertEquals(1, metrics["changes_deleted_methods"])
+            }
+        }
+    }
+
+    @Test
+    fun `given method ignore rule, build-diff-report service should exclude ignored methods from total changes`() {
+        havingData {
+            build1 has listOf(method1, method2)
+            build2 hasModified method2 comparedTo build1
+            build2 hasNew method3 comparedTo build1
+            build2 hasNew method4 comparedTo build1
+            client.postMethodIgnoreRule(
+                groupId = testGroup,
+                appId = testApp,
+                namePattern = "method3"
+            )
+        }.expectThat {
+            client.get("/metrics/build-diff-report") {
+                parameter("groupId", testGroup)
+                parameter("appId", testApp)
+                parameter("buildVersion", build2.buildVersion)
+                parameter("baselineBuildVersion", build1.buildVersion)
+            }.returnsSingle("$.data.metrics") { metrics ->
+                assertEquals(1, metrics["changes_new_methods"])
+                assertEquals(1, metrics["changes_modified_methods"])
             }
         }
     }
@@ -75,30 +90,32 @@ class BuildDiffReportApiTest : MetricsDatabaseTests({ default, metrics ->
     }
 
     @Test
-    fun `given tests on target build, build-diff-report service should calculate isolated coverage`() = havingData {
-        build1 has listOf(method1, method2)
-        build2 hasModified method2 comparedTo build1
-        build2 hasNew method3 comparedTo build1
-        test1 covers method1 with probesOf(1, 1) on build2
-        test1 covers method2 with probesOf(1, 0, 0) on build2
-        test2 covers method3 with probesOf(1) on build2
-    }.expectThat {
-        client.get("/metrics/build-diff-report") {
-            parameter("groupId", testGroup)
-            parameter("appId", testApp)
-            parameter("buildVersion", build2.buildVersion)
-            parameter("baselineBuildVersion", build1.buildVersion)
-        }.returnsSingle("$.data.metrics") { metrics ->
-            // test1 covers method2 by 1 of 3 probes,
-            // test2 covers method3 by 1 of 1 probes,
-            // coverage in method1 is not considered because method1 was not changed,
-            // so total coverage is 2 of 4 probes
-            assertEquals(0.5, metrics["coverage"])
+    fun `given tests on target build, build-diff-report service should calculate isolated coverage`() {
+        havingData {
+            build1 has listOf(method1, method2)
+            build2 hasModified method2 comparedTo build1
+            build2 hasNew method3 comparedTo build1
+            test1 covers method1 with probesOf(1, 1) on build2
+            test1 covers method2 with probesOf(1, 0, 0) on build2
+            test2 covers method3 with probesOf(1) on build2
+        }.expectThat {
+            client.get("/metrics/build-diff-report") {
+                parameter("groupId", testGroup)
+                parameter("appId", testApp)
+                parameter("buildVersion", build2.buildVersion)
+                parameter("baselineBuildVersion", build1.buildVersion)
+            }.returnsSingle("$.data.metrics") { metrics ->
+                // test1 covers method2 by 1 of 3 probes,
+                // test2 covers method3 by 1 of 1 probes,
+                // coverage in method1 is not considered because method1 was not changed,
+                // so total coverage is 2 of 4 probes
+                assertEquals(0.5, metrics["coverage"])
+            }
         }
     }
 
     @Test
-    fun `given tests on different builds, build-diff-report service should calculate coverage`() =
+    fun `given tests on different builds, build-diff-report service should calculate coverage`() {
         havingData {
             build1 has listOf(method1)
             test1 covers method1 with probesOf(1, 1) on build1
@@ -127,6 +144,7 @@ class BuildDiffReportApiTest : MetricsDatabaseTests({ default, metrics ->
                 assertEquals(0.25, metrics["coverage"])
             }
         }
+    }
 
     @Test
     fun `given tests which cover changed methods, build-diff-report service should calculate impacted tests`() {
@@ -192,18 +210,6 @@ class BuildDiffReportApiTest : MetricsDatabaseTests({ default, metrics ->
                 assertEquals(422, status.value)
             }
         }
-    }
-
-    @AfterEach
-    fun clearAll() = withTransaction(RawDataWriterDatabaseConfig.database) {
-        MethodCoverageTable.deleteAll()
-        InstanceTable.deleteAll()
-        MethodTable.deleteAll()
-        BuildMethodTable.deleteAll()
-        BuildTable.deleteAll()
-        TestLaunchTable.deleteAll()
-        TestSessionTable.deleteAll()
-        TestDefinitionTable.deleteAll()
     }
 }
 

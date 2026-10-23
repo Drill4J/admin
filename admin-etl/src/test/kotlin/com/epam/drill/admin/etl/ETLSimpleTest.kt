@@ -101,7 +101,6 @@ class ETLSimpleTest {
             sinceTimestamp: Instant,
             untilTimestamp: Instant,
             collector: Flow<SimpleClass>,
-            onTransformationProgress: suspend (Instant) -> Unit
         ): Flow<SimpleClass> = flow {
             collector.collect { emit(it) }
         }
