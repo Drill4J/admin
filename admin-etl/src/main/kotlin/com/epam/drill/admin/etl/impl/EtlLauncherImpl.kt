@@ -62,9 +62,9 @@ class EtlLauncherImpl(
     }
 
     override suspend fun schedule(etlName: String, context: EtlContext, period: EtlPeriod, workers: Int): List<EtlJob> {
-        checkOrchestrator(etlName)
+        val lockName = getOrchestrator(etlName).lockName
         val chunks = partition(period, workers)
-        return chunks.mapNotNull { jobsRepository.scheduleJob(etlName, context, it) }
+        return chunks.mapNotNull { jobsRepository.scheduleJob(etlName, context, it, lockName) }
     }
 
     override suspend fun resume(
@@ -86,8 +86,8 @@ class EtlLauncherImpl(
     }
 
     override suspend fun cancel(etlName: String, context: EtlContext, period: EtlPeriod): List<EtlJobResult> {
-        checkOrchestrator(etlName)
-        val cancelling = jobsRepository.cancelJobs(etlName, context, period)
+        val lockName = getOrchestrator(etlName).lockName
+        val cancelling = jobsRepository.cancelJobs(lockName, context, period)
         if (cancelling.isEmpty()) return emptyList()
 
         val settled = mutableMapOf<EtlJob, EtlJobResult>()

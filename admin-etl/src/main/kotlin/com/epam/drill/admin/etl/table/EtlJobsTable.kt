@@ -22,11 +22,11 @@ import org.jetbrains.exposed.sql.javatime.timestamp
 
 class EtlJobsTable(tableName: String) : Table(tableName) {
     val etlName = varchar("etl_name", 225)
+    val lockName = varchar("lock_name", 225)
     val groupId = varchar("group_id", 225)
     val appId = varchar("app_id", 225)
     val buildId = varchar("build_id", 225)
     val testSessionId = varchar("test_session_id", 225)
-    val testDefinitionId = varchar("test_definition_id", 225)
     val period = registerColumn("period", DateRangeColumnType())
 
     val status = varchar("status", 50)

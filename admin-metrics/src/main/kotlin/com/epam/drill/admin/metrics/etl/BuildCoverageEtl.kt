@@ -29,7 +29,6 @@ val EtlConfig.buildCoverageLoader
         sqlDelete = fromResource("/metrics/db/etl/build_coverage_delete.sql"),
         database = MetricsDatabaseConfig.database,
         batchSize = batchSize,
-        loggingFrequency = loggingFrequency,
         metrics = metrics,
     )
 
@@ -55,7 +54,7 @@ val EtlConfig.buildCoverageTransformer
     get() = BuildCoverageTransformer(
         name = "build_coverage_transformer",
         database = RawDataWriterDatabaseConfig.database,
-        buildProbeLayoutCacheSize = buildProbeLayoutCacheSize,
+        lookupCacheSize = buildProbeLayoutCacheSize,
         metrics = metrics,
     )
 

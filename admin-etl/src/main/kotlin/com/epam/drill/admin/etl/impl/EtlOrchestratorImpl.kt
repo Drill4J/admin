@@ -60,6 +60,7 @@ open class EtlOrchestratorImpl(
     open val processingDelay: Long = 0,
     open val bufferSize: Int = 2000,
     open val lockLeaseSeconds: Long = 180,
+    override val lockName: String = name,
 ) : EtlOrchestrator {
     private val logger = KotlinLogging.logger {}
 
@@ -109,7 +110,9 @@ open class EtlOrchestratorImpl(
         check(finalTimestamp.isAfter(initTimestamp)) {
             "ETL [$name] worker [$workerId] has no new data to process (init=$initTimestamp, final=$finalTimestamp)"
         }
-        val timer = metrics.etlDuration(name, workerId, job.context).start()
+        val failedJobs = metrics.jobsFailed(name, job.context)
+        val completedJobs = metrics.jobsCompleted(name, job.context)
+        val timer = metrics.jobDuration(name, job.context).start()
         try {
             return extendLeaseOf(job, workerId) {
                 val results = runPipelines(job, workerId, initTimestamp, finalTimestamp)
@@ -119,6 +122,7 @@ open class EtlOrchestratorImpl(
 
                 return@extendLeaseOf when {
                     hasErrors -> {
+                        failedJobs.increment()
                         val errors = results
                             .filter { it.status == EtlStatus.FAILED }
                             .joinToString(separator = "; ") { it.errorMessage ?: "Unknown error" }
@@ -132,6 +136,7 @@ open class EtlOrchestratorImpl(
                     }
 
                     !hasErrors && jobFinished -> {
+                        completedJobs.increment()
                         job.markCompleted(workerId, finalTimestamp)
                         EtlJobResult(
                             job = job,
@@ -160,6 +165,7 @@ open class EtlOrchestratorImpl(
             )
         } catch (e: Throwable) {
             logger.error(e) { "ETL [$name] worker [$workerId] failed: ${e.message}" }
+            failedJobs.increment()
             job.markError(workerId, e.message ?: e::class.java.name)
             return EtlJobResult(
                 job = job,
@@ -245,9 +251,8 @@ open class EtlOrchestratorImpl(
                 val processedUntilTimestamp = progressTracker.getProcessedUntilTimestamp()
                 val total = Duration.between(initTimestamp, finalTimestamp).toMillis()
                 val processed = Duration.between(initTimestamp, processedUntilTimestamp).toMillis()
-                val progress = ((processed.toDouble() / total) * 100).toInt()
-
-                logger.info { "ETL [$name] worker [$workerId] is still running ${job.period}... Processed until $processedUntilTimestamp, progress: $progress%" }
+                val progress = processed.toDouble() / total
+                logger.info { "ETL [$name] worker [$workerId] is still running ${job.period}... Processed until $processedUntilTimestamp, progress: ${(progress * 100).toInt()}%" }
                 jobsRepository.updateProcessedUntilTimestamp(
                     job,
                     workerId,

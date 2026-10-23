@@ -25,9 +25,8 @@ class UntypedSqlDataLoader(
     sqlDelete: String,
     database: Database,
     batchSize: Int = 1000,
-    loggingFrequency: Int = 10,
     metrics: EtlMeter,
-) : SqlDataLoader<UntypedRow>(name, batchSize, loggingFrequency, sqlUpsert, sqlDelete, database, metrics) {
+) : SqlDataLoader<UntypedRow>(name, batchSize, sqlUpsert, sqlDelete, database, metrics) {
 
     override fun prepareSql(sql: String): PreparedSql<UntypedRow> {
         return UntypedPreparedSql.prepareSql(sql)

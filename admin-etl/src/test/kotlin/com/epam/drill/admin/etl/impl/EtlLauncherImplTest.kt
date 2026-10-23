@@ -49,6 +49,7 @@ class EtlLauncherImplTest {
     private class TestEtlOrchestrator(
         private val jobsRepository: SimpleEtlJobsRepository,
         override val name: String = "test-etl",
+        override val lockName: String = name,
         override val pipelines: List<EtlPipeline<*, *>> = emptyList(),
         private val onRun: suspend (EtlJob, String, Instant?) -> EtlJobResult = { job, workerId, _ ->
             EtlJobResult(
@@ -366,5 +367,83 @@ class EtlLauncherImplTest {
         // the stale job must have been cancelled, so the only active job left is the new (completed) one
         val activeJobs = jobsRepository.getActiveJobs(orchestrator.name, context, period)
         assertTrue(activeJobs.isEmpty())
+    }
+
+    @Test
+    fun `schedule is rejected when another ETL with the same lock has an overlapping active job`() = runBlocking {
+        val jobsRepository = SimpleEtlJobsRepository()
+        val incremental = TestEtlOrchestrator(jobsRepository, name = "incremental", lockName = "metrics")
+        val buildCoverage = TestEtlOrchestrator(jobsRepository, name = "build_coverage", lockName = "metrics")
+        val launcher = EtlLauncherImpl(setOf(incremental, buildCoverage), jobsRepository)
+
+        assertEquals(1, launcher.schedule(incremental.name, context, EtlPeriod.FROM_TODAY, 1).size)
+
+        val sameContext = launcher.schedule(buildCoverage.name, context, EtlPeriod.UNBOUNDED, 1)
+        assertTrue(sameContext.isEmpty(), "Same lock + same context + overlapping period must be rejected")
+
+        val narrowerContext = EtlContext(groupId = "g1", appId = "app", buildId = "b1")
+        val narrower = launcher.schedule(buildCoverage.name, narrowerContext, EtlPeriod.UNBOUNDED, 1)
+        assertTrue(narrower.isEmpty(), "Narrower context within the same group must conflict with a group-wide job")
+
+        val otherGroup = launcher.schedule(buildCoverage.name, EtlContext(groupId = "g2"), EtlPeriod.UNBOUNDED, 1)
+        assertEquals(1, otherGroup.size, "Different group must not conflict")
+
+        val nonOverlapping = launcher.schedule(
+            buildCoverage.name, narrowerContext, EtlPeriod(to = LocalDate.now().minusDays(1)), 1
+        )
+        assertEquals(1, nonOverlapping.size, "Non-overlapping period must not conflict")
+    }
+
+    @Test
+    fun `sibling contexts under the same lock do not conflict`() = runBlocking {
+        val jobsRepository = SimpleEtlJobsRepository()
+        val buildCoverage = TestEtlOrchestrator(jobsRepository, name = "build_coverage", lockName = "metrics")
+        val launcher = EtlLauncherImpl(setOf(buildCoverage), jobsRepository)
+
+        val b1 = EtlContext(groupId = "g1", appId = "app", buildId = "b1")
+        val b2 = EtlContext(groupId = "g1", appId = "app", buildId = "b2")
+        assertEquals(1, launcher.schedule(buildCoverage.name, b1, EtlPeriod.UNBOUNDED, 1).size)
+        assertEquals(1, launcher.schedule(buildCoverage.name, b2, EtlPeriod.UNBOUNDED, 1).size)
+    }
+
+    @Test
+    fun `schedule is not affected by ETLs with a different lock`() = runBlocking {
+        val jobsRepository = SimpleEtlJobsRepository()
+        val incremental = TestEtlOrchestrator(jobsRepository, name = "incremental", lockName = "metrics")
+        val testSessionCoverage = TestEtlOrchestrator(
+            jobsRepository, name = "testSessionCoverage", lockName = "test_session_coverage"
+        )
+        val launcher = EtlLauncherImpl(setOf(incremental, testSessionCoverage), jobsRepository)
+
+        assertEquals(1, launcher.schedule(incremental.name, context, EtlPeriod.UNBOUNDED, 1).size)
+        val sessionContext = EtlContext(groupId = "g1", testSessionId = "ts1")
+        assertEquals(1, launcher.schedule(testSessionCoverage.name, sessionContext, EtlPeriod.UNBOUNDED, 1).size)
+    }
+
+    @Test
+    fun `rerun cancels conflicting jobs of other ETLs sharing the lock`() = runBlocking {
+        val jobsRepository = SimpleEtlJobsRepository()
+        val incremental = TestEtlOrchestrator(jobsRepository, name = "incremental", lockName = "metrics")
+        val buildCoverage = TestEtlOrchestrator(jobsRepository, name = "build_coverage", lockName = "metrics")
+        val testSessionCoverage = TestEtlOrchestrator(
+            jobsRepository, name = "testSessionCoverage", lockName = "test_session_coverage"
+        )
+        val launcher = EtlLauncherImpl(
+            setOf(incremental, buildCoverage, testSessionCoverage), jobsRepository,
+            cancelWaitTimeoutMillis = 500L,
+            cancelPollDelayMillis = 10L,
+        )
+
+        val incrementalJob = launcher.schedule(incremental.name, context, EtlPeriod.FROM_TODAY, 1).single()
+        val sessionContext = EtlContext(groupId = "g1", testSessionId = "ts1")
+        val sessionJob = launcher.schedule(testSessionCoverage.name, sessionContext, EtlPeriod.UNBOUNDED, 1).single()
+
+        val buildContext = EtlContext(groupId = "g1", appId = "app", buildId = "b1")
+        val results = launcher.rerun(buildCoverage.name, buildContext, EtlPeriod.UNBOUNDED, 1, withDataDeletion = true)
+
+        assertEquals(1, results.size)
+        assertEquals(EtlJobStatus.COMPLETED, results.single().status)
+        assertNull(jobsRepository.getActiveJob(incrementalJob), "Incremental job sharing the lock must be cancelled")
+        assertTrue(jobsRepository.getActiveJob(sessionJob) != null, "Job under a different lock must stay active")
     }
 }

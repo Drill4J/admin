@@ -25,12 +25,10 @@ import kotlinx.coroutines.flow.Flow
 import mu.KotlinLogging
 import java.time.Instant
 import java.util.concurrent.atomic.AtomicInteger
-import kotlin.time.Duration.Companion.seconds
 
 abstract class BatchDataLoader<T : EtlRow>(
     override val name: String,
     open val batchSize: Int = 1000,
-    open val loggingFrequency: Int = 10,
     open val metrics: EtlMeter
 ) : DataLoader<T> {
     private val logger = KotlinLogging.logger {}
@@ -52,65 +50,55 @@ abstract class BatchDataLoader<T : EtlRow>(
     ): EtlLoadingResult {
         var result = EtlLoadingResult(lastProcessedAt = sinceTimestamp)
         val batchNo = AtomicInteger(0)
-        val processedRows = metrics.rowsProcessed(name, context, sinceTimestamp)
-        val loadedRows = metrics.rowsLoaded(name, context, sinceTimestamp)
+        val processedRows = metrics.rowsProcessed(name, context)
+        val loadedRows = metrics.rowsLoaded(name, context)
         var isLoadingStarted = false
         val buffer = mutableListOf<T>()
         var lastLoadedTimestamp: Instant = sinceTimestamp
         var previousTimestamp: Instant? = null
 
-        trackProgressOf {
-            try {
-                collector.collect { row ->
-                    if (!isLoadingStarted) {
-                        logger.debug { "ETL loader [$name] loading rows until $untilTimestamp..." }
-                        onStatusChanged(EtlStatus.LOADING)
-                        isLoadingStarted = true
-                    }
-                    processedRows.increment()
-                    val currentTimestamp = row.timestamp
+        try {
+            collector.collect { row ->
+                if (!isLoadingStarted) {
+                    logger.debug { "ETL loader [$name] loading rows until $untilTimestamp..." }
+                    onStatusChanged(EtlStatus.LOADING)
+                    isLoadingStarted = true
+                }
+                processedRows.increment()
+                val currentTimestamp = row.timestamp
 
-                    // If timestamp changed and buffer is full, flush the buffer
-                    if (previousTimestamp != null && currentTimestamp != previousTimestamp && buffer.size >= batchSize) {
-                        result += flushBuffer(context, sinceTimestamp, untilTimestamp, buffer, batchNo) { batch ->
-                            if (batch.success) {
-                                lastLoadedTimestamp =
-                                    previousTimestamp ?: throw IllegalStateException("Previous timestamp is null")
-                                loadedRows.increment(batch.rowsLoaded.toDouble())
-                            }
-                            EtlLoadingResult(
-                                errorMessage = if (!batch.success) result.errorMessage else null,
-                                lastProcessedAt = lastLoadedTimestamp,
-                                processedRows = if (batch.success) batch.rowsLoaded else 0L,
-                                duration = batch.duration
-                            ).also {
-                                onLoadingProgress(it)
-                            }
+                // If timestamp changed and buffer is full, flush the buffer
+                if (previousTimestamp != null && currentTimestamp != previousTimestamp && buffer.size >= batchSize) {
+                    result += flushBuffer(context, sinceTimestamp, untilTimestamp, buffer, batchNo) { batch ->
+                        if (batch.success) {
+                            lastLoadedTimestamp =
+                                previousTimestamp ?: throw IllegalStateException("Previous timestamp is null")
+                            loadedRows.increment(batch.rowsLoaded.toDouble())
+                        }
+                        EtlLoadingResult(
+                            errorMessage = if (!batch.success) result.errorMessage else null,
+                            lastProcessedAt = lastLoadedTimestamp,
+                            processedRows = if (batch.success) batch.rowsLoaded else 0L,
+                            duration = batch.duration
+                        ).also {
+                            onLoadingProgress(it)
                         }
                     }
-
-                    if (result.isFailed) {
-                        throw IllegalStateException("ETL loader [$name] failed: ${result.errorMessage}")
-                    }
-
-                    buffer += row
-                    previousTimestamp = currentTimestamp
                 }
-            } catch (e: Throwable) {
-                logger.debug(e) { "ETL loader [$name] until $untilTimestamp failed while loading: ${e.message}" }
-                result += EtlLoadingResult(
-                    errorMessage = "Error during loading data with loader $name: ${e.message ?: e.javaClass.simpleName}",
-                    lastProcessedAt = lastLoadedTimestamp
-                ).also { onLoadingProgress(it) }
-            }
-        }.every(loggingFrequency.seconds) {
-            if (isLoadingStarted) {
-                logger.debug {
-                    "ETL loader [$name] until $untilTimestamp loaded ${loadedRows.count().toLong()} rows" +
-                            ", batch: ${batchNo.get()}"
-                }
-            }
 
+                if (result.isFailed) {
+                    throw IllegalStateException("ETL loader [$name] failed: ${result.errorMessage}")
+                }
+
+                buffer += row
+                previousTimestamp = currentTimestamp
+            }
+        } catch (e: Throwable) {
+            logger.debug(e) { "ETL loader [$name] until $untilTimestamp failed while loading: ${e.message}" }
+            result += EtlLoadingResult(
+                errorMessage = "Error during loading data with loader $name: ${e.message ?: e.javaClass.simpleName}",
+                lastProcessedAt = lastLoadedTimestamp
+            ).also { onLoadingProgress(it) }
         }
 
         if (!result.isFailed) {
@@ -139,10 +127,12 @@ abstract class BatchDataLoader<T : EtlRow>(
         return result
     }
 
-    abstract suspend fun loadBatch(context: EtlContext,
-                                   sinceTimestamp: Instant,
-                                   untilTimestamp: Instant,
-                                   batch: List<T>, batchNo: Int): BatchResult
+    abstract suspend fun loadBatch(
+        context: EtlContext,
+        sinceTimestamp: Instant,
+        untilTimestamp: Instant,
+        batch: List<T>, batchNo: Int
+    ): BatchResult
 
     private suspend fun flushBuffer(
         context: EtlContext,

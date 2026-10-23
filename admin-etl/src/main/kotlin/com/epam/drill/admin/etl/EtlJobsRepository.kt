@@ -24,14 +24,15 @@ interface EtlJobsRepository {
 
 
     /**
-     * Inserts a new [EtlJobStatus.IDLE] job for [etlName]/[context]/[period].
-     * Returns null if the insert failed (e.g. an overlapping active job already exists and the
-     * unique/exclude constraint rejected it).
+     * Inserts a new [EtlJobStatus.IDLE] job for [etlName]/[context]/[period] under [lockName].
+     * Returns null if any active job with the same [lockName], an intersecting context
+     * (see [EtlContext.conflictsWith]) and an overlapping period already exists, regardless of its ETL name.
      */
     suspend fun scheduleJob(
         etlName: String,
         context: EtlContext,
         period: EtlPeriod,
+        lockName: String = etlName,
     ): EtlJob?
 
     /**
@@ -46,14 +47,15 @@ interface EtlJobsRepository {
     ): List<EtlJob>
 
     /**
-     * Requests cancellation of active jobs matching [etlName]/[context]/[period] by transitioning
+     * Requests cancellation of all active jobs with [lockName] (any ETL name) whose context intersects
+     * [context] (see [EtlContext.conflictsWith]) and whose period overlaps [period], by transitioning
      * them from [EtlJobStatus.IDLE]/[EtlJobStatus.RUNNING] to [EtlJobStatus.CANCELLING]. Keeps
      * `worker_id` and `lock_expires_at` intact so callers can observe whether the worker is still
      * alive; `finished_at` is set only when the row reaches the terminal [EtlJobStatus.CANCELLED]
      * via [markCancelled] or [reapExpiredCancelling].
      */
     suspend fun cancelJobs(
-        etlName: String,
+        lockName: String,
         context: EtlContext,
         period: EtlPeriod,
     ): List<EtlJobResult>

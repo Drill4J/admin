@@ -73,7 +73,6 @@ class ExtractStep internal constructor(
         transformer = UntypedAggregationTransformer(
             name = name,
             bufferSize = etlConfig.transformationBufferSize,
-            loggingFrequency = etlConfig.loggingFrequency,
             metrics = etlConfig.metrics,
             groupKeys = groupKeys.toList(),
             aggregate = aggregate,
@@ -133,7 +132,6 @@ class TransformStep internal constructor(
         UntypedAggregationTransformer(
             name = name,
             bufferSize = etlConfig.transformationBufferSize,
-            loggingFrequency = etlConfig.loggingFrequency,
             metrics = etlConfig.metrics,
             groupKeys = groupKeys.toList(),
             aggregate = aggregate,

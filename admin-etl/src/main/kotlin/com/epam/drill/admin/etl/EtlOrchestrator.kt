@@ -22,6 +22,7 @@ import java.time.Instant
  */
 interface EtlOrchestrator {
     val name: String
+    val lockName: String
     val pipelines: List<EtlPipeline<*, *>>
 
     /**

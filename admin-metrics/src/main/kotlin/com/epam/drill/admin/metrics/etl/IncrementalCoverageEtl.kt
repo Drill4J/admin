@@ -26,6 +26,7 @@ import com.epam.drill.admin.metrics.config.MetricsDatabaseConfig
 import com.epam.drill.admin.metrics.config.fromResource
 import com.epam.drill.admin.writer.rawdata.config.RawDataWriterDatabaseConfig
 import org.postgresql.util.PGobject
+import java.util.BitSet
 
 val EtlConfig.globalCoverageExtractor
     get() = UntypedSqlDataExtractor(
@@ -34,7 +35,6 @@ val EtlConfig.globalCoverageExtractor
         database = RawDataWriterDatabaseConfig.database,
         fetchSize = fetchSize,
         extractionLimit = extractionLimit,
-        loggingFrequency = loggingFrequency,
         metrics = metrics,
         lastExtractedAtColumnName = "created_at",
     )
@@ -46,7 +46,6 @@ val EtlConfig.testLaunchCoverageExtractor
         database = RawDataWriterDatabaseConfig.database,
         fetchSize = fetchSize,
         extractionLimit = extractionLimit,
-        loggingFrequency = loggingFrequency,
         lastExtractedAtColumnName = "test_completed_at",
         metrics = metrics,
     )
@@ -58,7 +57,6 @@ val EtlConfig.buildMethodTestDefinitionCoverageLoader
         sqlDelete = fromResource("/metrics/db/etl/build_method_test_definition_coverage_delete.sql"),
         database = MetricsDatabaseConfig.database,
         batchSize = batchSize,
-        loggingFrequency = loggingFrequency,
         metrics = metrics,
     )
 
@@ -69,7 +67,6 @@ val EtlConfig.buildMethodTestSessionCoverageLoader
         sqlDelete = fromResource("/metrics/db/etl/build_method_test_session_coverage_delete.sql"),
         database = MetricsDatabaseConfig.database,
         batchSize = batchSize,
-        loggingFrequency = loggingFrequency,
         metrics = metrics,
     )
 
@@ -80,7 +77,6 @@ val EtlConfig.buildMethodCoverageLoader
         sqlDelete = fromResource("/metrics/db/etl/build_method_coverage_delete.sql"),
         database = MetricsDatabaseConfig.database,
         batchSize = batchSize,
-        loggingFrequency = loggingFrequency,
         metrics = metrics,
     )
 
@@ -91,7 +87,6 @@ val EtlConfig.methodCoverageLoader
         sqlDelete = fromResource("/metrics/db/etl/method_daily_coverage_delete.sql"),
         database = MetricsDatabaseConfig.database,
         batchSize = batchSize,
-        loggingFrequency = loggingFrequency,
         metrics = metrics,
     )
 
@@ -102,7 +97,6 @@ val EtlConfig.test2CodeMappingLoader
         sqlDelete = fromResource("/metrics/db/etl/test_to_code_mapping_delete.sql"),
         database = MetricsDatabaseConfig.database,
         batchSize = batchSize,
-        loggingFrequency = loggingFrequency,
         metrics = metrics,
     )
 
@@ -178,7 +172,6 @@ val EtlConfig.test2CodeCoverageAggregator
     get() = UntypedAggregationTransformer(
         name = "test_to_code_coverage_aggregator",
         bufferSize = transformationBufferSize,
-        loggingFrequency = loggingFrequency,
         metrics = metrics,
         groupKeys = listOf(
             "group_id",
@@ -259,33 +252,67 @@ val EtlConfig.testSessionBuildsFromTestLaunchesPipeline
         .transformWith(testSessionBuildsAggregator)
         .loadWith(testSessionBuildsLoader)
 
-internal fun mergeProbes(current: Any?, next: Any?): PGobject {
-    if (current == null || next == null) {
-        throw IllegalArgumentException("Cannot merge null probes: current=$current, next=$next")
+internal class ProbesBitSet private constructor(
+    private val bits: BitSet,
+    val length: Int
+) : PGobject() {
+
+    init {
+        type = "varbit"
     }
-    if (current !is PGobject || next !is PGobject) {
-        throw IllegalArgumentException("Probes must be of type PGobject: current=${current.javaClass.name}, next=${next.javaClass.name}")
-    }
-    val nextProbes = next.value ?: ""
-    val currentProbes = current.value ?: ""
-    if (currentProbes.length != nextProbes.length)
-        throw IllegalArgumentException("Cannot merge probes of different lengths: current=${currentProbes.length}, next=${nextProbes.length}")
-    val mergedProbes = buildString(currentProbes.length) {
-        for (i in 0 until currentProbes.length) {
-            append(if (currentProbes[i] == '1' || nextProbes[i] == '1') '1' else '0')
+
+    override fun getValue(): String {
+        val probeCount = length
+        return buildString(probeCount) {
+            repeat(probeCount) { i -> append(if (bits[i]) '1' else '0') }
         }
     }
-    return PGobject().apply {
-        type = "varbit"
-        value = mergedProbes
+
+    fun hasAnyBit(): Boolean = !bits.isEmpty
+
+    fun or(other: ProbesBitSet): ProbesBitSet {
+        val merged = bits.clone() as BitSet
+        merged.or(other.bits)
+        return ProbesBitSet(merged, length)
     }
+
+    companion object {
+        fun from(pgObject: PGobject): ProbesBitSet {
+            if (pgObject is ProbesBitSet) return pgObject
+            val str = pgObject.value ?: ""
+            val bits = BitSet(str.length)
+            str.forEachIndexed { i, c -> if (c == '1') bits.set(i) }
+            return ProbesBitSet(bits, str.length)
+        }
+
+        fun probesOf(totalProbes: Int, builder: BitSet.() -> Unit = {}): ProbesBitSet {
+            val bits = BitSet(totalProbes)
+            builder(bits)
+            return ProbesBitSet(bits, totalProbes)
+        }
+
+        fun BitSet.replaceRange(start: Int, replacement: ProbesBitSet) {
+            repeat(replacement.length) { j -> if (replacement.bits[j]) set(start + j) }
+        }
+    }
+}
+
+internal fun mergeProbes(current: Any?, next: Any?): PGobject {
+    if (current == null || next == null)
+        throw IllegalArgumentException("Cannot merge null probes: current=$current, next=$next")
+    if (current !is PGobject || next !is PGobject)
+        throw IllegalArgumentException("Probes must be of type PGobject: current=${current.javaClass.name}, next=${next.javaClass.name}")
+    val a = ProbesBitSet.from(current)
+    val b = ProbesBitSet.from(next)
+    if (a.length != b.length)
+        throw IllegalArgumentException("Cannot merge probes of different lengths: current=${a.length}, next=${b.length}")
+    return a.or(b)
 }
 
 internal fun EtlConfig.coverageAggregator(name: String, groupKeys: List<String>, probeKeys: List<String> = listOf("probes")): UntypedAggregationTransformer {
     return UntypedAggregationTransformer(
         name = name,
         bufferSize = transformationBufferSize,
-        loggingFrequency = loggingFrequency,
         metrics = metrics,
         groupKeys = groupKeys,
         aggregate = { current, next ->

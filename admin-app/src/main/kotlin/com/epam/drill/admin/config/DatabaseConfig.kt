@@ -18,7 +18,7 @@ package com.epam.drill.admin.config
 import com.zaxxer.hikari.HikariConfig
 import com.zaxxer.hikari.HikariDataSource
 import com.zaxxer.hikari.metrics.micrometer.MicrometerMetricsTrackerFactory
-import io.micrometer.core.instrument.Metrics
+import io.micrometer.core.instrument.MeterRegistry
 import io.ktor.server.application.*
 import io.ktor.server.config.*
 import org.kodein.di.DI
@@ -50,7 +50,7 @@ class DatabaseConfig(private val config: ApplicationConfig) {
         get() = config.propertyOrNull("ssl")?.getString()?.toBooleanStrictOrNull() ?: false
 }
 
-private fun DatabaseConfig.toHikariConfig(poolName: String): HikariConfig = HikariConfig().apply {
+private fun DatabaseConfig.toHikariConfig(poolName: String, meterRegistry: MeterRegistry): HikariConfig = HikariConfig().apply {
     this.driverClassName = "org.postgresql.Driver"
     this.poolName = poolName
     this.jdbcUrl = "jdbc:postgresql://${host}:${port}/${databaseName}"
@@ -61,7 +61,7 @@ private fun DatabaseConfig.toHikariConfig(poolName: String): HikariConfig = Hika
     this.transactionIsolation = "TRANSACTION_READ_UNCOMMITTED"
     this.addDataSourceProperty("rewriteBatchedInserts", true)
     this.addDataSourceProperty("rewriteBatchedStatements", true)
-    this.metricsTrackerFactory = MicrometerMetricsTrackerFactory(Metrics.globalRegistry)
+    this.metricsTrackerFactory = MicrometerMetricsTrackerFactory(meterRegistry)
     if (ssl) {
         this.addDataSourceProperty("ssl", true)
         this.addDataSourceProperty("sslmode", "require")
@@ -77,7 +77,7 @@ val dataSourceDIModule = DI.Module("dataSource") {
         DatabaseConfig(instance<Application>().environment.config.config("drill.metrics.database"))
     }
     bind<DataSource>() with singleton {
-        HikariDataSource(instance<DatabaseConfig>().toHikariConfig("drill-admin-main"))
+        HikariDataSource(instance<DatabaseConfig>().toHikariConfig("drill-admin-main", instance<MeterRegistry>()))
     }
     bind<DataSource>(tag = "metrics") with singleton {
         val mainConfig = instance<DatabaseConfig>()
@@ -90,7 +90,7 @@ val dataSourceDIModule = DI.Module("dataSource") {
         ) {
             instance<DataSource>()
         } else {
-            HikariDataSource(metricsConfig.toHikariConfig("drill-admin-metrics"))
+            HikariDataSource(metricsConfig.toHikariConfig("drill-admin-metrics", instance<MeterRegistry>()))
         }
     }
 }
