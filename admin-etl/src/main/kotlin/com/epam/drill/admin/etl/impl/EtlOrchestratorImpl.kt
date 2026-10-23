@@ -33,6 +33,7 @@ import com.epam.drill.admin.etl.EtlRow
 import com.epam.drill.admin.etl.EtlStatus
 import com.epam.drill.admin.etl.config.EtlMeter
 import com.epam.drill.admin.etl.flow.ClosableFlow
+import com.epam.drill.admin.etl.flow.MeteredChannel
 import com.epam.drill.admin.etl.flow.SubscribableChannelFlow
 import io.ktor.util.collections.ConcurrentMap
 import kotlinx.coroutines.Dispatchers
@@ -328,13 +329,18 @@ open class EtlOrchestratorImpl(
         val sharedFlow = SubscribableChannelFlow<T>(bufferSize)
         val jobs = activePipelines.map { pipeline ->
             async {
+                val ch = MeteredChannel<T>(
+                    capacity = bufferSize,
+                    beforeSendCounter = metrics.rowsExtracted(pipeline.name, context),
+                    afterReceiveCounter = metrics.rowsProcessed(pipeline.name, context)
+                )
                 runPipelineWithExtractionFlow(
                     context = context,
                     period = period,
                     pipeline = pipeline,
                     sinceTimestamp = sinceTimestamps[pipeline.name] ?: initTimestamp,
                     untilTimestamp = finalTimestamp,
-                    sharedFlow = sharedFlow.subscribe(),
+                    sharedFlow = sharedFlow.subscribe(ch),
                     progressTracker = progressTracker,
                 )
             }

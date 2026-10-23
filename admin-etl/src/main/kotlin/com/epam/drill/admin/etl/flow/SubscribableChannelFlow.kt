@@ -129,14 +129,13 @@ class SubscribableChannelFlow<T>(
      * - The producer calls [close] (Flow completes / throws).
      * - The collector's coroutine is cancelled.
      */
-    suspend fun subscribe(): ClosableFlow<T> {
+    suspend fun subscribe(ch: Channel<T>): ClosableFlow<T> {
         // Already closed before we even started collecting
         if (done) {
             doneCause?.let { throw it }
             val emptyFlow = emptyFlow<T>()
             return ClosableFlow(block = emptyFlow::collect, onClose = {})
         }
-        val ch = Channel<T>(capacity)
         // Register under lock — check again in case close() raced us
         mutex.withLock {
             if (done) {

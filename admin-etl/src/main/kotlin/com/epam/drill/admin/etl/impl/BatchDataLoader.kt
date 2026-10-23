@@ -50,7 +50,6 @@ abstract class BatchDataLoader<T : EtlRow>(
     ): EtlLoadingResult {
         var result = EtlLoadingResult(lastProcessedAt = sinceTimestamp)
         val batchNo = AtomicInteger(0)
-        val processedRows = metrics.rowsProcessed(name, context)
         val loadedRows = metrics.rowsLoaded(name, context)
         var isLoadingStarted = false
         val buffer = mutableListOf<T>()
@@ -64,7 +63,6 @@ abstract class BatchDataLoader<T : EtlRow>(
                     onStatusChanged(EtlStatus.LOADING)
                     isLoadingStarted = true
                 }
-                processedRows.increment()
                 val currentTimestamp = row.timestamp
 
                 // If timestamp changed and buffer is full, flush the buffer

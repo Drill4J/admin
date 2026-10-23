@@ -142,7 +142,6 @@ class EtlPipelineImpl<T : EtlRow, R : EtlRow>(
         onTransformationError: suspend (String, Instant) -> Unit
     ): Flow<T> {
         var previousTimestamp: Instant? = null
-        val rowsExtracted = metrics.rowsExtracted(name, context)
         val skippedRows = metrics.rowsSkipped(name, context)
         suspend fun <T> ClosableFlow<T>.closeWithMessage(message: String) {
             close()
@@ -152,7 +151,6 @@ class EtlPipelineImpl<T : EtlRow, R : EtlRow>(
             extractionFlow.collect { row ->
                 val currentTimestamp = row.timestamp
                 onExtractionProgress(currentTimestamp)
-                rowsExtracted.increment()
                 if (previousTimestamp != null && currentTimestamp < previousTimestamp) {
                     extractionFlow.closeWithMessage("Timestamps in the extracted data are not in ascending order: $currentTimestamp < $previousTimestamp")
                     return@collect
