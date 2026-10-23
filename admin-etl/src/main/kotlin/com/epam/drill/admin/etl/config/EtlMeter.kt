@@ -157,14 +157,14 @@ class EtlMeter(val registry: MeterRegistry) {
      * ETL jobs failed due to errors.
      */
     fun jobsFailed(jobName: String, context: EtlContext): Counter {
-        return registerCounter("etl_job_failed", jobName, context)
+        return registerCounter("etl_jobs_failed", jobName, context)
     }
 
     /**
      * ETL jobs finished successfully.
      */
     fun jobsCompleted(jobName: String, context: EtlContext): Counter {
-        return registerCounter("etl_job_completed", jobName, context)
+        return registerCounter("etl_jobs_completed", jobName, context)
     }
 
 
