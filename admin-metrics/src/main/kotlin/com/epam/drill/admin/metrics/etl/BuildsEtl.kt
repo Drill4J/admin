@@ -30,7 +30,6 @@ val EtlConfig.buildsExtractor
         database = RawDataWriterDatabaseConfig.database,
         fetchSize = fetchSize,
         extractionLimit = extractionLimit,
-        loggingFrequency = loggingFrequency,
         lastExtractedAtColumnName = "updated_at",
         metrics = metrics,
     )
@@ -42,7 +41,6 @@ val EtlConfig.buildsLoader
         sqlDelete = fromResource("/metrics/db/etl/builds_delete.sql"),
         database = MetricsDatabaseConfig.database,
         batchSize = batchSize,
-        loggingFrequency = loggingFrequency,
         metrics = metrics,
     )
 

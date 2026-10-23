@@ -52,12 +52,6 @@ class EtlConfig(private val config: ApplicationConfig, val metrics: EtlMeter) {
         get() = config.propertyOrNull("transformationBufferSize")?.getString()?.toIntOrNull() ?: 2000
 
     /**
-     * Defines how often the ETL process logs its progress (in seconds).
-     */
-    val loggingFrequency : Int
-        get() = config.propertyOrNull("loggingFrequency")?.getString()?.toIntOrNull() ?: 10
-
-    /**
      * Number of seconds to subtract from the last processed timestamp when starting an ETL run.
      * This allows re-processing records that arrived in the source database with a delay
      * or were inconsistent at the time of the previous ETL run.

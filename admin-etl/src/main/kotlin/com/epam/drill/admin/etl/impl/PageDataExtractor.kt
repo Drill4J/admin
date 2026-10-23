@@ -30,7 +30,6 @@ import kotlin.time.Duration.Companion.seconds
 abstract class PageDataExtractor<T : EtlRow>(
     override val name: String,
     open val extractionLimit: Int,
-    private val loggingFrequency: Int = 10,
     open val metrics: EtlMeter
 ) : DataExtractor<T> {
     private val logger = KotlinLogging.logger {}
@@ -50,90 +49,79 @@ abstract class PageDataExtractor<T : EtlRow>(
         val buffer: MutableList<T> = mutableListOf()
         val isExecutingQuery = AtomicBoolean(true)
 
-        trackProgressOf {
-            try {
-                while (hasMore && currentSince < untilTimestamp) {
-                    page.incrementAndGet()
-                    logger.debug { "ETL extractor [$name] for context [$context] is executing query for page ${page.get()} since $currentSince until $untilTimestamp ..." }
+        try {
+            while (hasMore && currentSince < untilTimestamp) {
+                page.incrementAndGet()
+                logger.debug { "ETL extractor [$name] for context [$context] is executing query for page ${page.get()} since $currentSince until $untilTimestamp ..." }
 
-                    var previousTimestamp: Instant? = null
-                    var previousEmittedTimestamp: Instant? = null
-                    var pageRows = 0L
+                var previousTimestamp: Instant? = null
+                var previousEmittedTimestamp: Instant? = null
+                var pageRows = 0L
 
-                    isExecutingQuery.set(true)
-                    extractPage(
-                        context = context,
-                        sinceTimestamp = currentSince,
-                        untilTimestamp = untilTimestamp,
-                        limit = extractionLimit,
-                        onExtractionExecuted = { duration ->
-                            logger.debug { "ETL extractor [$name] for context [$context] executed query for page ${page.get()} in ${duration}ms " }
-                            onExtractingProgress(
-                                EtlExtractingResult(
-                                    duration = duration
-                                )
+                isExecutingQuery.set(true)
+                extractPage(
+                    context = context,
+                    sinceTimestamp = currentSince,
+                    untilTimestamp = untilTimestamp,
+                    limit = extractionLimit,
+                    onExtractionExecuted = { duration ->
+                        logger.debug { "ETL extractor [$name] for context [$context] executed query for page ${page.get()} in ${duration}ms " }
+                        onExtractingProgress(
+                            EtlExtractingResult(
+                                duration = duration
                             )
-                            isExecutingQuery.set(false)
-                        },
-                        rowsExtractor = { row ->
-                            pageRows++
-                            val currentTimestamp = row.timestamp
-
-                            if (previousTimestamp != null && currentTimestamp < previousTimestamp) {
-                                throw IllegalStateException("Timestamps in the extracted data are not in ascending order: $currentTimestamp < $previousTimestamp")
-                            }
-
-                            if (buffer.isNotEmpty() && previousTimestamp != null && currentTimestamp != previousTimestamp) {
-                                // Emit buffered rows when timestamp changes
-                                emitBuffer(buffer, emitter)
-                                previousEmittedTimestamp = previousTimestamp
-                            }
-
-                            buffer.add(row)
-
-                            previousTimestamp = currentTimestamp
-                            rowsFetched.increment()
-                        }
-                    )
-                    if (pageRows == 0L || pageRows < extractionLimit) {
-                        hasMore = false
-                        emitBuffer(buffer, emitter)
-                        previousEmittedTimestamp = previousTimestamp
-                        logger.debug {
-                            "ETL extractor [$name] for context [$context] completed fetching" +
-                                    ", rows fetched: ${rowsFetched.count()}" +
-                                    ", total pages: ${page.get()}" +
-                                    (if (previousEmittedTimestamp != null) ", last extracted at $previousEmittedTimestamp" else "")
-                        }
-                    } else {
-                        currentSince = previousEmittedTimestamp ?: throw IllegalStateException(
-                            "No rows were emitted on page $page because all fetched records had the same timestamp. Please increase the extraction limit. Current is $extractionLimit."
                         )
-                        // Remove rows from buffer that have timestamp greater than currentSince to avoid re-emission on the next page
-                        buffer.removeIf { it.timestamp > currentSince }
-                        hasMore = true
-                        logger.debug { "ETL extractor [$name] for context [$context] fetched $pageRows rows on page ${page.get()}" +
-                                ", last extracted at $previousEmittedTimestamp" }
+                        isExecutingQuery.set(false)
+                    },
+                    rowsExtractor = { row ->
+                        pageRows++
+                        val currentTimestamp = row.timestamp
+
+                        if (previousTimestamp != null && currentTimestamp < previousTimestamp) {
+                            throw IllegalStateException("Timestamps in the extracted data are not in ascending order: $currentTimestamp < $previousTimestamp")
+                        }
+
+                        if (buffer.isNotEmpty() && previousTimestamp != null && currentTimestamp != previousTimestamp) {
+                            // Emit buffered rows when timestamp changes
+                            emitBuffer(buffer, emitter)
+                            previousEmittedTimestamp = previousTimestamp
+                        }
+
+                        buffer.add(row)
+
+                        previousTimestamp = currentTimestamp
+                        rowsFetched.increment()
+                    }
+                )
+                if (pageRows == 0L || pageRows < extractionLimit) {
+                    hasMore = false
+                    emitBuffer(buffer, emitter)
+                    previousEmittedTimestamp = previousTimestamp
+                    logger.debug {
+                        "ETL extractor [$name] for context [$context] completed fetching" +
+                                ", rows fetched: ${rowsFetched.count()}" +
+                                ", total pages: ${page.get()}" +
+                                (if (previousEmittedTimestamp != null) ", last extracted at $previousEmittedTimestamp" else "")
+                    }
+                } else {
+                    currentSince = previousEmittedTimestamp ?: throw IllegalStateException(
+                        "No rows were emitted on page $page because all fetched records had the same timestamp. Please increase the extraction limit. Current is $extractionLimit."
+                    )
+                    // Remove rows from buffer that have timestamp greater than currentSince to avoid re-emission on the next page
+                    buffer.removeIf { it.timestamp > currentSince }
+                    hasMore = true
+                    logger.debug {
+                        "ETL extractor [$name] for context [$context] fetched $pageRows rows on page ${page.get()}" +
+                                ", last extracted at $previousEmittedTimestamp"
                     }
                 }
-            } catch (e: Exception) {
-                logger.error {
-                    "Error during data extraction with extractor [$name]: ${e.message ?: e.javaClass.simpleName}"
-                }
-                failures.increment()
-                throw e
             }
-        }.every(loggingFrequency.seconds) {
-            if (isExecutingQuery.get()) {
-                logger.debug {
-                    "ETL extractor [$name] for context [$context] is still executing query for page ${page.get()} ..."
-                }
-            } else {
-                logger.debug {
-                    "ETL extractor [$name] for context [$context] fetched ${rowsFetched.count()} rows" +
-                            ", page: ${page.get()}"
-                }
+        } catch (e: Exception) {
+            logger.error {
+                "Error during data extraction with extractor [$name]: ${e.message ?: e.javaClass.simpleName}"
             }
+            failures.increment()
+            throw e
         }
     }
 

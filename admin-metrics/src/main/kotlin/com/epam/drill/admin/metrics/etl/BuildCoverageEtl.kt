@@ -29,7 +29,6 @@ val EtlConfig.buildCoverageLoader
         sqlDelete = fromResource("/metrics/db/etl/build_coverage_delete.sql"),
         database = MetricsDatabaseConfig.database,
         batchSize = batchSize,
-        loggingFrequency = loggingFrequency,
         metrics = metrics,
     )
 

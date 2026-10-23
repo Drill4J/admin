@@ -34,7 +34,6 @@ val EtlConfig.globalCoverageExtractor
         database = RawDataWriterDatabaseConfig.database,
         fetchSize = fetchSize,
         extractionLimit = extractionLimit,
-        loggingFrequency = loggingFrequency,
         metrics = metrics,
         lastExtractedAtColumnName = "created_at",
     )
@@ -46,7 +45,6 @@ val EtlConfig.testLaunchCoverageExtractor
         database = RawDataWriterDatabaseConfig.database,
         fetchSize = fetchSize,
         extractionLimit = extractionLimit,
-        loggingFrequency = loggingFrequency,
         lastExtractedAtColumnName = "test_completed_at",
         metrics = metrics,
     )
@@ -58,7 +56,6 @@ val EtlConfig.buildMethodTestDefinitionCoverageLoader
         sqlDelete = fromResource("/metrics/db/etl/build_method_test_definition_coverage_delete.sql"),
         database = MetricsDatabaseConfig.database,
         batchSize = batchSize,
-        loggingFrequency = loggingFrequency,
         metrics = metrics,
     )
 
@@ -69,7 +66,6 @@ val EtlConfig.buildMethodTestSessionCoverageLoader
         sqlDelete = fromResource("/metrics/db/etl/build_method_test_session_coverage_delete.sql"),
         database = MetricsDatabaseConfig.database,
         batchSize = batchSize,
-        loggingFrequency = loggingFrequency,
         metrics = metrics,
     )
 
@@ -80,7 +76,6 @@ val EtlConfig.buildMethodCoverageLoader
         sqlDelete = fromResource("/metrics/db/etl/build_method_coverage_delete.sql"),
         database = MetricsDatabaseConfig.database,
         batchSize = batchSize,
-        loggingFrequency = loggingFrequency,
         metrics = metrics,
     )
 
@@ -91,7 +86,6 @@ val EtlConfig.methodCoverageLoader
         sqlDelete = fromResource("/metrics/db/etl/method_daily_coverage_delete.sql"),
         database = MetricsDatabaseConfig.database,
         batchSize = batchSize,
-        loggingFrequency = loggingFrequency,
         metrics = metrics,
     )
 
@@ -102,7 +96,6 @@ val EtlConfig.test2CodeMappingLoader
         sqlDelete = fromResource("/metrics/db/etl/test_to_code_mapping_delete.sql"),
         database = MetricsDatabaseConfig.database,
         batchSize = batchSize,
-        loggingFrequency = loggingFrequency,
         metrics = metrics,
     )
 
@@ -178,7 +171,6 @@ val EtlConfig.test2CodeCoverageAggregator
     get() = UntypedAggregationTransformer(
         name = "test_to_code_coverage_aggregator",
         bufferSize = transformationBufferSize,
-        loggingFrequency = loggingFrequency,
         metrics = metrics,
         groupKeys = listOf(
             "group_id",
@@ -285,7 +277,6 @@ internal fun EtlConfig.coverageAggregator(name: String, groupKeys: List<String>,
     return UntypedAggregationTransformer(
         name = name,
         bufferSize = transformationBufferSize,
-        loggingFrequency = loggingFrequency,
         metrics = metrics,
         groupKeys = groupKeys,
         aggregate = { current, next ->

@@ -28,7 +28,6 @@ val EtlConfig.coverageExtractor
         database = RawDataWriterDatabaseConfig.database,
         fetchSize = fetchSize,
         extractionLimit = extractionLimit,
-        loggingFrequency = loggingFrequency,
         metrics = metrics,
         lastExtractedAtColumnName = "created_at",
     )
