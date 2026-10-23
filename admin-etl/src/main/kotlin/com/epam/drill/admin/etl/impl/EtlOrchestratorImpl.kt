@@ -165,6 +165,7 @@ open class EtlOrchestratorImpl(
             )
         } catch (e: Throwable) {
             logger.error(e) { "ETL [$name] worker [$workerId] failed: ${e.message}" }
+            failedJobs.increment()
             job.markError(workerId, e.message ?: e::class.java.name)
             return EtlJobResult(
                 job = job,
