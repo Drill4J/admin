@@ -47,7 +47,7 @@ class UntypedAggregationTransformer(
         var isTransformationStarted = false
         val transformedRows = AtomicInteger()
         val aggregatedRows = metrics.rowsAggregated(name, context)
-        val bufferOccupancy = metrics.aggregationBufferOccupancyRatio(name, context)
+        val bufferUtilizationRatio = metrics.aggregationBufferUtilizationRatio(name, context)
         val timer = metrics.transformationDuration(name, context)
         val buffer = LruMap<List<Any?>, UntypedRow>(maxSize = bufferSize)
         trackProgressOf {
@@ -69,7 +69,7 @@ class UntypedAggregationTransformer(
                             }
                         }
                         transformedRows.incrementAndGet()
-                        bufferOccupancy.set(if (bufferSize == 0) 0.0 else buffer.size.toDouble() / bufferSize.toDouble())
+                        bufferUtilizationRatio.set(if (bufferSize == 0) 0.0 else buffer.size.toDouble() / bufferSize.toDouble())
                         evicted
                     }
 
@@ -80,7 +80,7 @@ class UntypedAggregationTransformer(
 
                 // Emit remaining aggregated rows
                 buffer.evictAll { _, evicted ->
-                    bufferOccupancy.set(if (bufferSize == 0) 0.0 else buffer.size.toDouble() / bufferSize.toDouble())
+                    bufferUtilizationRatio.set(if (bufferSize == 0) 0.0 else buffer.size.toDouble() / bufferSize.toDouble())
                     emit(evicted)
                 }
             } catch (e: Exception) {
@@ -88,14 +88,14 @@ class UntypedAggregationTransformer(
                 throw e
             }
             finally {
-                bufferOccupancy.close()
+                bufferUtilizationRatio.close()
             }
         }.every(loggingFrequency.seconds) {
             if (isTransformationStarted)
                 logger.debug {
                     "ETL transformer [$name] transformed ${transformedRows.get()} rows" +
                             ", buffer occupancy: ${buffer.size}" +
-                            ", buffer occupancy ratio: ${bufferOccupancy.get()}"
+                            ", buffer occupancy ratio: ${bufferUtilizationRatio.get()}"
                 }
         }
         if (isTransformationStarted) {

@@ -36,7 +36,7 @@ import java.time.Instant
 class BuildCoverageTransformer(
     override val name: String,
     private val database: Database,
-    private val bufferSize: Int,
+    private val lookupCacheSize: Int,
     private val metrics: EtlMeter,
 ) : DataTransformer<UntypedRow, UntypedRow> {
 
@@ -53,8 +53,9 @@ class BuildCoverageTransformer(
         untilTimestamp: Instant,
         collector: Flow<UntypedRow>,
     ): Flow<UntypedRow> = flow {
-        val buildProbeLayout = LruMap<Triple<String, String, String>, BuildProbeLayout>(maxSize = bufferSize)
-        val bufferOccupancy = metrics.buildProbeLayoutBufferOccupancyRatio(name, context)
+        val lookupCache = LruMap<Triple<String, String, String>, BuildProbeLayout>(maxSize = lookupCacheSize)
+        val cacheUtilizationRatio = metrics.lookupCacheUtilizationRatio(name, context)
+        val cacheMisses = metrics.lookupCacheMisses(name, context)
         val filtered = metrics.rowsFiltered(name, context)
         val timer = metrics.transformationDuration(name, context)
 
@@ -67,10 +68,15 @@ class BuildCoverageTransformer(
                 val probes = row["probes"] as? PGobject ?: error("Missing probes in row: $row")
 
                 val (codeProbes, methodProbes) = timer.recordSuspend {
-                    val (layout, _) = buildProbeLayout.compute(Triple(groupId, appId, buildId)) { value ->
-                        value ?: loadBuildProbeLayout(groupId, appId, buildId)
+                    val (layout, _) = lookupCache.compute(Triple(groupId, appId, buildId)) { value ->
+                        if (value != null) {
+                            value
+                        } else {
+                            cacheMisses.increment()
+                            loadBuildProbeLayout(groupId, appId, buildId)
+                        }
                     }
-                    bufferOccupancy.set(if (bufferSize == 0) 0.0 else buildProbeLayout.size.toDouble() / bufferSize.toDouble())
+                    cacheUtilizationRatio.set(if (lookupCacheSize == 0) 0.0 else lookupCache.size.toDouble() / lookupCacheSize.toDouble())
 
                     layout.methods[methodId]?.let { info ->
                         val codeProbes = positionProbes(probes, info.probeStartPos, info.probesCount, layout.totalProbes)
@@ -100,7 +106,7 @@ class BuildCoverageTransformer(
             logger.error(e) { "ETL transformer [$name] failed during transformation: ${e.message}" }
             throw e
         } finally {
-            bufferOccupancy.close()
+            cacheUtilizationRatio.close()
         }
     }
 
