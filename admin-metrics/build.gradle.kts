@@ -67,6 +67,7 @@ dependencies {
     api("org.flywaydb:flyway-core:$flywaydbVersion")
     compileOnly("org.postgresql:postgresql:$postgresSqlVersion")
 
+    testImplementation("org.postgresql:postgresql:$postgresSqlVersion")
     testImplementation("org.jetbrains.kotlin:kotlin-test:$kotlinVersion")
     testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:$kotlinxCoroutinesVersion")
     testImplementation("io.ktor:ktor-server-test-host:$ktorVersion")

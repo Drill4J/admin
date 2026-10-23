@@ -24,6 +24,7 @@ import com.epam.drill.admin.etl.flow.LruMap
 import com.epam.drill.admin.etl.impl.UntypedPreparedSql
 import com.epam.drill.admin.metrics.config.executeQueryReturnMap
 import com.epam.drill.admin.metrics.config.fromResource
+import com.epam.drill.admin.metrics.etl.ProbesBitSet.Companion.replaceRange
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
@@ -79,14 +80,17 @@ class BuildCoverageTransformer(
                     cacheUtilizationRatio.set(if (lookupCacheSize == 0) 0.0 else lookupCache.size.toDouble() / lookupCacheSize.toDouble())
 
                     layout.methods[methodId]?.let { info ->
-                        val codeProbes = positionProbes(probes, info.probeStartPos, info.probesCount, layout.totalProbes)
-                        val testedMethod = probes.value?.contains('1') ?: false
-                        val singleProbe = PGobject().apply {
-                            type = "varbit"
-                            value = if (testedMethod) "1" else "0"
+                        val methodCodeProbes = ProbesBitSet.from(probes)
+                        val buildCodeProbes = ProbesBitSet.probesOf(layout.totalProbes) {
+                            replaceRange(info.probeStartPos, methodCodeProbes)
                         }
-                        val methodProbes = positionProbes(singleProbe, info.methodPos, 1, layout.totalMethods)
-                        codeProbes to methodProbes
+                        val buildMethodsProbes = ProbesBitSet.probesOf(layout.totalMethods) {
+                            if (methodCodeProbes.hasAnyBit()) {
+                                set(info.methodPos)
+                            }
+                        }
+
+                        buildCodeProbes to buildMethodsProbes
                     } ?: (null to null)
                 }
 
@@ -143,11 +147,4 @@ class BuildCoverageTransformer(
         return BuildProbeLayout(methods, totalProbes)
     }
 
-    private fun positionProbes(probes: PGobject, probeStartPos: Int, probesCount: Int, totalProbes: Int): PGobject {
-        val str = probes.value ?: ""
-        return PGobject().apply {
-            type = "varbit"
-            value = "0".repeat(probeStartPos) + str + "0".repeat(totalProbes - probeStartPos - probesCount)
-        }
-    }
 }
