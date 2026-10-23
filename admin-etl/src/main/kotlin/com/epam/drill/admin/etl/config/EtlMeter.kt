@@ -56,7 +56,7 @@ class EtlMeter(val registry: MeterRegistry) {
     }
 
     /**
-     * Ratio of the current size of the buffer used during the transformation phase to its maximum size.
+     * Ratio of the current size of the buffer used for aggregations in the transformation phase to its maximum size.
      */
     fun aggregationBufferUtilizationRatio(jobName: String, context: EtlContext): GaugeSample {
         return registerDoubleGauge("etl_aggregation_buffer_utilization_ratio", jobName, context) {
@@ -64,12 +64,18 @@ class EtlMeter(val registry: MeterRegistry) {
         }
     }
 
+    /**
+     * Ratio of the current size of the cache used for data enrichment in the transformation phase to its maximum size.
+     */
     fun lookupCacheUtilizationRatio(jobName: String, context: EtlContext): GaugeSample {
         return registerDoubleGauge("etl_lookup_cache_utilization_ratio", jobName, context) {
             it.maxOrNull() ?: 0.0
         }
     }
 
+    /**
+     * Cache misses used for data enrichment during the transformation phase.
+     */
     fun lookupCacheMisses(jobName: String, context: EtlContext): Counter {
         return registerCounter("etl_lookup_cache_misses", jobName, context)
     }
@@ -146,6 +152,21 @@ class EtlMeter(val registry: MeterRegistry) {
     fun transformationDuration(jobName: String, context: EtlContext): Timer {
         return registerTimer("etl_transformation_duration", jobName, context)
     }
+
+    /**
+     * ETL jobs failed due to errors.
+     */
+    fun jobsFailed(jobName: String, context: EtlContext): Counter {
+        return registerCounter("etl_job_failed", jobName, context)
+    }
+
+    /**
+     * ETL jobs finished successfully.
+     */
+    fun jobsCompleted(jobName: String, context: EtlContext): Counter {
+        return registerCounter("etl_job_completed", jobName, context)
+    }
+
 
     private fun registerDoubleGauge(metricName: String, jobName: String, context: EtlContext, aggregation: (List<Double>) -> Double): GaugeSample {
         val key = gaugeKey(metricName, jobName, context)

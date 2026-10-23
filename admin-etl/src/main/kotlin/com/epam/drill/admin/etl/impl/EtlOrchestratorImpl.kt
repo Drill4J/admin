@@ -110,6 +110,8 @@ open class EtlOrchestratorImpl(
         check(finalTimestamp.isAfter(initTimestamp)) {
             "ETL [$name] worker [$workerId] has no new data to process (init=$initTimestamp, final=$finalTimestamp)"
         }
+        val failedJobs = metrics.jobsFailed(name, job.context)
+        val completedJobs = metrics.jobsCompleted(name, job.context)
         val timer = metrics.jobDuration(name, job.context).start()
         try {
             return extendLeaseOf(job, workerId) {
@@ -120,6 +122,7 @@ open class EtlOrchestratorImpl(
 
                 return@extendLeaseOf when {
                     hasErrors -> {
+                        failedJobs.increment()
                         val errors = results
                             .filter { it.status == EtlStatus.FAILED }
                             .joinToString(separator = "; ") { it.errorMessage ?: "Unknown error" }
@@ -133,6 +136,7 @@ open class EtlOrchestratorImpl(
                     }
 
                     !hasErrors && jobFinished -> {
+                        completedJobs.increment()
                         job.markCompleted(workerId, finalTimestamp)
                         EtlJobResult(
                             job = job,
