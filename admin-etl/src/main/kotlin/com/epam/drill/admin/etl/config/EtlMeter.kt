@@ -117,13 +117,6 @@ class EtlMeter(val registry: MeterRegistry) {
     }
 
     /**
-     * Rows skipped before the transformation phase due to errors or duplicates.
-     */
-    fun rowsSkipped(jobName: String, context: EtlContext): Counter {
-        return registerCounter("etl_rows_skipped", jobName, context)
-    }
-
-    /**
      * ETL jobs failed on the loading phase due to errors.
      */
     fun loadingFailures(jobName: String, context: EtlContext): Counter {
