@@ -45,6 +45,7 @@ class UntypedAggregationTransformer(
     ): Flow<UntypedRow> = flow {
         var isTransformationStarted = false
         val transformedRows = AtomicInteger()
+        val receivedRows = metrics.rowsReceived(name, context)
         val aggregatedRows = metrics.rowsAggregated(name, context)
         val bufferUtilizationRatio = metrics.aggregationBufferUtilizationRatio(name, context)
         val timer = metrics.transformationDuration(name, context)
@@ -56,6 +57,7 @@ class UntypedAggregationTransformer(
                     logger.debug { "ETL transformer [$name] started transformation..." }
                     isTransformationStarted = true
                 }
+                receivedRows.increment()
 
                 val evicted = timer.recordSuspend {
                     val groupKey = groupKeys.map { row[it] }

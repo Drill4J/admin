@@ -56,6 +56,7 @@ class BuildCoverageTransformer(
     ): Flow<UntypedRow> = flow {
         val lookupCache = LruMap<Triple<String, String, String>, BuildProbeLayout>(maxSize = lookupCacheSize)
         val cacheUtilizationRatio = metrics.lookupCacheUtilizationRatio(name, context)
+        val cacheHits = metrics.lookupCacheHits(name, context)
         val cacheMisses = metrics.lookupCacheMisses(name, context)
         val filtered = metrics.rowsFiltered(name, context)
         val timer = metrics.transformationDuration(name, context)
@@ -71,6 +72,7 @@ class BuildCoverageTransformer(
                 val (codeProbes, methodProbes) = timer.recordSuspend {
                     val (layout, _) = lookupCache.compute(Triple(groupId, appId, buildId)) { value ->
                         if (value != null) {
+                            cacheHits.increment()
                             value
                         } else {
                             cacheMisses.increment()

@@ -57,6 +57,13 @@ class EtlMeter(val registry: MeterRegistry) {
     }
 
     /**
+     * Rows received by the transformer at the input
+     */
+    fun rowsReceived(jobName: String, context: EtlContext): Counter {
+        return registerCounter("etl_rows_received", jobName, context)
+    }
+
+    /**
      * Ratio of the current size of the buffer used for aggregations in the transformation phase to its maximum size.
      */
     fun aggregationBufferUtilizationRatio(jobName: String, context: EtlContext): GaugeSample {
@@ -79,6 +86,13 @@ class EtlMeter(val registry: MeterRegistry) {
      */
     fun lookupCacheMisses(jobName: String, context: EtlContext): Counter {
         return registerCounter("etl_lookup_cache_misses", jobName, context)
+    }
+
+    /**
+     * Cache hits used for data enrichment during the transformation phase.
+     */
+    fun lookupCacheHits(jobName: String, context: EtlContext): Counter {
+        return registerCounter("etl_lookup_cache_hits", jobName, context)
     }
 
     /**
