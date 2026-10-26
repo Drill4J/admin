@@ -129,7 +129,7 @@ class SubscribableChannelFlow<T>(
      * - The producer calls [close] (Flow completes / throws).
      * - The collector's coroutine is cancelled.
      */
-    suspend fun subscribe(ch: Channel<T>): ClosableFlow<T> {
+    suspend fun subscribe(ch: Channel<T> = Channel()): ClosableFlow<T> {
         // Already closed before we even started collecting
         if (done) {
             doneCause?.let { throw it }
