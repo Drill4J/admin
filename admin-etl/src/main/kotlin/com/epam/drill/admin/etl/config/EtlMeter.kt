@@ -23,6 +23,7 @@ import io.micrometer.core.instrument.LongTaskTimer
 import io.micrometer.core.instrument.MeterRegistry
 import io.micrometer.core.instrument.Timer
 import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicReference
 
 class EtlMeter(val registry: MeterRegistry) {
@@ -223,7 +224,7 @@ class EtlMeter(val registry: MeterRegistry) {
     class GaugeSample(
         private val gauge: AtomicReference<Double>
     ): AutoCloseable {
-        private var active: Boolean = true
+        private var active = AtomicBoolean(true)
 
         fun get(): Double = gauge.get()
 
@@ -231,11 +232,11 @@ class EtlMeter(val registry: MeterRegistry) {
             gauge.set(value)
         }
 
-        fun isActive(): Boolean = active
+        fun isActive(): Boolean = active.get()
 
         override fun close() {
             gauge.set(0.0)
-            active = false
+            active.set(false)
         }
     }
 }
