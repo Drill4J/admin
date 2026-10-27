@@ -31,4 +31,5 @@ ON CONFLICT (
     app_id,
     method_id
 )
-DO NOTHING
+DO UPDATE SET
+    ignore = EXCLUDED.ignore;
