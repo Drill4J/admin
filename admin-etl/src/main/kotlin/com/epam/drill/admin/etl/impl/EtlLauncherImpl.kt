@@ -89,6 +89,7 @@ class EtlLauncherImpl(
         val lockName = getOrchestrator(etlName).lockName
         val cancelling = jobsRepository.cancelJobs(lockName, context, period)
         if (cancelling.isEmpty()) return emptyList()
+        logger.info { "ETL [$etlName] for $period requested cancellation of ${cancelling.size} jobs" }
 
         val settled = mutableMapOf<EtlJob, EtlJobResult>()
         val deadline = System.currentTimeMillis() + cancelWaitTimeoutMillis
@@ -253,7 +254,7 @@ class EtlLauncherImpl(
         val hasAlreadyProcessedDataForDay = coveredJob.processedUntilTimestamp?.isAfter(endOfCurrentDay) ?: false
         val hasNotYetProcessedDataForDay = coveredJob.processedUntilTimestamp?.isBefore(startOfCurrentDay) ?: true
 
-        if (isFirstDayOfPeriod) {
+        if (isFirstDayOfPeriod && coveredJob.status == EtlJobStatus.RUNNING) {
             return EtlDailyStatus.RUNNING
         }
         if (hasAlreadyProcessedDataForDay) {
