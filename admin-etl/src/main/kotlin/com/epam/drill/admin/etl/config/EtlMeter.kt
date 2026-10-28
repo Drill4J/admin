@@ -23,6 +23,7 @@ import io.micrometer.core.instrument.LongTaskTimer
 import io.micrometer.core.instrument.MeterRegistry
 import io.micrometer.core.instrument.Timer
 import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.CopyOnWriteArrayList
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicReference
 
@@ -185,7 +186,7 @@ class EtlMeter(val registry: MeterRegistry) {
                 list.add(sample)
                 list
             } else {
-                val newList = mutableListOf(sample)
+                val newList = CopyOnWriteArrayList<GaugeSample>().apply { add(sample) }
                 Gauge.builder(metricName) { aggregation(newList.map { it.get() }) }
                     .tag("jobName", jobName)
                     .tagContext(context)
