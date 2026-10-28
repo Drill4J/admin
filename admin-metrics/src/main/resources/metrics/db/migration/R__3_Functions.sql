@@ -412,8 +412,8 @@ BEGIN
                     b.app_id,
                     b.build_id,
                     bm.method_id,
-                    (CASE WHEN baseline_bm.method_id IS NULL THEN m.probes_count ELSE 0 END) AS change_probes_count,
-                    (CASE WHEN baseline_bm.method_id IS NULL THEN 1 ELSE 0 END) AS change_methods_count,
+                    (CASE WHEN baseline_bm.method_id IS NULL AND m.ignore IS FALSE THEN m.probes_count ELSE 0 END) AS change_probes_count,
+                    (CASE WHEN baseline_bm.method_id IS NULL AND m.ignore IS FALSE THEN 1 ELSE 0 END) AS change_methods_count,
                     REPEAT(CASE WHEN baseline_bm.method_id IS NULL THEN '1' ELSE '0' END, m.probes_count::INT)::VARBIT AS mask
                 FROM metrics.builds b
                 JOIN metrics.build_methods bm ON b.group_id = bm.group_id AND b.app_id = bm.app_id AND b.build_id = bm.build_id
