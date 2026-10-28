@@ -59,11 +59,16 @@ class TestSessionRepositoryImpl : TestSessionRepository {
     }
 
     override suspend fun updateHeartbeat(session: TestSessionHeartbeat) {
-        TestSessionTable.update(where = {
-            (TestSessionTable.groupId eq session.groupId) and
-                    (TestSessionTable.testProjectId eq session.testProjectId) and
-                    (TestSessionTable.id eq session.id)
-        }) {
+        TestSessionTable.upsert(
+            onUpdateExclude = listOf(
+                TestSessionTable.testTaskId,
+                TestSessionTable.startedAt,
+                TestSessionTable.createdBy,
+            )
+        ) {
+            it[id] = session.id
+            it[groupId] = session.groupId
+            it[testProjectId] = session.testProjectId
             it[lastHeartbeatAt] = CurrentDateTime
             it[status] = session.status.name
         }
