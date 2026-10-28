@@ -20,6 +20,7 @@ import com.epam.drill.admin.common.principal.Role
 import com.epam.drill.admin.common.principal.User
 import kotlinx.serialization.*
 import kotlinx.datetime.LocalDateTime
+import kotlinx.datetime.toKotlinLocalDateTime
 
 @Serializable
 data class TokenView(val token: String)
@@ -29,7 +30,8 @@ data class UserInfoView(
     val id: Int,
     val username: String,
     val role: Role,
-    val external: Boolean
+    val external: Boolean,
+    val registrationDate: LocalDateTime? = null
 )
 
 fun UserInfoView.toPrincipal(): User {
@@ -84,6 +86,7 @@ fun UserEntity.toUserInfoView(): UserInfoView {
         id = this.id ?: throw IllegalStateException("User id cannot be null"),
         username = this.username,
         role = Role.valueOf(this.role),
-        external = this.external
+        external = this.external,
+        registrationDate = this.registrationDate?.toKotlinLocalDateTime()
     )
 }
