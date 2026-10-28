@@ -2951,33 +2951,6 @@ class MetricsRepositoryImpl : MetricsRepository {
         }
     }
 
-    override suspend fun getTestSessionDateRange(
-        groupId: String,
-        testSessionId: String
-    ): Pair<Instant, Instant>? {
-        return transaction {
-            val result = executeQueryReturnMap(
-                """
-                SELECT 
-                    session_started_at,
-                    last_session_heartbeat_at
-                FROM metrics.test_sessions
-                WHERE group_id = ? AND test_session_id = ?
-                """.trimIndent(), groupId, testSessionId
-            )
-            val firstStartedAt = result.firstOrNull()?.get("session_started_at") as? LocalDateTime
-            val lastStoppedAt = result.firstOrNull()?.get("last_session_heartbeat_at") as? LocalDateTime
-            if (firstStartedAt != null && lastStoppedAt != null) {
-                Pair(
-                    firstStartedAt.atZone(ZoneId.systemDefault()).toInstant(),
-                    lastStoppedAt.atZone(ZoneId.systemDefault()).toInstant()
-                )
-            } else {
-                null
-            }
-        }
-    }
-
     override suspend fun deleteAllBuildDataCreatedBefore(groupId: String, timestamp: Instant) = transaction {
         val timestamp = Timestamp.from(timestamp)
         executeUpdate(
