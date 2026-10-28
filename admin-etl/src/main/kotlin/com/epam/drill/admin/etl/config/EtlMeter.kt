@@ -16,7 +16,6 @@
 package com.epam.drill.admin.etl.config
 
 import com.epam.drill.admin.etl.EtlContext
-import com.epam.drill.admin.etl.impl.toMap
 import io.micrometer.core.instrument.Counter
 import io.micrometer.core.instrument.Gauge
 import io.micrometer.core.instrument.LongTaskTimer
@@ -198,7 +197,7 @@ class EtlMeter(val registry: MeterRegistry) {
     }
 
     private fun gaugeKey(metricName: String, jobName: String, context: EtlContext): String {
-        val tags = (context.toMap().mapValues { (_, v) -> v?.toString() ?: "" } + ("jobName" to jobName))
+        val tags = mapOf("jobName" to jobName, "groupId" to context.groupId)
             .toSortedMap()
             .entries
             .joinToString(",") { (k, v) -> "$k=$v" }
