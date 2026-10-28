@@ -19,6 +19,7 @@ import kotlinx.coroutines.*
 import kotlinx.coroutines.channels.*
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.sync.*
+import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.seconds
 
 /**
@@ -129,7 +130,7 @@ class SubscribableChannelFlow<T>(
      * - The producer calls [close] (Flow completes / throws).
      * - The collector's coroutine is cancelled.
      */
-    suspend fun subscribe(ch: Channel<T> = Channel()): ClosableFlow<T> {
+    suspend fun subscribe(ch: Channel<T> = Channel(capacity)): ClosableFlow<T> {
         // Already closed before we even started collecting
         if (done) {
             doneCause?.let { throw it }
@@ -167,7 +168,7 @@ class SubscribableChannelFlow<T>(
             while (true) {
                 val currentCount = mutex.withLock { channels.size }
                 if (currentCount >= count) break
-                delay(10)
+                delay(10.milliseconds)
             }
         }
     }
