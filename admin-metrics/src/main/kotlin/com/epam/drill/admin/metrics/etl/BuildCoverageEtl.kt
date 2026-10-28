@@ -41,8 +41,7 @@ val EtlConfig.buildCoverageAggregator
             "build_id",
             "app_env_id",
             "test_result",
-            "test_tag",
-            "test_task_id",
+            "test_session_id",
             "test_project_id",
             "created_at_day"
         ), probeKeys = listOf(
