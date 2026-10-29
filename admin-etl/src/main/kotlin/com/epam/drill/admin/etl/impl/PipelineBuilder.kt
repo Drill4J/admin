@@ -54,7 +54,7 @@ class ExtractStep internal constructor(
         etlConfig = etlConfig,
         extractor = extractor,
         transformer = UntypedFilterTransformer(
-            name = name,
+            name = name + "_filter",
             metrics = etlConfig.metrics,
             predicate = predicate,
         )
@@ -71,7 +71,7 @@ class ExtractStep internal constructor(
         etlConfig = etlConfig,
         extractor = extractor,
         transformer = UntypedAggregationTransformer(
-            name = name,
+            name = name + "_aggregator",
             bufferSize = etlConfig.transformationBufferSize,
             metrics = etlConfig.metrics,
             groupKeys = groupKeys.toList(),

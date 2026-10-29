@@ -427,12 +427,12 @@ class MetricsRepositoryImpl : MetricsRepository {
                     b.build_id,
                     b.build_label,
                     b.build_date,
-                    COALESCE(c.total_probes, 0) AS total_probes,
-                    COALESCE(c.isolated_covered_probes, 0) AS isolated_covered_probes,
-                    COALESCE(c.aggregated_covered_probes, 0) AS aggregated_covered_probes,
-                    COALESCE(c.total_methods, 0) AS total_methods,
-                    COALESCE(c.isolated_tested_methods, 0) AS isolated_tested_methods,
-                    COALESCE(c.aggregated_tested_methods, 0) AS aggregated_tested_methods
+                    COALESCE(c.total_change_probes, 0) AS total_probes,
+                    COALESCE(c.isolated_covered_change_probes, 0) AS isolated_covered_probes,
+                    COALESCE(c.aggregated_covered_change_probes, 0) AS aggregated_covered_probes,
+                    COALESCE(c.total_change_methods, 0) AS total_methods,
+                    COALESCE(c.isolated_tested_change_methods, 0) AS isolated_tested_methods,
+                    COALESCE(c.aggregated_tested_change_methods, 0) AS aggregated_tested_methods
                 FROM builds b
                 LEFT JOIN metrics.get_builds_with_coverage_v2(
                     input_build_ids => ARRAY(SELECT build_id FROM builds),

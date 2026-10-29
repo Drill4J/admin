@@ -15,7 +15,6 @@
  */
 package com.epam.drill.admin.metrics.etl
 
-import com.epam.drill.admin.etl.UntypedRow
 import com.epam.drill.admin.etl.impl.UntypedSqlDataExtractor
 import com.epam.drill.admin.etl.impl.UntypedSqlDataLoader
 import com.epam.drill.admin.etl.config.EtlConfig
@@ -28,17 +27,6 @@ val EtlConfig.buildMethodsExtractor
     get() = UntypedSqlDataExtractor(
         name = "build_methods",
         sqlQuery = fromResource("/metrics/db/etl/build_methods_extractor.sql"),
-        database = RawDataWriterDatabaseConfig.database,
-        fetchSize = fetchSize,
-        extractionLimit = extractionLimit,
-        lastExtractedAtColumnName = "updated_at",
-        metrics = metrics,
-    )
-
-val EtlConfig.methodsExtractor
-    get() = UntypedSqlDataExtractor(
-        name = "methods",
-        sqlQuery = fromResource("/metrics/db/etl/methods_extractor.sql"),
         database = RawDataWriterDatabaseConfig.database,
         fetchSize = fetchSize,
         extractionLimit = extractionLimit,
@@ -73,5 +61,10 @@ val EtlConfig.buildMethodsPipeline
 
 val EtlConfig.methodsPipeline
     get() = pipeline("methods")
-        .extractWith(methodsExtractor)
+        .extractWith(buildMethodsExtractor)
+        .aggregateBy(
+            "group_id",
+            "app_id",
+            "method_id"
+        ) { prev, next -> prev }
         .loadWith(methodsLoader)

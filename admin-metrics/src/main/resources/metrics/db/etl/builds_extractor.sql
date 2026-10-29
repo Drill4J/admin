@@ -22,6 +22,7 @@ WITH builds_with_instances AS (
     LEFT JOIN raw_data.instances i ON i.build_id = b.id
         AND i.group_id = b.group_id
     WHERE b.group_id = :group_id
+      AND (:app_id::TEXT IS NULL OR b.app_id = :app_id)
     GROUP BY b.group_id, b.app_id, b.id
 ),
 build_totals AS (
@@ -53,6 +54,7 @@ build_totals AS (
                   OR m.method_name::text ~ r.name_pattern::text)
        )
     WHERE b.group_id = :group_id
+      AND (:app_id::TEXT IS NULL OR b.app_id = :app_id)
     GROUP BY b.group_id, b.app_id, b.id
 ),
 build_masks AS (
@@ -95,6 +97,7 @@ build_masks AS (
        AND m.group_id   = bm.group_id
        AND m.probes_count > 0
     WHERE bm.group_id = :group_id
+      AND (:app_id::TEXT IS NULL OR bm.app_id = :app_id)
     GROUP BY bm.group_id, bm.app_id, bm.build_id
 )
 SELECT

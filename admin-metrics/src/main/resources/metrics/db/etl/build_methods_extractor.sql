@@ -3,16 +3,30 @@ SELECT
     bm.app_id,
     bm.build_id,
     bm.method_id,
+    m.signature,
+    m.body_checksum,
+    m.probes_count,
+    m.method_name,
+    m.class_name,
+    m.method_params,
+    m.return_type,
     bm.created_at,
-    GREATEST(bm.created_at, b.updated_at) AS updated_at,
+    EXISTS (
+        SELECT 1
+        FROM raw_data.method_ignore_rules r
+        WHERE r.group_id = m.group_id
+          AND r.app_id = m.app_id
+          AND (r.classname_pattern IS NULL OR m.class_name::text ~ r.classname_pattern::text)
+          AND (r.name_pattern IS NULL OR m.method_name::text ~ r.name_pattern::text)
+    ) AS ignore,
+    bm.created_at,
     DATE_TRUNC('day',bm.created_at) AS created_at_day
 FROM raw_data.build_methods bm
-JOIN raw_data.builds b ON b.group_id = bm.group_id AND b.app_id = bm.app_id AND b.id = bm.build_id
 JOIN raw_data.methods m ON m.method_id = bm.method_id AND m.app_id = bm.app_id AND m.group_id = bm.group_id
 WHERE bm.group_id = :group_id
+    AND (:app_id::TEXT IS NULL OR bm.app_id = :app_id)
     AND bm.created_at > :since_timestamp
     AND bm.created_at <= :until_timestamp
-    AND b.validation_status = 'VALID'
     AND m.probes_count > 0
-ORDER BY GREATEST(bm.created_at, b.updated_at), bm.method_id
+ORDER BY bm.created_at, bm.method_id
 LIMIT :limit
