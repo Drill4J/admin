@@ -21,6 +21,7 @@ import com.epam.drill.admin.writer.rawdata.service.RawDataWriter
 import com.epam.drill.admin.writer.rawdata.service.QueuedRawDataWriter
 import com.epam.drill.admin.writer.rawdata.route.payload.BuildFinalizePayload
 import com.epam.drill.admin.writer.rawdata.route.payload.AgentHeartbeatPayload
+import com.epam.drill.admin.writer.rawdata.route.payload.TestSessionHeartbeatPayload
 import com.epam.drill.admin.writer.rawdata.views.BuildFinalizationResultView
 import io.ktor.client.*
 import io.ktor.client.engine.apache.*
@@ -81,6 +82,9 @@ class TestMetadataRoute(): DataIngestRoute
 @Resource("sessions")
 class TestSessionRoute(): DataIngestRoute
 
+@Resource("sessions/heartbeat")
+class TestSessionHeartbeatRoute()
+
 @Resource("test-definitions")
 class TestDefinitionsRoute(): DataIngestRoute
 
@@ -101,6 +105,7 @@ fun Route.dataIngestRoutes() {
         putMethods()
         postTestMetadata()
         putTestSessions()
+        putTestSessionHeartbeat()
         postTestDefinitions()
         postTestLaunches()
     }
@@ -187,6 +192,16 @@ fun Route.putTestSessions() {
     put<TestSessionRoute> { params ->
         queuedRawDataWriter.enqueue(params, call.decompress(), call.principal<User>()?.username)
         call.ok("Test sessions saved")
+    }
+}
+
+fun Route.putTestSessionHeartbeat() {
+    val rawDataWriter by closestDI().instance<RawDataWriter>()
+
+    put<TestSessionHeartbeatRoute> {
+        val payload = call.decompressAndReceive<TestSessionHeartbeatPayload>()
+        rawDataWriter.saveTestSessionHeartbeat(payload)
+        call.ok("Test session heartbeat saved")
     }
 }
 

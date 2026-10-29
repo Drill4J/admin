@@ -44,7 +44,7 @@ class BuildDetailApiTest : MetricsDatabaseTests({ default, metrics ->
     )
 
     @Test
-    fun `get build by id should return build details with statistics`() = havingData {
+    fun `get build by id should return build details with statistics`() { havingData {
         build1 has listOf(method1, method2)
     }.expectThat {
         client.get("/metrics/builds/$build1Id").apply {
@@ -56,10 +56,10 @@ class BuildDetailApiTest : MetricsDatabaseTests({ default, metrics ->
             assertEquals(build1Id, data["buildId"])
             assertEquals(2, data["totalMethods"])
         }
-    }
+    }}
 
     @Test
-    fun `get changes summary should return change counts vs baseline`() = havingData {
+    fun `get changes summary should return change counts vs baseline`() { havingData {
         build1 has listOf(method1, method2)
         build2 hasModified method2 comparedTo build1
         build2 hasNew method3 comparedTo build1
@@ -75,10 +75,10 @@ class BuildDetailApiTest : MetricsDatabaseTests({ default, metrics ->
             assertTrue(data.containsKey("impactedTests"))
             assertTrue(data.containsKey("impactedMethods"))
         }
-    }
+    }}
 
     @Test
-    fun `get similar builds should return baseline candidates`() = havingData {
+    fun `get similar builds should return baseline candidates`() { havingData {
         build1 has listOf(method1, method2)
         build2 hasModified method2 comparedTo build1
     }.expectThat {
@@ -89,10 +89,10 @@ class BuildDetailApiTest : MetricsDatabaseTests({ default, metrics ->
             assertTrue(data.isNotEmpty())
             assertTrue(data.any { it["buildId"] == build1Id })
         }
-    }
+    }}
 
     @Test
-    fun `given testProjectIds filter, coverage-by-probes should include only matching test project coverage`() = havingData {
+    fun `given testProjectIds filter, coverage-by-probes should include only matching test project coverage`() { havingData {
         build1 has listOf(method1, method2)
         test1 of session1.testProjectId("project-a") covers method1 with probesOf(1, 1) on build1
         test2 of session2.testProjectId("project-b") covers method2 with probesOf(1, 1, 1) on build1
@@ -105,10 +105,10 @@ class BuildDetailApiTest : MetricsDatabaseTests({ default, metrics ->
             val sliceByMetric = slices.associate { it["metric"] as String to (it["value"] as Int) }
             assertEquals(2, sliceByMetric["covered"] ?: 0) // only method1's 2 probes covered by project-a
         }
-    }
+    }}
 
     @Test
-    fun `get coverage by probes should return covered in other builds slice`() = havingData {
+    fun `get coverage by probes should return covered in other builds slice`() { havingData {
         build1 has listOf(method1, method2, method4)
         build2 hasModified method2 comparedTo build1
         build3 hasDeleted method4 comparedTo build2
@@ -132,7 +132,7 @@ class BuildDetailApiTest : MetricsDatabaseTests({ default, metrics ->
                     (sliceByMetric["gaps"] ?: 0),
             )
         }
-    }
+    }}
 
     @AfterEach
     fun clearAll() = withTransaction(RawDataWriterDatabaseConfig.database) {

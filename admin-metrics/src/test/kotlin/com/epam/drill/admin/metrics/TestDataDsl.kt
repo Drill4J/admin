@@ -35,7 +35,7 @@ import com.epam.drill.admin.writer.rawdata.config.rawDataServicesDIModule
 import com.epam.drill.admin.writer.rawdata.route.dataIngestRoutes
 import com.epam.drill.admin.writer.rawdata.route.dataManagementRoutes
 import com.epam.drill.admin.writer.rawdata.route.payload.InstancePayload
-import com.epam.drill.admin.writer.rawdata.route.payload.SessionPayload
+import com.epam.drill.admin.writer.rawdata.route.payload.TestSessionPayload
 import com.epam.drill.admin.writer.rawdata.route.payload.SingleMethodPayload
 import com.epam.drill.admin.writer.rawdata.route.payload.TestDetails
 import com.epam.drill.admin.writer.rawdata.route.payload.TestResult
@@ -86,12 +86,12 @@ fun havingData(testsData: suspend TestDataDsl.() -> Unit): HttpClient {
 
 class TestSessionMap(
     val test: TestDetails,
-    val session: SessionPayload,
+    val session: TestSessionPayload,
 )
 
 class TestCoverageMap(
     val test: TestDetails,
-    val session: SessionPayload,
+    val session: TestSessionPayload,
     val result: TestResult,
     val method: SingleMethodPayload,
     val probes: IntArray
@@ -141,7 +141,7 @@ class TestDataDsl(val client: HttpClient) {
     suspend infix fun InstancePayload.hasDeleted(method: SingleMethodPayload) =
         MethodComparison(this, method, ChangeType.DELETED)
 
-    suspend infix fun TestDetails.of(session: SessionPayload): TestSessionMap {
+    suspend infix fun TestDetails.of(session: TestSessionPayload): TestSessionMap {
         sessions.add(session.groupId to session.id)
         return TestSessionMap(this, session = session)
     }
@@ -233,14 +233,18 @@ class TestDataDsl(val client: HttpClient) {
     }
 }
 
-fun HttpClient.expectThat(checks: suspend ExpectationDsl.(HttpClient) -> Unit) {
+fun HttpClient.expectThat(
+    onFailed: suspend HttpClient.() -> Unit = { refreshMetrics(emptySet()) },
+    checks: suspend ExpectationDsl.(HttpClient) -> Unit
+): HttpClient {
     val client = this
-    return waitUntilInBlocking {
+    waitUntilInBlocking(onAssertionFailed = { onFailed() }) {
         checks(ExpectationDsl(client), client)
     }
+    return this
 }
 
-fun HttpClient.afterCalling(body: suspend HttpClient.() -> Unit): HttpClient {
+fun HttpClient.whenExecuting(body: suspend HttpClient.() -> Unit): HttpClient {
     val client = this
     runBlocking {
         client.body()
