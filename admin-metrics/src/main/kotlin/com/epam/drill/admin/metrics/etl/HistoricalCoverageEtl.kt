@@ -28,39 +28,31 @@ val EtlConfig.coverageExtractor
         database = RawDataWriterDatabaseConfig.database,
         fetchSize = fetchSize,
         extractionLimit = extractionLimit,
-        loggingFrequency = loggingFrequency,
         metrics = metrics,
         lastExtractedAtColumnName = "created_at",
     )
 
-val EtlConfig.historicalBuildMethodTestSessionCoveragePipeline
-    get() = pipeline("build_method_test_session_coverage")
-        .extractWith(coverageExtractor)
-        .transformWith(hasTestSessionFilter)
-        .transformWith(buildMethodTestSessionCoverageAggregator)
-        .loadWith(buildMethodTestSessionCoverageLoader)
-
 val EtlConfig.historicalBuildMethodCoveragePipeline
-    get() = pipeline("build_method_coverage")
+    get() = pipeline("historical_build_method_coverage")
         .extractWith(coverageExtractor)
         .transformWith(buildMethodCoverageAggregator)
         .loadWith(buildMethodCoverageLoader)
 
 val EtlConfig.historicalMethodCoveragePipeline
-    get() = pipeline("method_daily_coverage")
+    get() = pipeline("historical_method_daily_coverage")
         .extractWith(coverageExtractor)
         .transformWith(methodCoverageAggregator)
         .loadWith(methodCoverageLoader)
 
 val EtlConfig.historicalTestSessionBuildsPipeline
-    get() = pipeline("test_session_builds_from_coverage")
+    get() = pipeline("historical_test_session_builds")
         .extractWith(coverageExtractor)
         .transformWith(hasTestSessionFilter)
         .transformWith(testSessionBuildsAggregator)
         .loadWith(testSessionBuildsLoader)
 
 val EtlConfig.historicalTest2CodeMappingPipeline
-    get() = pipeline("test_to_code_mapping")
+    get() = pipeline("historical_test_to_code_mapping")
         .extractWith(coverageExtractor)
         .transformWith(testPassedFilter)
         .transformWith(test2CodeCoverageAggregator)

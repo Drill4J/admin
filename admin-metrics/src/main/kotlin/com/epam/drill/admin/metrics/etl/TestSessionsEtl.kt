@@ -30,7 +30,6 @@ val EtlConfig.testSessionsExtractor
         database = RawDataWriterDatabaseConfig.database,
         fetchSize = fetchSize,
         extractionLimit = extractionLimit,
-        loggingFrequency = loggingFrequency,
         lastExtractedAtColumnName = "updated_at",
         metrics = metrics,
     )
@@ -42,7 +41,6 @@ val EtlConfig.testSessionsLoader
         sqlDelete = fromResource("/metrics/db/etl/test_sessions_delete.sql"),
         database = MetricsDatabaseConfig.database,
         batchSize = batchSize,
-        loggingFrequency = loggingFrequency,
         metrics = metrics,
     )
 

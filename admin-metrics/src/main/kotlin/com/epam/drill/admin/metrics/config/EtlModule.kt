@@ -38,10 +38,8 @@ import com.epam.drill.admin.writer.rawdata.config.settingsServicesDIModule
 import io.ktor.server.application.Application
 import io.ktor.server.config.ApplicationConfig
 import org.kodein.di.DI
-import org.kodein.di.allInstances
 import org.kodein.di.bind
 import org.kodein.di.instance
-import org.kodein.di.ktor.closestDI
 import org.kodein.di.singleton
 import org.quartz.JobBuilder
 import org.quartz.JobDetail
@@ -92,16 +90,16 @@ val etlDIModule
                         testSessionsPipeline,
                         testSessionBuildsPipeline,
                         // Global coverage extractor group
-                        buildMethodCoveragePipeline,
-                        buildCoveragePipeline,
-                        methodCoveragePipeline,
-                        testSessionBuildsFromCoveragePipeline,
+                        incrementalBuildMethodCoveragePipeline,
+                        incrementalBuildCoveragePipeline,
+                        incrementalMethodCoveragePipeline,
+                        incrementalTestSessionBuildsPipeline,
                         // Test-launch coverage extractor group
-                        buildMethodCoverageFromTestLaunchesPipeline,
-                        buildCoverageFromTestLaunchesPipeline,
-                        methodCoverageFromTestLaunchesPipeline,
-                        test2CodeMappingPipeline,
-                        testSessionBuildsFromTestLaunchesPipeline,
+                        incrementalBuildMethodCoverageFromTestLaunchesPipeline,
+                        incrementalBuildCoverageFromTestLaunchesPipeline,
+                        incrementalMethodCoverageFromTestLaunchesPipeline,
+                        incrementalTest2CodeMappingFromTestLaunchesPipeline,
+                        incrementalTestSessionBuildsFromTestLaunchesPipeline,
                     ),
                     metadataRepository = instance(),
                     jobsRepository = instance(),
@@ -152,9 +150,9 @@ val etlDIModule
                     name = TEST_SESSION_COVERAGE_ETL,
                     lockName = TEST_SESSION_COVERAGE_ETL_LOCK,
                     pipelines = listOf(
-                        buildMethodTestSessionCoveragePipeline,
-                        buildMethodTestSessionCoverageFromTestLaunchesPipeline,
-                        buildMethodTestDefinitionCoveragePipeline
+                        incrementalTestSessionCoveragePipeline,
+                        incrementalTestSessionCoverageFromTestLaunchesPipeline,
+                        incrementalTestDefinitionCoverageFromTestLaunchesPipeline
                     ),
                     metadataRepository = instance(),
                     jobsRepository = instance(),

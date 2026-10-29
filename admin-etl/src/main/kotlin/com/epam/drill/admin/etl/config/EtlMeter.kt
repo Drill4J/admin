@@ -16,13 +16,14 @@
 package com.epam.drill.admin.etl.config
 
 import com.epam.drill.admin.etl.EtlContext
-import com.epam.drill.admin.etl.impl.toMap
 import io.micrometer.core.instrument.Counter
 import io.micrometer.core.instrument.Gauge
 import io.micrometer.core.instrument.LongTaskTimer
 import io.micrometer.core.instrument.MeterRegistry
 import io.micrometer.core.instrument.Timer
 import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.CopyOnWriteArrayList
+import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicReference
 
 class EtlMeter(val registry: MeterRegistry) {
@@ -34,66 +35,118 @@ class EtlMeter(val registry: MeterRegistry) {
     // otherwise later runs would update a value that the registered gauge never reads.
     private val gauges = ConcurrentHashMap<String, MutableList<GaugeSample>>()
 
+    /**
+     * Rows fetched from the source Database in the extraction phase, including query execution and result set processing.
+     */
     fun rowsFetched(jobName: String, context: EtlContext): Counter {
         return registerCounter("etl_rows_fetched", jobName, context)
     }
 
+    /**
+     * Rows replicated for each pipeline within the extractor group.
+     */
     fun rowsExtracted(jobName: String, context: EtlContext): Counter {
         return registerCounter("etl_rows_extracted", jobName, context)
     }
 
+    /**
+     * Rows aggregated in the transformation phase.
+     */
     fun rowsAggregated(jobName: String, context: EtlContext): Counter {
         return registerCounter("etl_rows_aggregated", jobName, context)
     }
 
-    fun aggregationBufferOccupancyRatio(jobName: String, context: EtlContext): GaugeSample {
-        return registerDoubleGauge("etl_aggregation_buffer_occupancy_ratio", jobName, context) {
+    /**
+     * Rows received by the transformer at the input
+     */
+    fun rowsReceived(jobName: String, context: EtlContext): Counter {
+        return registerCounter("etl_rows_received", jobName, context)
+    }
+
+    /**
+     * Ratio of the current size of the buffer used for aggregations in the transformation phase to its maximum size.
+     */
+    fun aggregationBufferUtilizationRatio(jobName: String, context: EtlContext): GaugeSample {
+        return registerDoubleGauge("etl_aggregation_buffer_utilization_ratio", jobName, context) {
             it.maxOrNull() ?: 0.0
         }
     }
 
-    fun buildProbeLayoutBufferOccupancyRatio(jobName: String, context: EtlContext): GaugeSample {
-        return registerDoubleGauge("etl_build_probe_layout_buffer_occupancy_ratio", jobName, context) {
+    /**
+     * Ratio of the current size of the cache used for data enrichment in the transformation phase to its maximum size.
+     */
+    fun lookupCacheUtilizationRatio(jobName: String, context: EtlContext): GaugeSample {
+        return registerDoubleGauge("etl_lookup_cache_utilization_ratio", jobName, context) {
             it.maxOrNull() ?: 0.0
         }
     }
 
-    fun buildProbeLayoutLoadingDuration(jobName: String, context: EtlContext): Timer {
-        return registerTimer("etl_build_probe_layout_loading_duration", jobName, context)
+    /**
+     * Cache misses used for data enrichment during the transformation phase.
+     */
+    fun lookupCacheMisses(jobName: String, context: EtlContext): Counter {
+        return registerCounter("etl_lookup_cache_misses", jobName, context)
     }
 
+    /**
+     * Cache hits used for data enrichment during the transformation phase.
+     */
+    fun lookupCacheHits(jobName: String, context: EtlContext): Counter {
+        return registerCounter("etl_lookup_cache_hits", jobName, context)
+    }
+
+    /**
+     * Rows filtered out in the transformation phase.
+     */
     fun rowsFiltered(jobName: String, context: EtlContext): Counter {
         return registerCounter("etl_rows_filtered", jobName, context)
     }
 
+    /**
+     * Rows processed during the transformation phase and available for loading.
+     */
     fun rowsProcessed(jobName: String, context: EtlContext): Counter {
         return registerCounter("etl_rows_processed", jobName, context)
     }
 
+    /**
+     * Rows successfully loaded into the target Database in the loading phase.
+     */
     fun rowsLoaded(jobName: String, context: EtlContext): Counter {
         return registerCounter("etl_rows_loaded", jobName, context)
     }
 
-    fun rowsSkipped(jobName: String, context: EtlContext): Counter {
-        return registerCounter("etl_rows_skipped", jobName, context)
-    }
-
+    /**
+     * ETL jobs failed on the loading phase due to errors.
+     */
     fun loadingFailures(jobName: String, context: EtlContext): Counter {
         return registerCounter("etl_loading_failures", jobName, context)
     }
 
+    /**
+     * ETL jobs failed on the extraction phase due to errors.
+     */
     fun extractionFailures(jobName: String, context: EtlContext): Counter {
         return registerCounter("etl_extraction_failures", jobName, context)
     }
 
+    /**
+     * Duration of the loading phase.
+     */
     fun loadingDuration(jobName: String, context: EtlContext): Timer {
         return registerTimer("etl_loading_duration", jobName, context)
     }
 
+    /**
+     * Duration of the extraction phase.
+     */
     fun extractionDuration(jobName: String, context: EtlContext): Timer {
         return registerTimer("etl_extraction_duration", jobName, context)
     }
 
+    /**
+     * Duration of the entire ETL job, including all pipelines.
+     */
     fun jobDuration(jobName: String, context: EtlContext): LongTaskTimer {
         return LongTaskTimer.builder("etl_job_duration")
             .tag("jobName", jobName)
@@ -101,9 +154,27 @@ class EtlMeter(val registry: MeterRegistry) {
             .register(registry)
     }
 
+    /**
+     * Duration of the transformation phase.
+     */
     fun transformationDuration(jobName: String, context: EtlContext): Timer {
         return registerTimer("etl_transformation_duration", jobName, context)
     }
+
+    /**
+     * ETL jobs failed due to errors.
+     */
+    fun jobsFailed(jobName: String, context: EtlContext): Counter {
+        return registerCounter("etl_jobs_failed", jobName, context)
+    }
+
+    /**
+     * ETL jobs finished successfully.
+     */
+    fun jobsCompleted(jobName: String, context: EtlContext): Counter {
+        return registerCounter("etl_jobs_completed", jobName, context)
+    }
+
 
     private fun registerDoubleGauge(metricName: String, jobName: String, context: EtlContext, aggregation: (List<Double>) -> Double): GaugeSample {
         val key = gaugeKey(metricName, jobName, context)
@@ -114,7 +185,7 @@ class EtlMeter(val registry: MeterRegistry) {
                 list.add(sample)
                 list
             } else {
-                val newList = mutableListOf(sample)
+                val newList = CopyOnWriteArrayList<GaugeSample>().apply { add(sample) }
                 Gauge.builder(metricName) { aggregation(newList.map { it.get() }) }
                     .tag("jobName", jobName)
                     .tagContext(context)
@@ -126,7 +197,7 @@ class EtlMeter(val registry: MeterRegistry) {
     }
 
     private fun gaugeKey(metricName: String, jobName: String, context: EtlContext): String {
-        val tags = (context.toMap().mapValues { (_, v) -> v?.toString() ?: "" } + ("jobName" to jobName))
+        val tags = mapOf("jobName" to jobName, "groupId" to context.groupId)
             .toSortedMap()
             .entries
             .joinToString(",") { (k, v) -> "$k=$v" }
@@ -160,7 +231,7 @@ class EtlMeter(val registry: MeterRegistry) {
     class GaugeSample(
         private val gauge: AtomicReference<Double>
     ): AutoCloseable {
-        private var active: Boolean = true
+        private var active = AtomicBoolean(true)
 
         fun get(): Double = gauge.get()
 
@@ -168,11 +239,11 @@ class EtlMeter(val registry: MeterRegistry) {
             gauge.set(value)
         }
 
-        fun isActive(): Boolean = active
+        fun isActive(): Boolean = active.get()
 
         override fun close() {
             gauge.set(0.0)
-            active = false
+            active.set(false)
         }
     }
 }

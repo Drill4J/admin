@@ -30,10 +30,9 @@ class UntypedSqlDataExtractor(
     database: Database,
     fetchSize: Int = 2000,
     extractionLimit: Int = 1_000_000,
-    loggingFrequency: Int = 10,
     metrics: EtlMeter,
     private val lastExtractedAtColumnName: String,
-) : SqlDataExtractor<UntypedRow>(name, extractionLimit, sqlQuery, database, fetchSize, loggingFrequency, metrics) {
+) : SqlDataExtractor<UntypedRow>(name, extractionLimit, sqlQuery, database, fetchSize, metrics) {
 
     override fun prepareSql(sql: String): PreparedSql<UntypedRow> {
         return UntypedPreparedSql.prepareSql(sql)

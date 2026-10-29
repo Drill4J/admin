@@ -31,7 +31,6 @@ import kotlin.time.Duration.Companion.seconds
 class UntypedAggregationTransformer(
     override val name: String,
     private val bufferSize: Int,
-    private val loggingFrequency: Int = 10,
     private val metrics: EtlMeter,
     private val groupKeys: List<String>,
     private val aggregate: (current: UntypedRow, next: UntypedRow) -> UntypedRow
@@ -46,58 +45,52 @@ class UntypedAggregationTransformer(
     ): Flow<UntypedRow> = flow {
         var isTransformationStarted = false
         val transformedRows = AtomicInteger()
+        val receivedRows = metrics.rowsReceived(name, context)
         val aggregatedRows = metrics.rowsAggregated(name, context)
-        val bufferOccupancy = metrics.aggregationBufferOccupancyRatio(name, context)
+        val bufferUtilizationRatio = metrics.aggregationBufferUtilizationRatio(name, context)
         val timer = metrics.transformationDuration(name, context)
         val buffer = LruMap<List<Any?>, UntypedRow>(maxSize = bufferSize)
-        trackProgressOf {
-            try {
-                collector.collect { row ->
-                    if (!isTransformationStarted) {
-                        logger.debug { "ETL transformer [$name] started transformation..." }
-                        isTransformationStarted = true
-                    }
 
-                    val evicted = timer.recordSuspend {
-                        val groupKey = groupKeys.map { row[it] }
-                        val (_, evicted) = buffer.compute(groupKey) { value ->
-                            if (value == null) {
-                                row
-                            } else {
-                                aggregatedRows.increment()
-                                aggregate(value, row)
-                            }
+        try {
+            collector.collect { row ->
+                if (!isTransformationStarted) {
+                    logger.debug { "ETL transformer [$name] started transformation..." }
+                    isTransformationStarted = true
+                }
+                receivedRows.increment()
+
+                val evicted = timer.recordSuspend {
+                    val groupKey = groupKeys.map { row[it] }
+                    val (_, evicted) = buffer.compute(groupKey) { value ->
+                        if (value == null) {
+                            row
+                        } else {
+                            aggregatedRows.increment()
+                            aggregate(value, row)
                         }
-                        transformedRows.incrementAndGet()
-                        bufferOccupancy.set(if (bufferSize == 0) 0.0 else buffer.size.toDouble() / bufferSize.toDouble())
-                        evicted
                     }
-
-                    if (evicted != null) {
-                        emit(evicted)
-                    }
+                    transformedRows.incrementAndGet()
+                    bufferUtilizationRatio.set(if (bufferSize == 0) 0.0 else buffer.size.toDouble() / bufferSize.toDouble())
+                    evicted
                 }
 
-                // Emit remaining aggregated rows
-                buffer.evictAll { _, evicted ->
-                    bufferOccupancy.set(if (bufferSize == 0) 0.0 else buffer.size.toDouble() / bufferSize.toDouble())
+                if (evicted != null) {
                     emit(evicted)
                 }
-            } catch (e: Exception) {
-                logger.error(e) { "ETL transformer [$name] failed during transformation: ${e.message}" }
-                throw e
             }
-            finally {
-                bufferOccupancy.close()
+
+            // Emit remaining aggregated rows
+            buffer.evictAll { _, evicted ->
+                bufferUtilizationRatio.set(if (bufferSize == 0) 0.0 else buffer.size.toDouble() / bufferSize.toDouble())
+                emit(evicted)
             }
-        }.every(loggingFrequency.seconds) {
-            if (isTransformationStarted)
-                logger.debug {
-                    "ETL transformer [$name] transformed ${transformedRows.get()} rows" +
-                            ", buffer occupancy: ${buffer.size}" +
-                            ", buffer occupancy ratio: ${bufferOccupancy.get()}"
-                }
+        } catch (e: Exception) {
+            logger.error(e) { "ETL transformer [$name] failed during transformation: ${e.message}" }
+            throw e
+        } finally {
+            bufferUtilizationRatio.close()
         }
+
         if (isTransformationStarted) {
             logger.debug {
                 "ETL transformer [$name] completed transformation for ${transformedRows.get()} rows"

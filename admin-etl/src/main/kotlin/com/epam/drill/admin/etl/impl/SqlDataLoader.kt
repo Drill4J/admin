@@ -37,12 +37,11 @@ import java.time.Instant
 abstract class SqlDataLoader<T: EtlRow>(
     override val name: String,
     override val batchSize: Int,
-    override val loggingFrequency: Int,
     open val sqlUpsert: String,
     open val sqlDelete: String,
     open val database: Database,
     override val metrics: EtlMeter
-) : BatchDataLoader<T>(name, batchSize, loggingFrequency, metrics) {
+) : BatchDataLoader<T>(name, batchSize, metrics) {
     private val logger = KotlinLogging.logger {}
 
     abstract fun prepareSql(sql: String): PreparedSql<T>

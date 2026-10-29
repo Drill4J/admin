@@ -31,7 +31,6 @@ val EtlConfig.testSessionBuildsExtractor
         database = RawDataWriterDatabaseConfig.database,
         fetchSize = fetchSize,
         extractionLimit = extractionLimit,
-        loggingFrequency = loggingFrequency,
         lastExtractedAtColumnName = "created_at",
         metrics = metrics,
     )
@@ -40,7 +39,6 @@ val EtlConfig.testSessionBuildsAggregator
     get() = UntypedAggregationTransformer(
         name = "test_session_builds_aggregator",
         bufferSize = transformationBufferSize,
-        loggingFrequency = loggingFrequency,
         metrics = metrics,
         groupKeys = listOf(
             "group_id",
@@ -59,7 +57,6 @@ val EtlConfig.testSessionBuildsLoader
         sqlDelete = fromResource("/metrics/db/etl/test_session_builds_delete.sql"),
         database = MetricsDatabaseConfig.database,
         batchSize = batchSize,
-        loggingFrequency = loggingFrequency,
         metrics = metrics,
     )
 

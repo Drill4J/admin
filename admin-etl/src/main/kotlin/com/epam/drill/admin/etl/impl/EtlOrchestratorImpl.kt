@@ -33,6 +33,7 @@ import com.epam.drill.admin.etl.EtlRow
 import com.epam.drill.admin.etl.EtlStatus
 import com.epam.drill.admin.etl.config.EtlMeter
 import com.epam.drill.admin.etl.flow.ClosableFlow
+import com.epam.drill.admin.etl.flow.MeteredChannel
 import com.epam.drill.admin.etl.flow.SubscribableChannelFlow
 import io.ktor.util.collections.ConcurrentMap
 import kotlinx.coroutines.Dispatchers
@@ -110,6 +111,8 @@ open class EtlOrchestratorImpl(
         check(finalTimestamp.isAfter(initTimestamp)) {
             "ETL [$name] worker [$workerId] has no new data to process (init=$initTimestamp, final=$finalTimestamp)"
         }
+        val failedJobs = metrics.jobsFailed(name, job.context)
+        val completedJobs = metrics.jobsCompleted(name, job.context)
         val timer = metrics.jobDuration(name, job.context).start()
         try {
             return extendLeaseOf(job, workerId) {
@@ -120,6 +123,7 @@ open class EtlOrchestratorImpl(
 
                 return@extendLeaseOf when {
                     hasErrors -> {
+                        failedJobs.increment()
                         val errors = results
                             .filter { it.status == EtlStatus.FAILED }
                             .joinToString(separator = "; ") { it.errorMessage ?: "Unknown error" }
@@ -133,6 +137,7 @@ open class EtlOrchestratorImpl(
                     }
 
                     !hasErrors && jobFinished -> {
+                        completedJobs.increment()
                         job.markCompleted(workerId, finalTimestamp)
                         EtlJobResult(
                             job = job,
@@ -161,6 +166,7 @@ open class EtlOrchestratorImpl(
             )
         } catch (e: Throwable) {
             logger.error(e) { "ETL [$name] worker [$workerId] failed: ${e.message}" }
+            failedJobs.increment()
             job.markError(workerId, e.message ?: e::class.java.name)
             return EtlJobResult(
                 job = job,
@@ -323,13 +329,18 @@ open class EtlOrchestratorImpl(
         val sharedFlow = SubscribableChannelFlow<T>(bufferSize)
         val jobs = activePipelines.map { pipeline ->
             async {
+                val ch = MeteredChannel<T>(
+                    capacity = bufferSize,
+                    beforeSendCounter = metrics.rowsExtracted(pipeline.name, context),
+                    afterReceiveCounter = metrics.rowsProcessed(pipeline.name, context)
+                )
                 runPipelineWithExtractionFlow(
                     context = context,
                     period = period,
                     pipeline = pipeline,
                     sinceTimestamp = sinceTimestamps[pipeline.name] ?: initTimestamp,
                     untilTimestamp = finalTimestamp,
-                    sharedFlow = sharedFlow.subscribe(),
+                    sharedFlow = sharedFlow.subscribe(ch),
                     progressTracker = progressTracker,
                 )
             }

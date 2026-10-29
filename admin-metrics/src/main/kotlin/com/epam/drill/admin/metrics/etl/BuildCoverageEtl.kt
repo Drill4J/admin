@@ -29,7 +29,6 @@ val EtlConfig.buildCoverageLoader
         sqlDelete = fromResource("/metrics/db/etl/build_coverage_delete.sql"),
         database = MetricsDatabaseConfig.database,
         batchSize = batchSize,
-        loggingFrequency = loggingFrequency,
         metrics = metrics,
     )
 
@@ -50,34 +49,31 @@ val EtlConfig.buildCoverageAggregator
         )
     )
 
-val EtlConfig.buildCoverageTransformer
+val EtlConfig.buildCoverageEnricher
     get() = BuildCoverageTransformer(
-        name = "build_coverage_transformer",
+        name = "build_coverage_enricher",
         database = RawDataWriterDatabaseConfig.database,
-        bufferSize = buildProbeLayoutCacheSize,
+        lookupCacheSize = buildProbeLayoutCacheSize,
         metrics = metrics,
     )
 
-// reuses globalCoverageExtractor — shared fan-out with buildMethodCoveragePipeline
-val EtlConfig.buildCoveragePipeline
-    get() = pipeline("build_coverage")
+val EtlConfig.incrementalBuildCoveragePipeline
+    get() = pipeline("incremental_build_coverage")
         .extractWith(globalCoverageExtractor)
-        .transformWith(buildCoverageTransformer)
+        .transformWith(buildCoverageEnricher)
         .transformWith(buildCoverageAggregator)
         .loadWith(buildCoverageLoader)
 
-// reuses testLaunchCoverageExtractor — shared fan-out with buildMethodCoverageFromTestLaunchesPipeline
-val EtlConfig.buildCoverageFromTestLaunchesPipeline
-    get() = pipeline("build_coverage_from_test_launches")
+val EtlConfig.incrementalBuildCoverageFromTestLaunchesPipeline
+    get() = pipeline("incremental_build_coverage_from_test_launches")
         .extractWith(testLaunchCoverageExtractor)
-        .transformWith(buildCoverageTransformer)
+        .transformWith(buildCoverageEnricher)
         .transformWith(buildCoverageAggregator)
         .loadWith(buildCoverageLoader)
 
-// reuses coverageExtractor — shared fan-out with historicalBuildMethodCoveragePipeline
 val EtlConfig.historicalBuildCoveragePipeline
-    get() = pipeline("build_coverage")
+    get() = pipeline("historical_build_coverage")
         .extractWith(coverageExtractor)
-        .transformWith(buildCoverageTransformer)
+        .transformWith(buildCoverageEnricher)
         .transformWith(buildCoverageAggregator)
         .loadWith(buildCoverageLoader)

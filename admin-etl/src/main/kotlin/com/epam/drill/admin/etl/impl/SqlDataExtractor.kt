@@ -30,8 +30,6 @@ import java.sql.ResultSetMetaData
 import java.time.Instant
 import java.time.LocalDateTime
 import java.time.ZoneId
-import java.time.ZoneOffset
-import java.util.Date
 import kotlin.system.measureTimeMillis
 import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.toJavaDuration
@@ -42,9 +40,8 @@ abstract class SqlDataExtractor<T : EtlRow>(
     open val sqlQuery: String,
     open val database: Database,
     open val fetchSize: Int,
-    open val loggingFrequency: Int,
     override val metrics: EtlMeter
-) : PageDataExtractor<T>(name, extractionLimit, loggingFrequency, metrics) {
+) : PageDataExtractor<T>(name, extractionLimit, metrics) {
     private val logger = KotlinLogging.logger {}
 
     override suspend fun extractPage(
