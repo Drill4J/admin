@@ -2991,6 +2991,18 @@ class MetricsRepositoryImpl : MetricsRepository {
         )
         executeUpdate(
             """
+                DELETE FROM metrics.build_coverage c
+                WHERE EXISTS (SELECT 1 
+                    FROM metrics.builds b 
+                    WHERE b.updated_at_day < ?
+                        AND b.group_id = c.group_id
+                        AND b.app_id = c.app_id
+                        AND b.build_id = c.build_id
+                )
+                """.trimIndent(), timestamp
+        )
+        executeUpdate(
+            """
                 DELETE FROM metrics.test_session_builds tsb
                 WHERE EXISTS (SELECT 1 
                     FROM metrics.builds b 
@@ -3102,6 +3114,7 @@ class MetricsRepositoryImpl : MetricsRepository {
         deleteBuildMethodTestDefinitionCoverage(groupId, appId = appId, buildId = null, testProjectId = null, testSessionId = null)
         deleteBuildMethodTestSessionCoverage(groupId, appId = appId, buildId = null, testProjectId = null, testSessionId = null)
         deleteBuildMethodCoverage(groupId, appId = appId, buildId = null, testProjectId = null)
+        deleteBuildCoverage(groupId, appId = appId, buildId = null, testProjectId = null, testSessionId = null)
         deleteMethodCoverage(groupId, appId = appId, testProjectId = null)
         deleteTestToCodeMapping(groupId, appId = appId, testProjectId = null)
         deleteTestSessionBuilds(groupId, appId = appId, buildId = null, testProjectId = null, testSessionId = null)
@@ -3118,6 +3131,7 @@ class MetricsRepositoryImpl : MetricsRepository {
         deleteBuildMethodTestDefinitionCoverage(groupId, appId = appId, buildId = buildId, testProjectId = null, testSessionId = null)
         deleteBuildMethodTestSessionCoverage(groupId, appId = appId, buildId = buildId, testProjectId = null, testSessionId = null)
         deleteBuildMethodCoverage(groupId, appId = appId, buildId = buildId, testProjectId = null)
+        deleteBuildCoverage(groupId, appId = appId, buildId = buildId, testProjectId = null, testSessionId = null)
         deleteTestSessionBuilds(groupId, appId = appId, buildId = buildId, testProjectId = null, testSessionId = null)
         deleteBuildMethods(groupId, appId = appId, buildId = buildId)
         deleteBuilds(groupId, appId = appId, buildId = buildId)
@@ -3130,6 +3144,7 @@ class MetricsRepositoryImpl : MetricsRepository {
     ) = transaction {
         deleteBuildMethodTestDefinitionCoverage(groupId, appId = null, buildId = null, testProjectId = testProjectId, testSessionId = testSessionId)
         deleteBuildMethodTestSessionCoverage(groupId, appId = null, buildId = null, testProjectId = testProjectId, testSessionId = testSessionId)
+        deleteBuildCoverage(groupId, appId = null, buildId = null, testProjectId = testProjectId, testSessionId = testSessionId)
         deleteTestLaunches(groupId, testProjectId = testProjectId, testSessionId = testSessionId)
         deleteTestSessionBuilds(groupId, appId = null, buildId = null, testProjectId = testProjectId, testSessionId = testSessionId)
         deleteTestSessions(groupId, testProjectId = testProjectId, testSessionId = testSessionId)
@@ -3142,6 +3157,7 @@ class MetricsRepositoryImpl : MetricsRepository {
         deleteBuildMethodTestDefinitionCoverage(groupId, appId = null, buildId = null, testProjectId = testProjectId, testSessionId = null)
         deleteBuildMethodTestSessionCoverage(groupId, appId = null, buildId = null, testProjectId = testProjectId, testSessionId = null)
         deleteBuildMethodCoverage(groupId, appId = null, buildId = null, testProjectId = testProjectId)
+        deleteBuildCoverage(groupId, appId = null, buildId = null, testProjectId = testProjectId, testSessionId = null)
         deleteMethodCoverage(groupId, appId = null, testProjectId = testProjectId)
         deleteTestToCodeMapping(groupId, appId = null, testProjectId = testProjectId)
         deleteTestLaunches(groupId, testProjectId = testProjectId, testSessionId = null)
@@ -3154,6 +3170,7 @@ class MetricsRepositoryImpl : MetricsRepository {
         deleteBuildMethodTestDefinitionCoverage(groupId, appId = null, buildId = null, testProjectId = null, testSessionId = null)
         deleteBuildMethodTestSessionCoverage(groupId, appId = null, buildId = null, testProjectId = null, testSessionId = null)
         deleteBuildMethodCoverage(groupId, appId = null, buildId = null, testProjectId = null)
+        deleteBuildCoverage(groupId, appId = null, buildId = null, testProjectId = null, testSessionId = null)
         deleteMethodCoverage(groupId, appId = null, testProjectId = null)
         deleteTestToCodeMapping(groupId, appId = null, testProjectId = null)
         deleteTestLaunches(groupId, testProjectId = null, testSessionId = null)
@@ -3254,6 +3271,22 @@ class MetricsRepositoryImpl : MetricsRepository {
             appendOptional(" AND app_id = ?", appId)
             appendOptional(" AND build_id = ?", buildId)
             appendOptional(" AND test_project_id = ?", testProjectId)
+        }
+    }
+
+    private fun Transaction.deleteBuildCoverage(
+        groupId: String,
+        appId: String?,
+        buildId: String?,
+        testProjectId: String?,
+        testSessionId: String?,
+    ) {
+        executeUpdate {
+            append("DELETE FROM metrics.build_coverage WHERE group_id = ?", groupId)
+            appendOptional(" AND app_id = ?", appId)
+            appendOptional(" AND build_id = ?", buildId)
+            appendOptional(" AND test_project_id = ?", testProjectId)
+            appendOptional(" AND test_session_id = ?", testSessionId)
         }
     }
 

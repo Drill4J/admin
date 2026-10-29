@@ -31,7 +31,7 @@ val EtlConfig.testSessionsExtractor
         fetchSize = fetchSize,
         extractionLimit = extractionLimit,
         loggingFrequency = loggingFrequency,
-        lastExtractedAtColumnName = "created_at",
+        lastExtractedAtColumnName = "updated_at",
         metrics = metrics,
     )
 

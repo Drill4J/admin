@@ -487,7 +487,15 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/MethodIgnoreRulesDataResponse'
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/ExclusionRulePayload'
+                  message:
+                    type: string
+                    nullable: true
     put:
       summary: Sync method exclusion rules
       description: |

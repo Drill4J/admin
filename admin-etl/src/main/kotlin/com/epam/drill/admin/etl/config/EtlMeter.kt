@@ -22,9 +22,7 @@ import io.micrometer.core.instrument.Gauge
 import io.micrometer.core.instrument.LongTaskTimer
 import io.micrometer.core.instrument.MeterRegistry
 import io.micrometer.core.instrument.Timer
-import java.time.Instant
 import java.util.concurrent.ConcurrentHashMap
-import java.util.concurrent.atomic.AtomicInteger
 import java.util.concurrent.atomic.AtomicReference
 
 class EtlMeter(val registry: MeterRegistry) {
@@ -34,91 +32,97 @@ class EtlMeter(val registry: MeterRegistry) {
     // re-run repeatedly with identical tags (jobName/context), we must reuse the same backing
     // AtomicInteger/AtomicReference across calls instead of creating a fresh one each time,
     // otherwise later runs would update a value that the registered gauge never reads.
-    private val doubleGauges = ConcurrentHashMap<String, AtomicReference<Double>>()
-    private val integerGauges = ConcurrentHashMap<String, AtomicInteger>()
+    private val gauges = ConcurrentHashMap<String, MutableList<GaugeSample>>()
 
-    fun rowsFetched(jobName: String, context: EtlContext, sinceTimestamp: Instant): Counter {
-        return registerCounter("etl_rows_fetched", jobName, context, sinceTimestamp)
+    fun rowsFetched(jobName: String, context: EtlContext): Counter {
+        return registerCounter("etl_rows_fetched", jobName, context)
     }
 
-    fun rowsExtracted(jobName: String, context: EtlContext, sinceTimestamp: Instant): Counter {
-        return registerCounter("etl_rows_extracted", jobName, context, sinceTimestamp)
+    fun rowsExtracted(jobName: String, context: EtlContext): Counter {
+        return registerCounter("etl_rows_extracted", jobName, context)
     }
 
-    fun rowsAggregated(jobName: String, context: EtlContext, sinceTimestamp: Instant): Counter {
-        return registerCounter("etl_rows_aggregated", jobName, context, sinceTimestamp)
+    fun rowsAggregated(jobName: String, context: EtlContext): Counter {
+        return registerCounter("etl_rows_aggregated", jobName, context)
     }
 
-    fun aggregationBufferOccupancyRatio(jobName: String, context: EtlContext): AtomicReference<Double> {
-        return registerDoubleGauge("etl_aggregation_buffer_occupancy_ratio", jobName, context)
+    fun aggregationBufferOccupancyRatio(jobName: String, context: EtlContext): GaugeSample {
+        return registerDoubleGauge("etl_aggregation_buffer_occupancy_ratio", jobName, context) {
+            it.maxOrNull() ?: 0.0
+        }
     }
 
-    fun extractionBufferOccupancyRatio(jobName: String, context: EtlContext): AtomicInteger {
-        return registerIntegerGauge("etl_extraction_buffer_occupancy_ratio", jobName, context)
+    fun buildProbeLayoutBufferOccupancyRatio(jobName: String, context: EtlContext): GaugeSample {
+        return registerDoubleGauge("etl_build_probe_layout_buffer_occupancy_ratio", jobName, context) {
+            it.maxOrNull() ?: 0.0
+        }
     }
 
-    fun rowsFiltered(jobName: String, context: EtlContext, sinceTimestamp: Instant): Counter {
-        return registerCounter("etl_rows_filtered", jobName, context, sinceTimestamp)
+    fun buildProbeLayoutLoadingDuration(jobName: String, context: EtlContext): Timer {
+        return registerTimer("etl_build_probe_layout_loading_duration", jobName, context)
     }
 
-    fun rowsProcessed(jobName: String, context: EtlContext, sinceTimestamp: Instant): Counter {
-        return registerCounter("etl_rows_processed", jobName, context, sinceTimestamp)
+    fun rowsFiltered(jobName: String, context: EtlContext): Counter {
+        return registerCounter("etl_rows_filtered", jobName, context)
     }
 
-    fun rowsLoaded(jobName: String, context: EtlContext, sinceTimestamp: Instant): Counter {
-        return registerCounter("etl_rows_loaded", jobName, context, sinceTimestamp)
+    fun rowsProcessed(jobName: String, context: EtlContext): Counter {
+        return registerCounter("etl_rows_processed", jobName, context)
     }
 
-    fun rowsSkipped(jobName: String, context: EtlContext, sinceTimestamp: Instant): Counter {
-        return registerCounter("etl_rows_skipped", jobName, context, sinceTimestamp)
+    fun rowsLoaded(jobName: String, context: EtlContext): Counter {
+        return registerCounter("etl_rows_loaded", jobName, context)
     }
 
-    fun loadingFailures(jobName: String, context: EtlContext, sinceTimestamp: Instant): Counter {
-        return registerCounter("etl_loading_failures", jobName, context, sinceTimestamp)
+    fun rowsSkipped(jobName: String, context: EtlContext): Counter {
+        return registerCounter("etl_rows_skipped", jobName, context)
     }
 
-    fun extractionFailures(jobName: String, context: EtlContext, sinceTimestamp: Instant): Counter {
-        return registerCounter("etl_extraction_failures", jobName, context, sinceTimestamp)
+    fun loadingFailures(jobName: String, context: EtlContext): Counter {
+        return registerCounter("etl_loading_failures", jobName, context)
     }
 
-    fun loadingDuration(jobName: String, context: EtlContext, sinceTimestamp: Instant): Timer {
-        return registerTimer("etl_loading_duration", jobName, context, sinceTimestamp)
+    fun extractionFailures(jobName: String, context: EtlContext): Counter {
+        return registerCounter("etl_extraction_failures", jobName, context)
     }
 
-    fun extractionDuration(jobName: String, context: EtlContext, sinceTimestamp: Instant): Timer {
-        return registerTimer("etl_extraction_duration", jobName, context, sinceTimestamp)
+    fun loadingDuration(jobName: String, context: EtlContext): Timer {
+        return registerTimer("etl_loading_duration", jobName, context)
     }
 
-    fun etlDuration(jobName: String, workerId: String, context: EtlContext): LongTaskTimer {
-        return LongTaskTimer.builder("etl_duration")
+    fun extractionDuration(jobName: String, context: EtlContext): Timer {
+        return registerTimer("etl_extraction_duration", jobName, context)
+    }
+
+    fun jobDuration(jobName: String, context: EtlContext): LongTaskTimer {
+        return LongTaskTimer.builder("etl_job_duration")
             .tag("jobName", jobName)
-            .tag("workerId", workerId)
             .tagContext(context)
             .register(registry)
     }
 
-    private fun registerIntegerGauge(metricName: String, jobName: String, context: EtlContext): AtomicInteger {
-        val key = gaugeKey(metricName, jobName, context)
-        return integerGauges.computeIfAbsent(key) {
-            val value = AtomicInteger(0)
-            Gauge.builder(metricName) { value.get() }
-                .tag("jobName", jobName)
-                .tagContext(context)
-                .register(registry)
-            value
-        }
+    fun transformationDuration(jobName: String, context: EtlContext): Timer {
+        return registerTimer("etl_transformation_duration", jobName, context)
     }
 
-    private fun registerDoubleGauge(metricName: String, jobName: String, context: EtlContext): AtomicReference<Double> {
+    private fun registerDoubleGauge(metricName: String, jobName: String, context: EtlContext, aggregation: (List<Double>) -> Double): GaugeSample {
         val key = gaugeKey(metricName, jobName, context)
-        return doubleGauges.computeIfAbsent(key) {
-            val value = AtomicReference(0.0)
-            Gauge.builder(metricName) { value.get() }
-                .tag("jobName", jobName)
-                .tagContext(context)
-                .register(registry)
-            value
+        val sample = GaugeSample(AtomicReference(0.0))
+        gauges.compute(key) { _, list ->
+            if (list != null) {
+                list.removeIf { !it.isActive() }
+                list.add(sample)
+                list
+            } else {
+                val newList = mutableListOf(sample)
+                Gauge.builder(metricName) { aggregation(newList.map { it.get() }) }
+                    .tag("jobName", jobName)
+                    .tagContext(context)
+                    .register(registry)
+                newList
+            }
         }
+        return sample
     }
 
     private fun gaugeKey(metricName: String, jobName: String, context: EtlContext): String {
@@ -129,31 +133,46 @@ class EtlMeter(val registry: MeterRegistry) {
         return "$metricName{$tags}"
     }
 
-    private fun registerCounter(metricName: String, jobName: String, context: EtlContext, sinceTimestamp: Instant): Counter {
+    private fun registerCounter(metricName: String, jobName: String, context: EtlContext): Counter {
         return Counter.builder(metricName)
             .tag("jobName", jobName)
             .tagContext(context)
-            .tag("sinceTimestamp", sinceTimestamp.toString())
             .register(registry)
     }
 
 
-    private fun registerTimer(metricName: String, jobName: String, context: EtlContext, sinceTimestamp: Instant): Timer {
+    private fun registerTimer(metricName: String, jobName: String, context: EtlContext): Timer {
         return Timer.builder(metricName)
             .tag("jobName", jobName)
             .tagContext(context)
-            .tag("sinceTimestamp", sinceTimestamp.toString())
             .register(registry)
     }
 
     private fun tagContext(context: EtlContext, tag: (String, String) -> Unit) {
-        context.toMap()
-            .filterValues { v -> v != null }
-            .map { (k, v) -> k to v.toString() }
-            .forEach { (k, v) -> tag(k, v) }
+        tag("groupId", context.groupId)
     }
+
     private fun <T> Gauge.Builder<T>.tagContext(context: EtlContext) = tagContext(context, this::tag).let { this }
     private fun Counter.Builder.tagContext(context: EtlContext) = tagContext(context, this::tag).let { this }
     private fun Timer.Builder.tagContext(context: EtlContext) = tagContext(context, this::tag).let { this }
     private fun LongTaskTimer.Builder.tagContext(context: EtlContext) = tagContext(context, this::tag).let { this }
+
+    class GaugeSample(
+        private val gauge: AtomicReference<Double>
+    ): AutoCloseable {
+        private var active: Boolean = true
+
+        fun get(): Double = gauge.get()
+
+        fun set(value: Double) {
+            gauge.set(value)
+        }
+
+        fun isActive(): Boolean = active
+
+        override fun close() {
+            gauge.set(0.0)
+            active = false
+        }
+    }
 }

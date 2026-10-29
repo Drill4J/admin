@@ -15,6 +15,7 @@
  */
 package com.epam.drill.admin.metrics.etl
 
+import com.epam.drill.admin.common.config.recordSuspend
 import com.epam.drill.admin.etl.DataTransformer
 import com.epam.drill.admin.etl.EtlContext
 import com.epam.drill.admin.etl.UntypedRow
@@ -23,6 +24,7 @@ import com.epam.drill.admin.etl.flow.LruMap
 import com.epam.drill.admin.etl.impl.UntypedPreparedSql
 import com.epam.drill.admin.metrics.config.executeQueryReturnMap
 import com.epam.drill.admin.metrics.config.fromResource
+import com.epam.drill.admin.metrics.etl.ProbesBitSet.Companion.replaceRange
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
@@ -35,7 +37,7 @@ import java.time.Instant
 class BuildCoverageTransformer(
     override val name: String,
     private val database: Database,
-    private val buildProbeLayoutCacheSize: Int,
+    private val bufferSize: Int,
     private val metrics: EtlMeter,
 ) : DataTransformer<UntypedRow, UntypedRow> {
 
@@ -52,38 +54,57 @@ class BuildCoverageTransformer(
         untilTimestamp: Instant,
         collector: Flow<UntypedRow>,
     ): Flow<UntypedRow> = flow {
-        val buildProbeLayout = LruMap<Triple<String, String, String>, BuildProbeLayout>(maxSize = buildProbeLayoutCacheSize)
+        val buildProbeLayout = LruMap<Triple<String, String, String>, BuildProbeLayout>(maxSize = bufferSize)
+        val bufferOccupancy = metrics.buildProbeLayoutBufferOccupancyRatio(name, context)
+        val filtered = metrics.rowsFiltered(name, context)
+        val timer = metrics.transformationDuration(name, context)
 
-        collector.collect { row ->
-            val groupId = row["group_id"] as? String ?: error("Missing group_id in row: $row")
-            val appId = row["app_id"] as? String ?: error("Missing app_id in row: $row")
-            val buildId = row["build_id"] as? String ?: error("Missing build_id in row: $row")
-            val methodId = row["method_id"] as? String ?: error("Missing method_id in row: $row")
-            val probes = row["probes"] as? PGobject ?: error("Missing probes in row: $row")
+        try {
+            collector.collect { row ->
+                val groupId = row["group_id"] as? String ?: error("Missing group_id in row: $row")
+                val appId = row["app_id"] as? String ?: error("Missing app_id in row: $row")
+                val buildId = row["build_id"] as? String ?: error("Missing build_id in row: $row")
+                val methodId = row["method_id"] as? String ?: error("Missing method_id in row: $row")
+                val probes = row["probes"] as? PGobject ?: error("Missing probes in row: $row")
 
-            val (layout, _) = buildProbeLayout.compute(Triple(groupId, appId, buildId)) { value ->
-                value ?: loadBuildProbeLayout(groupId, appId, buildId)
-            }
+                val (codeProbes, methodProbes) = timer.recordSuspend {
+                    val (layout, _) = buildProbeLayout.compute(Triple(groupId, appId, buildId)) { value ->
+                        value ?: loadBuildProbeLayout(groupId, appId, buildId)
+                    }
+                    bufferOccupancy.set(if (bufferSize == 0) 0.0 else buildProbeLayout.size.toDouble() / bufferSize.toDouble())
 
-            val info = layout.methods[methodId] ?: run {
-                logger.warn { "ETL transformer [$name] skipping method [$methodId] because it is not found in build [$buildId]" }
-                return@collect
-            }
+                    layout.methods[methodId]?.let { info ->
+                        val methodCodeProbes = ProbesBitSet.from(probes)
+                        val buildCodeProbes = ProbesBitSet.probesOf(layout.totalProbes) {
+                            replaceRange(info.probeStartPos, methodCodeProbes)
+                        }
+                        val buildMethodsProbes = ProbesBitSet.probesOf(layout.totalMethods) {
+                            if (methodCodeProbes.hasAnyBit()) {
+                                set(info.methodPos)
+                            }
+                        }
 
-            val codeProbes = positionProbes(probes, info.probeStartPos, info.probesCount, layout.totalProbes)
-            val testedMethod = probes.value?.contains('1') ?: false
-            val singleProbe = PGobject().apply {
-                type = "varbit"
-                value = if (testedMethod) "1" else "0"
-            }
-            val methodProbes = positionProbes(singleProbe, info.methodPos, 1, layout.totalMethods)
+                        buildCodeProbes to buildMethodsProbes
+                    } ?: (null to null)
+                }
 
-            emit(
-                UntypedRow(
-                    row.timestamp,
-                    (row as Map<String, Any?>) + ("code_probes" to codeProbes) + ("method_probes" to methodProbes)
+                if (codeProbes == null || methodProbes == null) {
+                    logger.debug { "ETL transformer [$name] skipping row because probes could not be enriched: $row" }
+                    filtered.increment()
+                    return@collect
+                }
+                emit(
+                    UntypedRow(
+                        row.timestamp,
+                        (row as Map<String, Any?>) + ("code_probes" to codeProbes) + ("method_probes" to methodProbes)
+                    )
                 )
-            )
+            }
+        } catch (e: Exception) {
+            logger.error(e) { "ETL transformer [$name] failed during transformation: ${e.message}" }
+            throw e
+        } finally {
+            bufferOccupancy.close()
         }
     }
 
@@ -120,11 +141,4 @@ class BuildCoverageTransformer(
         return BuildProbeLayout(methods, totalProbes)
     }
 
-    private fun positionProbes(probes: PGobject, probeStartPos: Int, probesCount: Int, totalProbes: Int): PGobject {
-        val str = probes.value ?: ""
-        return PGobject().apply {
-            type = "varbit"
-            value = "0".repeat(probeStartPos) + str + "0".repeat(totalProbes - probeStartPos - probesCount)
-        }
-    }
 }

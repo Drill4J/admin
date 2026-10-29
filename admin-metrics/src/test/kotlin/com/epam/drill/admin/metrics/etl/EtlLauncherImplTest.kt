@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.epam.drill.admin.etl.impl
+package com.epam.drill.admin.metrics.etl
 
 import com.epam.drill.admin.etl.EtlContext
 import com.epam.drill.admin.etl.EtlJob
@@ -22,8 +22,16 @@ import com.epam.drill.admin.etl.EtlJobStatus
 import com.epam.drill.admin.etl.EtlOrchestrator
 import com.epam.drill.admin.etl.EtlPeriod
 import com.epam.drill.admin.etl.EtlPipeline
-import com.epam.drill.admin.etl.SimpleEtlJobsRepository
+import com.epam.drill.admin.etl.EtlJobsRepository
 import com.epam.drill.admin.etl.exception.LockAcquisitionException
+import com.epam.drill.admin.etl.impl.EtlJobsRepositoryImpl
+import com.epam.drill.admin.etl.impl.EtlLauncherImpl
+import com.epam.drill.admin.metrics.config.MetricsDatabaseConfig
+import com.epam.drill.admin.metrics.config.executeUpdate
+import com.epam.drill.admin.test.MetricsDatabaseTests
+import com.epam.drill.admin.test.withTransaction
+import com.epam.drill.admin.writer.rawdata.config.RawDataWriterDatabaseConfig
+import org.junit.jupiter.api.AfterEach
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -38,7 +46,19 @@ import kotlin.test.assertNull
 import kotlin.test.assertTrue
 import kotlin.time.Duration.Companion.milliseconds
 
-class EtlLauncherImplTest {
+class EtlLauncherImplTest : MetricsDatabaseTests({ default, metrics ->
+    RawDataWriterDatabaseConfig.init(default)
+    MetricsDatabaseConfig.init(metrics)
+}) {
+
+    @AfterEach
+    fun cleanupJobs() {
+        withTransaction(MetricsDatabaseConfig.database) {
+            executeUpdate("DELETE FROM metrics.etl_jobs")
+        }
+    }
+
+    private fun newJobsRepository(): EtlJobsRepository = EtlJobsRepositoryImpl(MetricsDatabaseConfig.database)
 
     /**
      * Mock [EtlOrchestrator] that records every [run]/[rerun] invocation and lets tests control
@@ -47,8 +67,9 @@ class EtlLauncherImplTest {
      * launcher-level lock/status bookkeeping can be verified end-to-end.
      */
     private class TestEtlOrchestrator(
-        private val jobsRepository: SimpleEtlJobsRepository,
+        private val jobsRepository: EtlJobsRepository,
         override val name: String = "test-etl",
+        override val lockName: String = name,
         override val pipelines: List<EtlPipeline<*, *>> = emptyList(),
         private val onRun: suspend (EtlJob, String, Instant?) -> EtlJobResult = { job, workerId, _ ->
             EtlJobResult(
@@ -82,8 +103,18 @@ class EtlLauncherImplTest {
 
         private suspend fun applyToRepository(result: EtlJobResult, workerId: String) {
             when (result.status) {
-                EtlJobStatus.COMPLETED -> jobsRepository.markCompleted(result.job, workerId, result.processedUntilTimestamp ?: result.job.period.sinceTimestamp ?: Instant.EPOCH)
-                EtlJobStatus.IDLE -> jobsRepository.markIdle(result.job, workerId, result.processedUntilTimestamp ?: result.job.period.sinceTimestamp ?: Instant.EPOCH)
+                EtlJobStatus.COMPLETED -> jobsRepository.markCompleted(
+                    result.job,
+                    workerId,
+                    result.processedUntilTimestamp ?: result.job.period.sinceTimestamp ?: Instant.EPOCH
+                )
+
+                EtlJobStatus.IDLE -> jobsRepository.markIdle(
+                    result.job,
+                    workerId,
+                    result.processedUntilTimestamp ?: result.job.period.sinceTimestamp ?: Instant.EPOCH
+                )
+
                 EtlJobStatus.ERROR -> jobsRepository.markError(result.job, workerId, result.errorMessage)
                 EtlJobStatus.CANCELLED -> jobsRepository.markCancelled(result.job, workerId)
                 EtlJobStatus.RUNNING, EtlJobStatus.CANCELLING -> Unit
@@ -95,7 +126,7 @@ class EtlLauncherImplTest {
 
     @Test
     fun `run acquires lock, delegates to orchestrator and completes the job`() = runBlocking {
-        val jobsRepository = SimpleEtlJobsRepository()
+        val jobsRepository = newJobsRepository()
         val orchestrator = TestEtlOrchestrator(jobsRepository)
         val launcher = EtlLauncherImpl(setOf(orchestrator), jobsRepository)
 
@@ -114,7 +145,7 @@ class EtlLauncherImplTest {
 
     @Test
     fun `run skips already running job and returns its status without invoking orchestrator`() = runBlocking {
-        val jobsRepository = SimpleEtlJobsRepository()
+        val jobsRepository = newJobsRepository()
         val orchestrator = TestEtlOrchestrator(jobsRepository)
         val launcher = EtlLauncherImpl(setOf(orchestrator), jobsRepository)
 
@@ -133,7 +164,7 @@ class EtlLauncherImplTest {
 
     @Test
     fun `run retries acquiring the lock until it is released and then succeeds`() = runBlocking {
-        val jobsRepository = SimpleEtlJobsRepository()
+        val jobsRepository = newJobsRepository()
         val orchestrator = TestEtlOrchestrator(jobsRepository)
         val launcher = EtlLauncherImpl(setOf(orchestrator), jobsRepository, lockRetryDelay = 20L)
 
@@ -156,7 +187,7 @@ class EtlLauncherImplTest {
 
     @Test
     fun `run throws when the lock cannot be acquired after all retry attempts`() = runBlocking {
-        val jobsRepository = SimpleEtlJobsRepository()
+        val jobsRepository = newJobsRepository()
         val orchestrator = TestEtlOrchestrator(jobsRepository)
         val launcher = EtlLauncherImpl(setOf(orchestrator), jobsRepository, lockRetryDelay = 1L)
 
@@ -173,7 +204,7 @@ class EtlLauncherImplTest {
 
     @Test
     fun `schedule splits a bounded period into up to workers chunks covering it fully`() = runBlocking {
-        val jobsRepository = SimpleEtlJobsRepository()
+        val jobsRepository = newJobsRepository()
         val orchestrator = TestEtlOrchestrator(jobsRepository)
         val launcher = EtlLauncherImpl(setOf(orchestrator), jobsRepository)
 
@@ -195,7 +226,7 @@ class EtlLauncherImplTest {
 
     @Test
     fun `schedule returns a single job for an unbounded period regardless of worker count`() = runBlocking {
-        val jobsRepository = SimpleEtlJobsRepository()
+        val jobsRepository = newJobsRepository()
         val orchestrator = TestEtlOrchestrator(jobsRepository)
         val launcher = EtlLauncherImpl(setOf(orchestrator), jobsRepository)
 
@@ -207,7 +238,7 @@ class EtlLauncherImplTest {
 
     @Test
     fun `schedule skip a chunk overlaps an already active job`(): Unit = runBlocking {
-        val jobsRepository = SimpleEtlJobsRepository()
+        val jobsRepository = newJobsRepository()
         val orchestrator = TestEtlOrchestrator(jobsRepository)
         val launcher = EtlLauncherImpl(setOf(orchestrator), jobsRepository)
 
@@ -224,7 +255,7 @@ class EtlLauncherImplTest {
 
     @Test
     fun `resume runs all resumable jobs and returns their results`() = runBlocking {
-        val jobsRepository = SimpleEtlJobsRepository()
+        val jobsRepository = newJobsRepository()
         val orchestrator = TestEtlOrchestrator(jobsRepository)
         val launcher = EtlLauncherImpl(setOf(orchestrator), jobsRepository)
 
@@ -242,7 +273,7 @@ class EtlLauncherImplTest {
 
     @Test
     fun `resume returns empty list when there is nothing to resume`() = runBlocking {
-        val jobsRepository = SimpleEtlJobsRepository()
+        val jobsRepository = newJobsRepository()
         val orchestrator = TestEtlOrchestrator(jobsRepository)
         val launcher = EtlLauncherImpl(setOf(orchestrator), jobsRepository)
 
@@ -254,7 +285,7 @@ class EtlLauncherImplTest {
 
     @Test
     fun `cancel reaps a CANCELLING row whose lease has expired`() = runBlocking {
-        val jobsRepository = SimpleEtlJobsRepository()
+        val jobsRepository = newJobsRepository()
         val orchestrator = TestEtlOrchestrator(jobsRepository)
         val launcher = EtlLauncherImpl(
             setOf(orchestrator), jobsRepository,
@@ -280,7 +311,7 @@ class EtlLauncherImplTest {
 
     @Test
     fun `cancel throws IllegalStateException when cancelling timeout is exceeded`(): Unit = runBlocking {
-        val jobsRepository = SimpleEtlJobsRepository()
+        val jobsRepository = newJobsRepository()
         val orchestrator = TestEtlOrchestrator(jobsRepository)
         val launcher = EtlLauncherImpl(
             setOf(orchestrator), jobsRepository,
@@ -301,7 +332,7 @@ class EtlLauncherImplTest {
 
     @Test
     fun `overlapping schedule is rejected while cancel is still in flight`() = runBlocking {
-        val jobsRepository = SimpleEtlJobsRepository()
+        val jobsRepository = newJobsRepository()
         val orchestrator = TestEtlOrchestrator(jobsRepository)
         val launcher = EtlLauncherImpl(
             setOf(orchestrator), jobsRepository,
@@ -338,7 +369,7 @@ class EtlLauncherImplTest {
 
     @Test
     fun `rerun cancels active jobs, reschedules and reruns via orchestrator`() = runBlocking {
-        val jobsRepository = SimpleEtlJobsRepository()
+        val jobsRepository = newJobsRepository()
         val orchestrator = TestEtlOrchestrator(jobsRepository)
         val launcher = EtlLauncherImpl(
             setOf(orchestrator), jobsRepository,
@@ -366,5 +397,168 @@ class EtlLauncherImplTest {
         // the stale job must have been cancelled, so the only active job left is the new (completed) one
         val activeJobs = jobsRepository.getActiveJobs(orchestrator.name, context, period)
         assertTrue(activeJobs.isEmpty())
+    }
+
+    @Test
+    fun `schedule is rejected for the same group`() =
+        assertContextsConflict(EtlContext("g1"), EtlContext("g1"))
+
+    @Test
+    fun `schedule is rejected when group conflicts with group and app`() =
+        assertContextsConflict(EtlContext("g1"), EtlContext("g1", appId = "app"))
+
+    @Test
+    fun `schedule is rejected when group conflicts with group, app and build`() =
+        assertContextsConflict(EtlContext("g1"), EtlContext("g1", appId = "app", buildId = "b1"))
+
+    @Test
+    fun `schedule is rejected when group conflicts with group and test session`() =
+        assertContextsConflict(EtlContext("g1"), EtlContext("g1", testSessionId = "ts1"))
+
+    @Test
+    fun `schedule is rejected when group and app conflicts with group, app and build`() =
+        assertContextsConflict(EtlContext("g1", appId = "app"), EtlContext("g1", appId = "app", buildId = "b1"))
+
+    @Test
+    fun `schedule is rejected when group and app conflicts with group and test session`() =
+        assertContextsConflict(EtlContext("g1", appId = "app"), EtlContext("g1", testSessionId = "ts1"))
+
+    @Test
+    fun `schedule is rejected when group, app and build conflicts with group and test session`() =
+        assertContextsConflict(EtlContext("g1", appId = "app", buildId = "b1"), EtlContext("g1", testSessionId = "ts1"))
+
+    @Test
+    fun `schedule is rejected for the same test session`() =
+        assertContextsConflict(EtlContext("g1", testSessionId = "ts1"), EtlContext("g1", testSessionId = "ts1"))
+
+    @Test
+    fun `schedule is created when build does not conflict with other app`() =
+        assertContextsNotConflict(
+            EtlContext("g1", appId = "app1", buildId = "b1"),
+            EtlContext("g1", appId = "app2")
+        )
+
+    @Test
+    fun `schedule is created when group does not conflict with other group`() =
+        assertContextsNotConflict(EtlContext("g1"), EtlContext("g2"))
+
+    @Test
+    fun `schedule is created when app does not conflict with other app`() =
+        assertContextsNotConflict(EtlContext("g1", appId = "app1"), EtlContext("g1", appId = "app2"))
+
+    @Test
+    fun `schedule is created when build does not conflict with other build`() =
+        assertContextsNotConflict(
+            EtlContext("g1", appId = "app1", buildId = "b1"),
+            EtlContext("g1", appId = "app1", buildId = "b2")
+        )
+
+    @Test
+    fun `schedule is created when test session does not conflict with other test session`() =
+        assertContextsNotConflict(
+            EtlContext("g1", testSessionId = "s1"),
+            EtlContext("g1", testSessionId = "s2")
+        )
+
+
+    @Test
+    fun `schedule is rejected when periods overlap under the same lock`() = runBlocking {
+        val jobsRepository = newJobsRepository()
+        val incremental = TestEtlOrchestrator(jobsRepository, name = "incremental", lockName = "metrics")
+        val buildCoverage = TestEtlOrchestrator(jobsRepository, name = "build_coverage", lockName = "metrics")
+        val launcher = EtlLauncherImpl(setOf(incremental, buildCoverage), jobsRepository)
+
+        assertEquals(1, launcher.schedule(incremental.name, context, EtlPeriod.FROM_TODAY, 1).size)
+
+        assertTrue(
+            launcher.schedule(buildCoverage.name, context, EtlPeriod.UNBOUNDED, 1).isEmpty(),
+            "Overlapping period must be rejected"
+        )
+        val past = EtlPeriod(to = LocalDate.now().minusDays(1))
+        assertEquals(
+            1,
+            launcher.schedule(buildCoverage.name, context, past, 1).size,
+            "Non-overlapping period must not conflict"
+        )
+    }
+
+    @Test
+    fun `schedule does not conflict for the same context and period under different locks`() = runBlocking {
+        val jobsRepository = newJobsRepository()
+        val incremental = TestEtlOrchestrator(jobsRepository, name = "incremental", lockName = "metrics")
+        val other = TestEtlOrchestrator(jobsRepository, name = "other", lockName = "other_lock")
+        val launcher = EtlLauncherImpl(setOf(incremental, other), jobsRepository)
+
+        assertEquals(1, launcher.schedule(incremental.name, context, EtlPeriod.UNBOUNDED, 1).size)
+        assertEquals(1, launcher.schedule(other.name, context, EtlPeriod.UNBOUNDED, 1).size)
+    }
+
+    @Test
+    fun `schedule is not affected by ETLs with a different lock`() = runBlocking {
+        val jobsRepository = newJobsRepository()
+        val incremental = TestEtlOrchestrator(jobsRepository, name = "incremental", lockName = "metrics")
+        val testSessionCoverage = TestEtlOrchestrator(
+            jobsRepository, name = "testSessionCoverage", lockName = "test_session_coverage"
+        )
+        val launcher = EtlLauncherImpl(setOf(incremental, testSessionCoverage), jobsRepository)
+
+        assertEquals(1, launcher.schedule(incremental.name, context, EtlPeriod.UNBOUNDED, 1).size)
+        val sessionContext = EtlContext(groupId = "g1", testSessionId = "ts1")
+        assertEquals(1, launcher.schedule(testSessionCoverage.name, sessionContext, EtlPeriod.UNBOUNDED, 1).size)
+    }
+
+    @Test
+    fun `rerun cancels conflicting jobs of other ETLs sharing the lock`() = runBlocking {
+        val jobsRepository = newJobsRepository()
+        val incremental = TestEtlOrchestrator(jobsRepository, name = "incremental", lockName = "metrics")
+        val buildCoverage = TestEtlOrchestrator(jobsRepository, name = "build_coverage", lockName = "metrics")
+        val testSessionCoverage = TestEtlOrchestrator(
+            jobsRepository, name = "testSessionCoverage", lockName = "test_session_coverage"
+        )
+        val launcher = EtlLauncherImpl(
+            setOf(incremental, buildCoverage, testSessionCoverage), jobsRepository,
+            cancelWaitTimeoutMillis = 500L,
+            cancelPollDelayMillis = 10L,
+        )
+
+        val incrementalJob = launcher.schedule(incremental.name, context, EtlPeriod.FROM_TODAY, 1).single()
+        val sessionContext = EtlContext(groupId = "g1", testSessionId = "ts1")
+        val sessionJob = launcher.schedule(testSessionCoverage.name, sessionContext, EtlPeriod.UNBOUNDED, 1).single()
+
+        val buildContext = EtlContext(groupId = "g1", appId = "app", buildId = "b1")
+        val results = launcher.rerun(buildCoverage.name, buildContext, EtlPeriod.UNBOUNDED, 1, withDataDeletion = true)
+
+        assertEquals(1, results.size)
+        assertEquals(EtlJobStatus.COMPLETED, results.single().status)
+        assertNull(jobsRepository.getActiveJob(incrementalJob), "Incremental job sharing the lock must be cancelled")
+        assertTrue(jobsRepository.getActiveJob(sessionJob) != null, "Job under a different lock must stay active")
+    }
+
+    private fun assertContextsConflict(first: EtlContext, second: EtlContext) = runBlocking {
+        val jobsRepository = newJobsRepository()
+        val incremental = TestEtlOrchestrator(jobsRepository, name = "incremental", lockName = "metrics")
+        val buildCoverage = TestEtlOrchestrator(jobsRepository, name = "build_coverage", lockName = "metrics")
+        val launcher = EtlLauncherImpl(setOf(incremental, buildCoverage), jobsRepository)
+        launcher.schedule(incremental.name, first, EtlPeriod.UNBOUNDED, 1)
+
+        val schedule = launcher.schedule(buildCoverage.name, second, EtlPeriod.UNBOUNDED, 1)
+        assertTrue(
+            schedule.isEmpty(),
+            "$second must conflict with an active job for $first"
+        )
+    }
+
+    private fun assertContextsNotConflict(first: EtlContext, second: EtlContext) = runBlocking {
+        val jobsRepository = newJobsRepository()
+        val incremental = TestEtlOrchestrator(jobsRepository, name = "incremental", lockName = "metrics")
+        val buildCoverage = TestEtlOrchestrator(jobsRepository, name = "build_coverage", lockName = "metrics")
+        val launcher = EtlLauncherImpl(setOf(incremental, buildCoverage), jobsRepository)
+        launcher.schedule(incremental.name, first, EtlPeriod.UNBOUNDED, 1)
+
+        val schedule = launcher.schedule(buildCoverage.name, second, EtlPeriod.UNBOUNDED, 1)
+        assertTrue(
+            schedule.isNotEmpty(),
+            "$second must not conflict with an active job for $first"
+        )
     }
 }

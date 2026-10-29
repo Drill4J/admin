@@ -18,13 +18,6 @@ package com.epam.drill.admin.config
 import io.micrometer.core.instrument.Clock
 import io.micrometer.core.instrument.MeterRegistry
 import io.micrometer.core.instrument.Metrics
-import io.micrometer.core.instrument.binder.jvm.ClassLoaderMetrics
-import io.micrometer.core.instrument.binder.jvm.JvmGcMetrics
-import io.micrometer.core.instrument.binder.jvm.JvmMemoryMetrics
-import io.micrometer.core.instrument.binder.jvm.JvmThreadMetrics
-import io.micrometer.core.instrument.binder.system.FileDescriptorMetrics
-import io.micrometer.core.instrument.binder.system.ProcessorMetrics
-import io.micrometer.core.instrument.binder.system.UptimeMetrics
 import io.micrometer.prometheus.PrometheusConfig
 import io.micrometer.prometheus.PrometheusMeterRegistry
 import io.prometheus.client.CollectorRegistry
@@ -50,12 +43,5 @@ private val prometheusRegistry: PrometheusMeterRegistry by lazy {
         if (Metrics.globalRegistry.registries.none { it === registry }) {
             Metrics.addRegistry(registry)
         }
-        ClassLoaderMetrics().bindTo(registry)
-        JvmMemoryMetrics().bindTo(registry)
-        JvmGcMetrics().bindTo(registry)
-        JvmThreadMetrics().bindTo(registry)
-        ProcessorMetrics().bindTo(registry)
-        FileDescriptorMetrics().bindTo(registry)
-        UptimeMetrics().bindTo(registry)
     }
 }

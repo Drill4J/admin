@@ -19,8 +19,14 @@ data class EtlContext(
     val groupId: String,
     val appId: String? = null,
     val buildId: String? = null,
-    val instanceId: String? = null,
     val testSessionId: String? = null,
-    val testDefinitionId: String? = null,
-    val testLaunchId: String? = null,
-)
+) {
+    fun conflictsWith(other: EtlContext): Boolean =
+        groupId == other.groupId &&
+                fieldConflicts(appId, other.appId) &&
+                fieldConflicts(buildId, other.buildId) &&
+                fieldConflicts(testSessionId, other.testSessionId)
+
+    private fun fieldConflicts(a: String?, b: String?): Boolean =
+        a.isNullOrEmpty() || b.isNullOrEmpty() || a == b
+}

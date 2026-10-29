@@ -60,6 +60,7 @@ open class EtlOrchestratorImpl(
     open val processingDelay: Long = 0,
     open val bufferSize: Int = 2000,
     open val lockLeaseSeconds: Long = 180,
+    override val lockName: String = name,
 ) : EtlOrchestrator {
     private val logger = KotlinLogging.logger {}
 
@@ -109,7 +110,7 @@ open class EtlOrchestratorImpl(
         check(finalTimestamp.isAfter(initTimestamp)) {
             "ETL [$name] worker [$workerId] has no new data to process (init=$initTimestamp, final=$finalTimestamp)"
         }
-        val timer = metrics.etlDuration(name, workerId, job.context).start()
+        val timer = metrics.jobDuration(name, job.context).start()
         try {
             return extendLeaseOf(job, workerId) {
                 val results = runPipelines(job, workerId, initTimestamp, finalTimestamp)
@@ -245,9 +246,8 @@ open class EtlOrchestratorImpl(
                 val processedUntilTimestamp = progressTracker.getProcessedUntilTimestamp()
                 val total = Duration.between(initTimestamp, finalTimestamp).toMillis()
                 val processed = Duration.between(initTimestamp, processedUntilTimestamp).toMillis()
-                val progress = ((processed.toDouble() / total) * 100).toInt()
-
-                logger.info { "ETL [$name] worker [$workerId] is still running ${job.period}... Processed until $processedUntilTimestamp, progress: $progress%" }
+                val progress = processed.toDouble() / total
+                logger.info { "ETL [$name] worker [$workerId] is still running ${job.period}... Processed until $processedUntilTimestamp, progress: ${(progress * 100).toInt()}%" }
                 jobsRepository.updateProcessedUntilTimestamp(
                     job,
                     workerId,
