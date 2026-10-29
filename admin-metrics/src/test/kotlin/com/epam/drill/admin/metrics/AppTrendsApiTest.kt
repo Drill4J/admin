@@ -16,27 +16,16 @@
 package com.epam.drill.admin.metrics
 
 import com.epam.drill.admin.common.service.generateBuildId
-import com.epam.drill.admin.metrics.config.MetricsDatabaseConfig
-import com.epam.drill.admin.test.MetricsDatabaseTests
-import com.epam.drill.admin.test.withTransaction
-import com.epam.drill.admin.writer.rawdata.config.RawDataWriterDatabaseConfig
-import com.epam.drill.admin.writer.rawdata.table.BuildTable
 import com.jayway.jsonpath.JsonPath
-import io.ktor.client.HttpClient
 import io.ktor.client.request.get
 import io.ktor.client.request.parameter
 import io.ktor.client.statement.bodyAsText
 import io.ktor.http.HttpStatusCode
-import org.jetbrains.exposed.sql.deleteAll
-import org.junit.jupiter.api.AfterEach
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
-class AppTrendsApiTest : MetricsDatabaseTests({ default, metrics ->
-    RawDataWriterDatabaseConfig.init(default)
-    MetricsDatabaseConfig.init(metrics)
-}) {
+class AppTrendsApiTest : MetricsApiTests() {
     private val build1Id = generateBuildId(
         testGroup, testApp, build1.instanceId, null, build1.buildVersion
     )
@@ -146,10 +135,5 @@ class AppTrendsApiTest : MetricsDatabaseTests({ default, metrics ->
                 .find { it["buildId"] == build1Id }?.let { (it["aggregatedCoveragePercent"] as Number).toDouble() }
             assertTrue(coverageA != null && coverageB != null)
         }
-    }
-
-    @AfterEach
-    fun clearAll() = withTransaction(RawDataWriterDatabaseConfig.database) {
-        BuildTable.deleteAll()
     }
 }

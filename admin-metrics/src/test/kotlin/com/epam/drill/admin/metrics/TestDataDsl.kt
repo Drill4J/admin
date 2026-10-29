@@ -34,6 +34,7 @@ import com.epam.drill.admin.writer.rawdata.config.dataManagementServicesDIModule
 import com.epam.drill.admin.writer.rawdata.config.rawDataServicesDIModule
 import com.epam.drill.admin.writer.rawdata.route.dataIngestRoutes
 import com.epam.drill.admin.writer.rawdata.route.dataManagementRoutes
+import com.epam.drill.admin.writer.rawdata.route.payload.BuildPayload
 import com.epam.drill.admin.writer.rawdata.route.payload.InstancePayload
 import com.epam.drill.admin.writer.rawdata.route.payload.TestSessionPayload
 import com.epam.drill.admin.writer.rawdata.route.payload.SingleMethodPayload
@@ -67,8 +68,13 @@ fun havingData(testsData: suspend TestDataDsl.() -> Unit): HttpClient {
             dataManagementServicesDIModule,
             metricsDIModule,
             etlDIModule,
-            scheduler
-        ) {
+            scheduler, configuration = {
+                put("drill.etl.lockLeaseSeconds", "5")
+                put("drill.etl.lockRetryDelaySeconds", "1")
+                put("drill.etl.lockAttempts", "1")
+                put("drill.etl.maxWorkers", "1")
+                put("drill.rawData.queue.capacity", "0")
+            }) {
             dataIngestRoutes()
             dataManagementRoutes()
             metricsRoutes()
@@ -122,9 +128,7 @@ class TestDataDsl(val client: HttpClient) {
     val sessions = mutableSetOf<Pair<String, String>>()
 
     suspend fun build() {
-        builds.forEach { (b, m) ->
-            client.deployInstance(b, m.toTypedArray())
-        }
+        builds.forEach { (b, m) -> client.deployInstance(b, m) }
     }
 
     suspend infix fun InstancePayload.has(methods: List<SingleMethodPayload>) {

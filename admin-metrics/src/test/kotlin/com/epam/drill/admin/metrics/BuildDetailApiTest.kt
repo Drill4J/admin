@@ -16,26 +16,21 @@
 package com.epam.drill.admin.metrics
 
 import com.epam.drill.admin.common.service.generateBuildId
-import com.epam.drill.admin.metrics.config.MetricsDatabaseConfig
-import com.epam.drill.admin.test.MetricsDatabaseTests
-import com.epam.drill.admin.test.withTransaction
-import com.epam.drill.admin.writer.rawdata.config.RawDataWriterDatabaseConfig
-import com.epam.drill.admin.writer.rawdata.table.BuildTable
+import com.epam.drill.admin.writer.rawdata.route.payload.BuildInfoPayload
+import com.epam.drill.admin.writer.rawdata.route.payload.BuildPayload
+import com.epam.drill.admin.writer.rawdata.route.payload.InstancePayload
 import com.jayway.jsonpath.JsonPath
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.put
 import io.ktor.client.request.get
 import io.ktor.client.request.parameter
 import io.ktor.client.statement.bodyAsText
 import io.ktor.http.HttpStatusCode
-import org.jetbrains.exposed.sql.deleteAll
-import org.junit.jupiter.api.AfterEach
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
-class BuildDetailApiTest : MetricsDatabaseTests({ default, metrics ->
-    RawDataWriterDatabaseConfig.init(default)
-    MetricsDatabaseConfig.init(metrics)
-}) {
+class BuildDetailApiTest : MetricsApiTests() {
     private val build1Id = generateBuildId(
         testGroup, testApp, build1.instanceId, null, build1.buildVersion
     )
@@ -44,98 +39,132 @@ class BuildDetailApiTest : MetricsDatabaseTests({ default, metrics ->
     )
 
     @Test
-    fun `get build by id should return build details with statistics`() { havingData {
-        build1 has listOf(method1, method2)
-    }.expectThat {
-        client.get("/metrics/builds/$build1Id").apply {
-            assertEquals(HttpStatusCode.OK, status)
-            val json = JsonPath.parse(bodyAsText())
-            val data = json.read<Map<String, Any>>("$.data")
-            assertEquals(testGroup, data["groupId"])
-            assertEquals(testApp, data["appId"])
-            assertEquals(build1Id, data["buildId"])
-            assertEquals(2, data["totalMethods"])
+    fun `get build by id should return build details with statistics`() {
+        havingData {
+            build1 has listOf(method1, method2)
+        }.expectThat {
+            client.get("/metrics/builds/$build1Id").apply {
+                assertEquals(HttpStatusCode.OK, status)
+                val json = JsonPath.parse(bodyAsText())
+                val data = json.read<Map<String, Any>>("$.data")
+                assertEquals(testGroup, data["groupId"])
+                assertEquals(testApp, data["appId"])
+                assertEquals(build1Id, data["buildId"])
+                assertEquals(2, data["totalMethods"])
+            }
         }
-    }}
+    }
 
     @Test
-    fun `get changes summary should return change counts vs baseline`() { havingData {
-        build1 has listOf(method1, method2)
-        build2 hasModified method2 comparedTo build1
-        build2 hasNew method3 comparedTo build1
-    }.expectThat {
-        client.get("/metrics/builds/$build2Id/changes-summary") {
-            parameter("baselineBuildId", build1Id)
-        }.apply {
-            assertEquals(HttpStatusCode.OK, status)
-            val json = JsonPath.parse(bodyAsText())
-            val data = json.read<Map<String, Any>>("$.data")
-            assertEquals(1, data["newMethods"])
-            assertEquals(1, data["modifiedMethods"])
-            assertTrue(data.containsKey("impactedTests"))
-            assertTrue(data.containsKey("impactedMethods"))
-        }
-    }}
-
-    @Test
-    fun `get similar builds should return baseline candidates`() { havingData {
-        build1 has listOf(method1, method2)
-        build2 hasModified method2 comparedTo build1
-    }.expectThat {
-        client.get("/metrics/builds/$build2Id/similar-builds").apply {
-            assertEquals(HttpStatusCode.OK, status)
-            val json = JsonPath.parse(bodyAsText())
-            val data = json.read<List<Map<String, Any>>>("$.data")
-            assertTrue(data.isNotEmpty())
-            assertTrue(data.any { it["buildId"] == build1Id })
-        }
-    }}
-
-    @Test
-    fun `given testProjectIds filter, coverage-by-probes should include only matching test project coverage`() { havingData {
-        build1 has listOf(method1, method2)
-        test1 of session1.testProjectId("project-a") covers method1 with probesOf(1, 1) on build1
-        test2 of session2.testProjectId("project-b") covers method2 with probesOf(1, 1, 1) on build1
-    }.expectThat {
-        client.get("/metrics/builds/$build1Id/coverage-by-probes") {
-            parameter("testProjectIds", "project-a")
-        }.apply {
-            assertEquals(HttpStatusCode.OK, status)
-            val slices = JsonPath.parse(bodyAsText()).read<List<Map<String, Any>>>("$.data.slices")
-            val sliceByMetric = slices.associate { it["metric"] as String to (it["value"] as Int) }
-            assertEquals(2, sliceByMetric["covered"] ?: 0) // only method1's 2 probes covered by project-a
-        }
-    }}
-
-    @Test
-    fun `get coverage by probes should return covered in other builds slice`() { havingData {
-        build1 has listOf(method1, method2, method4)
-        build2 hasModified method2 comparedTo build1
-        build3 hasDeleted method4 comparedTo build2
-        build3 hasNew method3 comparedTo build2
-        test1 covers method2 with probesOf(1, 1, 0) on build2
-        test2 covers method2 with probesOf(0, 0, 1) on build3
-    }.expectThat {
-        val build3Id = generateBuildId(
-            testGroup, testApp, build3.instanceId, null, build3.buildVersion
+    fun `get build by id should return status and agent metadata`() {
+        val build = InstancePayload(
+            groupId = testGroup,
+            appId = testApp,
+            instanceId = "instance-1",
+            buildVersion = "1.0.0",
+            agentVersion = "0.9.1",
+            agentEnvironment = buildJsonObject {
+                put("OS", "linux")
+            },
+            agentParams = buildJsonObject {
+                put("packagePrefixes", "com.example")
+            }
         )
-        client.get("/metrics/builds/$build3Id/coverage-by-probes").apply {
-            assertEquals(HttpStatusCode.OK, status)
-            val json = JsonPath.parse(bodyAsText())
-            val slices = json.read<List<Map<String, Any>>>("$.data.slices")
-            val sliceByMetric = slices.associate { it["metric"] as String to (it["value"] as Int) }
-            assertTrue((sliceByMetric["covered_in_other_builds"] ?: 0) > 0)
-            assertEquals(
-                sliceByMetric.values.sum(),
-                (sliceByMetric["covered"] ?: 0) +
-                    (sliceByMetric["covered_in_other_builds"] ?: 0) +
-                    (sliceByMetric["gaps"] ?: 0),
-            )
+        havingData {
+            build has listOf(method1, method2)
+        }.expectThat {
+            client.get("/metrics/builds/${build.buildId}").apply {
+                assertEquals(HttpStatusCode.OK, status)
+                val data = JsonPath.parse(bodyAsText()).read<Map<String, Any>>("$.data")
+                assertEquals("VALID", data["validationStatus"])
+                assertEquals("0.9.1", data["agentVersion"])
+                assertEquals(mapOf("OS" to "linux"), data["agentEnv"])
+                assertEquals(mapOf("packagePrefixes" to "com.example"), data["agentParams"])
+            }
         }
-    }}
+    }
 
-    @AfterEach
-    fun clearAll() = withTransaction(RawDataWriterDatabaseConfig.database) {
-        BuildTable.deleteAll()
+    @Test
+    fun `get changes summary should return change counts vs baseline`() {
+        havingData {
+            build1 has listOf(method1, method2)
+            build2 hasModified method2 comparedTo build1
+            build2 hasNew method3 comparedTo build1
+        }.expectThat {
+            client.get("/metrics/builds/$build2Id/changes-summary") {
+                parameter("baselineBuildId", build1Id)
+            }.apply {
+                assertEquals(HttpStatusCode.OK, status)
+                val json = JsonPath.parse(bodyAsText())
+                val data = json.read<Map<String, Any>>("$.data")
+                assertEquals(1, data["newMethods"])
+                assertEquals(1, data["modifiedMethods"])
+                assertTrue(data.containsKey("impactedTests"))
+                assertTrue(data.containsKey("impactedMethods"))
+            }
+        }
+    }
+
+    @Test
+    fun `get similar builds should return baseline candidates`() {
+        havingData {
+            build1 has listOf(method1, method2)
+            build2 hasModified method2 comparedTo build1
+        }.expectThat {
+            client.get("/metrics/builds/$build2Id/similar-builds").apply {
+                assertEquals(HttpStatusCode.OK, status)
+                val json = JsonPath.parse(bodyAsText())
+                val data = json.read<List<Map<String, Any>>>("$.data")
+                assertTrue(data.isNotEmpty())
+                assertTrue(data.any { it["buildId"] == build1Id })
+            }
+        }
+    }
+
+    @Test
+    fun `given testProjectIds filter, coverage-by-probes should include only matching test project coverage`() {
+        havingData {
+            build1 has listOf(method1, method2)
+            test1 of session1.testProjectId("project-a") covers method1 with probesOf(1, 1) on build1
+            test2 of session2.testProjectId("project-b") covers method2 with probesOf(1, 1, 1) on build1
+        }.expectThat {
+            client.get("/metrics/builds/$build1Id/coverage-by-probes") {
+                parameter("testProjectIds", "project-a")
+            }.apply {
+                assertEquals(HttpStatusCode.OK, status)
+                val slices = JsonPath.parse(bodyAsText()).read<List<Map<String, Any>>>("$.data.slices")
+                val sliceByMetric = slices.associate { it["metric"] as String to (it["value"] as Int) }
+                assertEquals(2, sliceByMetric["covered"] ?: 0) // only method1's 2 probes covered by project-a
+            }
+        }
+    }
+
+    @Test
+    fun `get coverage by probes should return covered in other builds slice`() {
+        havingData {
+            build1 has listOf(method1, method2, method4)
+            build2 hasModified method2 comparedTo build1
+            build3 hasDeleted method4 comparedTo build2
+            build3 hasNew method3 comparedTo build2
+            test1 covers method2 with probesOf(1, 1, 0) on build2
+            test2 covers method2 with probesOf(0, 0, 1) on build3
+        }.expectThat {
+            val build3Id = generateBuildId(
+                testGroup, testApp, build3.instanceId, null, build3.buildVersion
+            )
+            client.get("/metrics/builds/$build3Id/coverage-by-probes").apply {
+                assertEquals(HttpStatusCode.OK, status)
+                val json = JsonPath.parse(bodyAsText())
+                val slices = json.read<List<Map<String, Any>>>("$.data.slices")
+                val sliceByMetric = slices.associate { it["metric"] as String to (it["value"] as Int) }
+                assertTrue((sliceByMetric["covered_in_other_builds"] ?: 0) > 0)
+                assertEquals(
+                    sliceByMetric.values.sum(),
+                    (sliceByMetric["covered"] ?: 0) +
+                            (sliceByMetric["covered_in_other_builds"] ?: 0) +
+                            (sliceByMetric["gaps"] ?: 0),
+                )
+            }
+        }
     }
 }
