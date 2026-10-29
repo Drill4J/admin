@@ -42,6 +42,31 @@ class BuildDiffReportApiTest : MetricsApiTests() {
     }
 
     @Test
+    fun `given method ignore rule, build-diff-report service should exclude ignored methods from total changes`() {
+        havingData {
+            build1 has listOf(method1, method2)
+            build2 hasModified method2 comparedTo build1
+            build2 hasNew method3 comparedTo build1
+            build2 hasNew method4 comparedTo build1
+            client.postMethodIgnoreRule(
+                groupId = testGroup,
+                appId = testApp,
+                namePattern = "method3"
+            )
+        }.expectThat {
+            client.get("/metrics/build-diff-report") {
+                parameter("groupId", testGroup)
+                parameter("appId", testApp)
+                parameter("buildVersion", build2.buildVersion)
+                parameter("baselineBuildVersion", build1.buildVersion)
+            }.returnsSingle("$.data.metrics") { metrics ->
+                assertEquals(1, metrics["changes_new_methods"])
+                assertEquals(1, metrics["changes_modified_methods"])
+            }
+        }
+    }
+
+    @Test
     fun `given tested changes, build-diff-report service should calculate total tested changes by change type`() {
         havingData {
             build1 has listOf(method1, method2)

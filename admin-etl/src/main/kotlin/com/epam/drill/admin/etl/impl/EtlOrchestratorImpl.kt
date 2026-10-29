@@ -247,7 +247,7 @@ open class EtlOrchestratorImpl(
                 val processed = Duration.between(initTimestamp, processedUntilTimestamp).toMillis()
                 val progress = ((processed.toDouble() / total) * 100).toInt()
 
-                logger.info { "ETL [$name] worker [$workerId] is still running ${job.period} ... Progress: $progress%" }
+                logger.info { "ETL [$name] worker [$workerId] is still running ${job.period}... Processed until $processedUntilTimestamp, progress: $progress%" }
                 jobsRepository.updateProcessedUntilTimestamp(
                     job,
                     workerId,
@@ -397,7 +397,7 @@ open class EtlOrchestratorImpl(
                 sinceTimestamp = sinceTimestamp,
                 untilTimestamp = untilTimestamp,
                 extractionFlow = sharedFlow,
-                onTransformationProgress = { lastProcessedAt ->
+                onExtractionProgress = { lastProcessedAt ->
                     progressTracker.register(pipeline.name, lastProcessedAt)
                 },
                 onLoadingProgress = { result ->

@@ -1,4 +1,4 @@
------------------------------------------------------------------
+﻿-----------------------------------------------------------------
 -- Repeatable migration script to create functions for metrics
 -----------------------------------------------------------------
 
@@ -45,7 +45,7 @@ BEGIN
         m.method_params::VARCHAR,
         m.return_type::VARCHAR AS return_type
     FROM metrics.build_methods bm
-    JOIN metrics.methods m ON m.group_id = bm.group_id AND m.app_id = bm.app_id AND m.method_id = bm.method_id
+    JOIN metrics.methods m ON m.group_id = bm.group_id AND m.app_id = bm.app_id AND m.method_id = bm.method_id AND m.ignore = false
     WHERE bm.group_id = _group_id
         AND bm.app_id = _app_id
         AND bm.build_id = input_build_id
@@ -138,7 +138,7 @@ BEGIN
 			BIT_COUNT(BIT_OR(COALESCE(sc.probes, REPEAT('0', m.probes_count)::VARBIT) | COALESCE(ic.probes, REPEAT('0', m.probes_count)::VARBIT))) AS covered_probes
 		FROM metrics.build_methods bm
 		JOIN metrics.builds b ON b.group_id = bm.group_id AND b.app_id = bm.app_id AND b.build_id = bm.build_id
-		JOIN metrics.methods m ON m.group_id = bm.group_id AND m.app_id = bm.app_id AND m.method_id = bm.method_id
+		JOIN metrics.methods m ON m.group_id = bm.group_id AND m.app_id = bm.app_id AND m.method_id = bm.method_id AND m.ignore = false
 		LEFT JOIN metrics.build_methods baseline_bm ON baseline_bm.group_id = bm.group_id AND baseline_bm.app_id = bm.app_id
 			AND baseline_bm.build_id = input_baseline_build_id
 			AND baseline_bm.method_id = bm.method_id
@@ -416,9 +416,9 @@ BEGIN
                     (CASE WHEN baseline_bm.method_id IS NULL THEN 1 ELSE 0 END) AS change_methods_count,
                     REPEAT(CASE WHEN baseline_bm.method_id IS NULL THEN '1' ELSE '0' END, m.probes_count::INT)::VARBIT AS mask
                 FROM metrics.builds b
-                         JOIN metrics.build_methods bm ON b.group_id = bm.group_id AND b.app_id = bm.app_id AND b.build_id = bm.build_id
-                         JOIN metrics.methods m ON m.group_id = bm.group_id AND m.app_id = bm.app_id AND m.method_id = bm.method_id
-                         LEFT JOIN metrics.build_methods baseline_bm ON baseline_bm.group_id = bm.group_id AND baseline_bm.app_id = bm.app_id
+                JOIN metrics.build_methods bm ON b.group_id = bm.group_id AND b.app_id = bm.app_id AND b.build_id = bm.build_id
+                JOIN metrics.methods m ON m.group_id = bm.group_id AND m.app_id = bm.app_id AND m.method_id = bm.method_id
+                LEFT JOIN metrics.build_methods baseline_bm ON baseline_bm.group_id = bm.group_id AND baseline_bm.app_id = bm.app_id
                     AND baseline_bm.build_id = input_baseline_build_id
                     AND baseline_bm.method_id = bm.method_id
                 WHERE b.group_id = _group_id
@@ -433,8 +433,8 @@ BEGIN
                     m.build_id,
                     SUM(m.change_probes_count) AS total_change_probes,
                     SUM(m.change_methods_count) AS total_change_methods,
-                    STRING_AGG(m.mask::TEXT, '' ORDER BY m.method_id)::VARBIT AS code_mask,
-                    STRING_AGG(CASE WHEN m.change_methods_count = 1 THEN '1' ELSE '0' END, '' ORDER BY m.method_id)::VARBIT AS method_mask
+                    STRING_AGG(m.mask::TEXT, '' ORDER BY m.method_id)::VARBIT AS code_change_mask,
+                    STRING_AGG(CASE WHEN m.change_methods_count = 1 THEN '1' ELSE '0' END, '' ORDER BY m.method_id)::VARBIT AS method_change_mask
                 FROM build_method_changes m
                 GROUP BY m.group_id, m.app_id, m.build_id
                 HAVING SUM(m.change_methods_count) > 0
@@ -447,9 +447,9 @@ BEGIN
                     bm.method_id,
                     BIT_OR(COALESCE(sc.probes, REPEAT('0', m.probes_count::INT)::VARBIT)) AS probes
                 FROM metrics.builds b
-                         JOIN metrics.build_methods bm ON b.group_id = bm.group_id AND b.app_id = bm.app_id AND b.build_id = bm.build_id
-                         JOIN metrics.methods m ON m.group_id = bm.group_id AND m.app_id = bm.app_id AND m.method_id = bm.method_id
-                         LEFT JOIN metrics.method_daily_coverage sc ON sc.group_id = b.group_id AND sc.app_id = b.app_id AND sc.method_id = bm.method_id
+                JOIN metrics.build_methods bm ON b.group_id = bm.group_id AND b.app_id = bm.app_id AND b.build_id = bm.build_id
+                JOIN metrics.methods m ON m.group_id = bm.group_id AND m.app_id = bm.app_id AND m.method_id = bm.method_id
+                LEFT JOIN metrics.method_daily_coverage sc ON sc.group_id = b.group_id AND sc.app_id = b.app_id AND sc.method_id = bm.method_id
                     -- Filters by smart coverage
                     AND (is_smart_coverage_before_build IS false OR sc.created_at_day <= b.created_at_day)
                     AND (input_coverage_branches IS NULL OR sc.branch = ANY(input_coverage_branches::VARCHAR[]))
@@ -479,28 +479,43 @@ BEGIN
                     b.build_id,
                     MIN(b.total_probes) AS total_probes,
                     MIN(b.total_methods) AS total_methods,
-                    BIT_COUNT(BIT_OR(ic.code_probes)) AS isolated_covered_probes,
-                    BIT_COUNT(BIT_OR(ic.method_probes)) AS isolated_tested_methods,
-                    BIT_COUNT(BIT_OR(COALESCE(sc.code_probes, REPEAT('0', b.total_probes::INT)::VARBIT) | COALESCE(ic.code_probes, REPEAT('0', b.total_probes::INT)::VARBIT))) AS covered_probes,
-                    BIT_COUNT(BIT_OR(COALESCE(sc.method_probes, REPEAT('0', b.total_methods::INT)::VARBIT) | COALESCE(ic.method_probes, REPEAT('0', b.total_methods::INT)::VARBIT))) AS tested_methods,
-
+                    BIT_COUNT(BIT_OR(ic.code_probes & b.code_ignore_mask)) AS isolated_covered_probes,
+                    BIT_COUNT(BIT_OR(ic.method_probes & b.method_ignore_mask)) AS isolated_tested_methods,
+                    BIT_COUNT(BIT_OR(
+                            (COALESCE(sc.code_probes, REPEAT('0', BIT_LENGTH(b.code_ignore_mask)::INT)::VARBIT)
+                                | COALESCE(ic.code_probes, REPEAT('0', BIT_LENGTH(b.code_ignore_mask)::INT)::VARBIT)
+                            ) & b.code_ignore_mask
+                    )) AS covered_probes,
+                    BIT_COUNT(BIT_OR(
+                            (COALESCE(sc.method_probes, REPEAT('0', BIT_LENGTH(b.method_ignore_mask)::INT)::VARBIT)
+                                 | COALESCE(ic.method_probes, REPEAT('0', BIT_LENGTH(b.method_ignore_mask)::INT)::VARBIT)
+                            ) & b.method_ignore_mask
+                    )) AS tested_methods,
                     MIN(bc.total_change_probes) AS total_change_probes,
                     MIN(bc.total_change_methods) AS total_change_methods,
-                    BIT_COUNT(BIT_OR(ic.code_probes & bc.code_mask)) AS isolated_covered_change_probes,
-                    BIT_COUNT(BIT_OR(ic.method_probes & bc.method_mask)) AS isolated_tested_change_methods,
-                    BIT_COUNT(BIT_OR(COALESCE(sc.code_probes, REPEAT('0', b.total_probes::INT)::VARBIT) | COALESCE(ic.code_probes, REPEAT('0', b.total_probes::INT)::VARBIT) & bc.code_mask)) AS covered_change_probes,
-                    BIT_COUNT(BIT_OR(COALESCE(sc.method_probes, REPEAT('0', b.total_methods::INT)::VARBIT) | COALESCE(ic.method_probes, REPEAT('0', b.total_methods::INT)::VARBIT) & bc.method_mask)) AS tested_change_methods
-                FROM metrics.builds_with_statistics b
-                         LEFT JOIN metrics.build_coverage ic ON ic.group_id = b.group_id AND ic.app_id = b.app_id AND ic.build_id = b.build_id
+                    BIT_COUNT(BIT_OR(ic.code_probes & b.code_ignore_mask & bc.code_change_mask)) AS isolated_covered_change_probes,
+                    BIT_COUNT(BIT_OR(ic.method_probes & b.method_ignore_mask & bc.method_change_mask)) AS isolated_tested_change_methods,
+                    BIT_COUNT(BIT_OR(
+                            (COALESCE(sc.code_probes, REPEAT('0', BIT_LENGTH(b.code_ignore_mask)::INT)::VARBIT)
+                                 | COALESCE(ic.code_probes, REPEAT('0', BIT_LENGTH(b.code_ignore_mask)::INT)::VARBIT)
+                            ) & b.code_ignore_mask & bc.code_change_mask
+                    )) AS covered_change_probes,
+                    BIT_COUNT(BIT_OR(
+                            (COALESCE(sc.method_probes, REPEAT('0', BIT_LENGTH(b.method_ignore_mask)::INT)::VARBIT)
+                                 | COALESCE(ic.method_probes, REPEAT('0', BIT_LENGTH(b.method_ignore_mask)::INT)::VARBIT)
+                            ) & b.method_ignore_mask & bc.method_change_mask
+                    )) AS tested_change_methods
+                FROM metrics.builds b
+                LEFT JOIN metrics.build_coverage ic ON ic.group_id = b.group_id AND ic.app_id = b.app_id AND ic.build_id = b.build_id
                     -- Filters by isolated coverage
                     AND (input_test_session_id IS NULL OR ic.test_session_id = input_test_session_id)
                     AND (input_coverage_app_env_ids IS NULL OR ic.app_env_id = ANY(input_coverage_app_env_ids::VARCHAR[]))
                     AND (input_coverage_test_results IS NULL OR ic.test_result = ANY(input_coverage_test_results::VARCHAR[]))
                     AND (input_coverage_test_project_ids IS NULL OR ic.test_project_id = ANY(input_coverage_test_project_ids::VARCHAR[]))
                     AND (input_coverage_period_from IS NULL OR ic.created_at_day >= input_coverage_period_from)
-                         LEFT JOIN build_smart_coverage sc ON include_smart_coverage IS TRUE
+                 LEFT JOIN build_smart_coverage sc ON include_smart_coverage IS TRUE
                     AND sc.group_id = b.group_id AND sc.app_id = b.app_id AND sc.build_id = b.build_id
-                         LEFT JOIN build_changes bc ON input_baseline_build_id IS NOT NULL
+                 LEFT JOIN build_changes bc ON input_baseline_build_id IS NOT NULL
                     AND bc.group_id = b.group_id AND bc.app_id = b.app_id AND bc.build_Id = b.build_id
                 WHERE b.group_id = _group_id
                   AND b.app_id = _app_id
@@ -608,7 +623,7 @@ BEGIN
                 ELSE null
             END::VARCHAR AS change_type
         FROM metrics.build_methods bm
-        JOIN metrics.methods m ON m.group_id = bm.group_id AND m.app_id = bm.app_id AND m.method_id = bm.method_id
+        JOIN metrics.methods m ON m.group_id = bm.group_id AND m.app_id = bm.app_id AND m.method_id = bm.method_id AND m.ignore = false
         WHERE bm.group_id = _group_id
             AND bm.app_id = _app_id
             AND bm.build_id IN (input_baseline_build_id, input_build_id)
@@ -785,6 +800,7 @@ BEGIN
             SELECT
                 COUNT(*) AS target_total_methods
             FROM metrics.build_methods bm
+            JOIN metrics.methods m ON m.group_id = bm.group_id AND m.app_id = bm.app_id AND m.method_id = bm.method_id AND m.ignore = false
             WHERE bm.group_id = _group_id
                 AND bm.app_id = _app_id
                 AND bm.build_id = input_build_id
@@ -799,6 +815,7 @@ BEGIN
             FROM metrics.build_methods bm
             JOIN metrics.builds b ON b.group_id = bm.group_id AND b.app_id = bm.app_id AND b.build_id = bm.build_id
             JOIN metrics.build_methods tm ON tm.group_id = bm.group_id AND tm.app_id = bm.app_id AND tm.method_id = bm.method_id
+            JOIN metrics.methods m ON m.group_id = bm.group_id AND m.app_id = bm.app_id AND m.method_id = bm.method_id AND m.ignore = false
             WHERE bm.group_id = _group_id
                 AND bm.app_id = _app_id
                 AND tm.build_id = input_build_id
@@ -1267,7 +1284,7 @@ BEGIN
 			BIT_COUNT(BIT_OR(ic.probes)) AS covered_probes
 		FROM metrics.build_methods bm
 		JOIN metrics.builds b ON b.group_id = bm.group_id AND b.app_id = bm.app_id AND b.build_id = bm.build_id
-		JOIN metrics.methods m ON m.group_id = bm.group_id AND m.app_id = bm.app_id AND m.method_id = bm.method_id
+		JOIN metrics.methods m ON m.group_id = bm.group_id AND m.app_id = bm.app_id AND m.method_id = bm.method_id AND m.ignore = false
 		LEFT JOIN metrics.build_method_test_session_coverage ic ON ic.group_id = bm.group_id AND ic.app_id = bm.app_id AND ic.build_id = bm.build_id AND ic.method_id = bm.method_id AND ic.test_session_id = input_test_session_id
 			-- Filters by isolated coverage
 		  	AND (input_coverage_app_env_ids IS NULL OR ic.app_env_id = ANY(input_coverage_app_env_ids::VARCHAR[]))
@@ -1430,7 +1447,7 @@ BEGIN
 			BIT_COUNT(BIT_OR(ic.probes)) AS covered_probes
 		FROM metrics.build_methods bm
 		JOIN metrics.builds b ON b.group_id = bm.group_id AND b.app_id = bm.app_id AND b.build_id = bm.build_id
-		JOIN metrics.methods m ON m.group_id = bm.group_id AND m.app_id = bm.app_id AND m.method_id = bm.method_id
+		JOIN metrics.methods m ON m.group_id = bm.group_id AND m.app_id = bm.app_id AND m.method_id = bm.method_id AND m.ignore = false
 		LEFT JOIN metrics.build_method_test_definition_coverage ic ON ic.group_id = bm.group_id AND ic.app_id = bm.app_id AND ic.build_id = bm.build_id AND ic.method_id = bm.method_id
 		    AND ic.test_session_id = input_test_session_id AND ic.test_definition_id = input_test_definition_id
 			-- Filters by isolated coverage
