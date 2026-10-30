@@ -59,7 +59,7 @@ SELECT
     c.signature,
     c.created_at,
     c.updated_at,
-    DATE_TRUNC('day', c.created_at) AS created_at_day,
+    DATE_TRUNC('day', c.updated_at) AS created_at_day,
     c.probes
 FROM coverage c
 JOIN raw_data.instances i ON i.id = c.instance_id AND i.app_id = c.app_id AND i.group_id = c.group_id
