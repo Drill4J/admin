@@ -45,7 +45,6 @@ import org.quartz.JobBuilder
 import org.quartz.JobDetail
 
 const val DEFAULT_ETL = "incremental"
-const val HISTORICAL_ETL = "historical"
 const val TEST_SESSION_COVERAGE_ETL = "testSessionCoverage"
 const val MERGED_COVERAGE_ETL = "merged_coverage"
 const val BUILD_COVERAGE_ETL = "build_coverage"
@@ -83,55 +82,19 @@ val etlDIModule
                     pipelines = listOf(
                         // Reference data
                         buildsPipeline,
-                        buildMethodsPipeline,
-                        methodsPipeline,
                         testLaunchesPipeline,
                         testDefinitionsPipeline,
                         testSessionsPipeline,
                         testSessionBuildsPipeline,
-                        // Global coverage extractor group
-                        incrementalBuildMethodCoveragePipeline,
-                        incrementalBuildCoveragePipeline,
-                        incrementalMethodCoveragePipeline,
-                        incrementalTestSessionBuildsPipeline,
-                        // Test-launch coverage extractor group
-                        incrementalBuildMethodCoverageFromTestLaunchesPipeline,
-                        incrementalBuildCoverageFromTestLaunchesPipeline,
-                        incrementalMethodCoverageFromTestLaunchesPipeline,
-                        incrementalTest2CodeMappingFromTestLaunchesPipeline,
-                        incrementalTestSessionBuildsFromTestLaunchesPipeline,
-                    ),
-                    metadataRepository = instance(),
-                    jobsRepository = instance(),
-                    metrics = metrics,
-                    consistencyWindow = consistencyWindow,
-                    processingDelay = processingDelay,
-                    bufferSize = bufferSize,
-                    lockLeaseSeconds = lockLeaseSeconds,
-                )
-            }
-        }
-        bind<EtlOrchestrator>(tag = HISTORICAL_ETL) with singleton {
-            val etlConfig = instance<EtlConfig>()
-            with(etlConfig) {
-                EtlOrchestratorImpl(
-                    name = HISTORICAL_ETL,
-                    lockName = METRICS_ETL_LOCK,
-                    pipelines = listOf(
-                        // Reference data
-                        buildsPipeline,
+                        // Build methods extractor group
                         buildMethodsPipeline,
                         methodsPipeline,
-                        testLaunchesPipeline,
-                        testDefinitionsPipeline,
-                        testSessionsPipeline,
-                        testSessionBuildsPipeline,
                         // Coverage extractor group
-                        historicalBuildMethodCoveragePipeline,
-                        historicalBuildCoveragePipeline,
-                        historicalMethodCoveragePipeline,
-                        historicalTest2CodeMappingPipeline,
-                        historicalTestSessionBuildsPipeline,
+                        buildMethodCoveragePipeline,
+                        buildCoveragePipeline,
+                        methodDailyCoveragePipeline,
+                        test2CodeMappingPipeline,
+                        testSessionBuildsFromCoveragePipeline,
                     ),
                     metadataRepository = instance(),
                     jobsRepository = instance(),
@@ -150,9 +113,8 @@ val etlDIModule
                     name = TEST_SESSION_COVERAGE_ETL,
                     lockName = TEST_SESSION_COVERAGE_ETL_LOCK,
                     pipelines = listOf(
-                        incrementalTestSessionCoveragePipeline,
-                        incrementalTestSessionCoverageFromTestLaunchesPipeline,
-                        incrementalTestDefinitionCoverageFromTestLaunchesPipeline
+                        testSessionCoveragePipeline,
+                        testDefinitionCoveragePipeline,
                     ),
                     metadataRepository = instance(),
                     jobsRepository = instance(),
@@ -168,8 +130,8 @@ val etlDIModule
                     name = MERGED_COVERAGE_ETL,
                     lockName = METRICS_ETL_LOCK,
                     pipelines = listOf(
-                        historicalMethodCoveragePipeline,
-                        historicalTest2CodeMappingPipeline,
+                        methodDailyCoveragePipeline,
+                        test2CodeMappingPipeline,
                     ),
                     metadataRepository = instance(),
                     jobsRepository = instance(),
@@ -188,8 +150,8 @@ val etlDIModule
                     name = BUILD_COVERAGE_ETL,
                     lockName = METRICS_ETL_LOCK,
                     pipelines = listOf(
-                        historicalBuildMethodCoveragePipeline,
-                        historicalBuildCoveragePipeline,
+                        buildMethodCoveragePipeline,
+                        buildCoveragePipeline,
                     ),
                     metadataRepository = instance(),
                     jobsRepository = instance(),
@@ -229,7 +191,6 @@ val etlDIModule
             EtlLauncherImpl(
                 orchestrators = setOf(
                     instance<EtlOrchestrator>(tag = DEFAULT_ETL),
-                    instance<EtlOrchestrator>(tag = HISTORICAL_ETL),
                     instance<EtlOrchestrator>(tag = TEST_SESSION_COVERAGE_ETL),
                     instance<EtlOrchestrator>(tag = MERGED_COVERAGE_ETL),
                     instance<EtlOrchestrator>(tag = BUILD_COVERAGE_ETL),
@@ -246,7 +207,6 @@ val etlDIModule
             EtlServiceImpl(
                 launcher = instance(),
                 incrementalEtlName = DEFAULT_ETL,
-                historicalEtlName = HISTORICAL_ETL,
                 testSessionCoverageEtlName = TEST_SESSION_COVERAGE_ETL,
                 mergedCoverageEtlName = MERGED_COVERAGE_ETL,
                 buildCoverageEtlName = BUILD_COVERAGE_ETL,

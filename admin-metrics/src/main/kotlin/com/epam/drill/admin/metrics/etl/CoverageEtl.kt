@@ -28,26 +28,15 @@ import com.epam.drill.admin.writer.rawdata.config.RawDataWriterDatabaseConfig
 import org.postgresql.util.PGobject
 import java.util.BitSet
 
-val EtlConfig.globalCoverageExtractor
+val EtlConfig.coverageExtractor
     get() = UntypedSqlDataExtractor(
-        name = "global_coverage",
-        sqlQuery = fromResource("/metrics/db/etl/global_coverage_extractor.sql"),
+        name = "coverage",
+        sqlQuery = fromResource("/metrics/db/etl/coverage_extractor.sql"),
         database = RawDataWriterDatabaseConfig.database,
         fetchSize = fetchSize,
         extractionLimit = extractionLimit,
         metrics = metrics,
-        lastExtractedAtColumnName = "created_at",
-    )
-
-val EtlConfig.testLaunchCoverageExtractor
-    get() = UntypedSqlDataExtractor(
-        name = "test_launch_coverage",
-        sqlQuery = fromResource("/metrics/db/etl/test_launch_coverage_extractor.sql"),
-        database = RawDataWriterDatabaseConfig.database,
-        fetchSize = fetchSize,
-        extractionLimit = extractionLimit,
-        lastExtractedAtColumnName = "test_completed_at",
-        metrics = metrics,
+        lastExtractedAtColumnName = "updated_at",
     )
 
 val EtlConfig.buildMethodTestDefinitionCoverageLoader
@@ -95,6 +84,16 @@ val EtlConfig.test2CodeMappingLoader
         name = "test_to_code_mapping",
         sqlUpsert = fromResource("/metrics/db/etl/test_to_code_mapping_loader.sql"),
         sqlDelete = fromResource("/metrics/db/etl/test_to_code_mapping_delete.sql"),
+        database = MetricsDatabaseConfig.database,
+        batchSize = batchSize,
+        metrics = metrics,
+    )
+
+val EtlConfig.buildCoverageLoader
+    get() = UntypedSqlDataLoader(
+        name = "build_coverage",
+        sqlUpsert = fromResource("/metrics/db/etl/build_coverage_loader.sql"),
+        sqlDelete = fromResource("/metrics/db/etl/build_coverage_delete.sql"),
         database = MetricsDatabaseConfig.database,
         batchSize = batchSize,
         metrics = metrics,
@@ -187,70 +186,76 @@ val EtlConfig.test2CodeCoverageAggregator
         aggregate = { current, next -> next },
     )
 
-val EtlConfig.incrementalTestSessionCoveragePipeline
-    get() = pipeline("incremental_test_session_coverage")
-        .extractWith(globalCoverageExtractor)
+val EtlConfig.buildCoverageAggregator
+    get() = coverageAggregator(
+        name = "build_coverage_aggregator", groupKeys = listOf(
+            "group_id",
+            "app_id",
+            "build_id",
+            "app_env_id",
+            "test_result",
+            "test_session_id",
+            "test_project_id",
+            "created_at_day"
+        ), probeKeys = listOf(
+            "code_probes",
+            "method_probes"
+        )
+    )
+
+val EtlConfig.buildCoverageEnricher
+    get() = BuildCoverageTransformer(
+        name = "build_coverage_enricher",
+        database = RawDataWriterDatabaseConfig.database,
+        lookupCacheSize = buildProbeLayoutCacheSize,
+        metrics = metrics,
+    )
+
+val EtlConfig.testSessionCoveragePipeline
+    get() = pipeline("test_session_coverage")
+        .extractWith(coverageExtractor)
         .transformWith(hasTestSessionFilter)
         .transformWith(buildMethodTestSessionCoverageAggregator)
         .loadWith(buildMethodTestSessionCoverageLoader)
 
-val EtlConfig.incrementalBuildMethodCoveragePipeline
-    get() = pipeline("incremental_build_method_coverage")
-        .extractWith(globalCoverageExtractor)
-        .transformWith(buildMethodCoverageAggregator)
-        .loadWith(buildMethodCoverageLoader)
-
-val EtlConfig.incrementalMethodCoveragePipeline
-    get() = pipeline("incremental_method_daily_coverage")
-        .extractWith(globalCoverageExtractor)
-        .transformWith(methodCoverageAggregator)
-        .loadWith(methodCoverageLoader)
-
-val EtlConfig.incrementalTestSessionBuildsPipeline
-    get() = pipeline("incremental_test_session_builds")
-        .extractWith(globalCoverageExtractor)
-        .transformWith(hasTestSessionFilter)
-        .transformWith(testSessionBuildsAggregator)
-        .loadWith(testSessionBuildsLoader)
-
-val EtlConfig.incrementalTestDefinitionCoverageFromTestLaunchesPipeline
-    get() = pipeline("incremental_test_definition_coverage_from_test_launches")
-        .extractWith(testLaunchCoverageExtractor)
+val EtlConfig.testDefinitionCoveragePipeline
+    get() = pipeline("test_definition_coverage")
+        .extractWith(coverageExtractor)
         .transformWith(hasTestSessionAndDefinitionFilter)
         .loadWith(buildMethodTestDefinitionCoverageLoader)
 
-val EtlConfig.incrementalTestSessionCoverageFromTestLaunchesPipeline
-    get() = pipeline("incremental_test_session_coverage_from_test_launches")
-        .extractWith(testLaunchCoverageExtractor)
-        .transformWith(hasTestSessionFilter)
-        .transformWith(buildMethodTestSessionCoverageAggregator)
-        .loadWith(buildMethodTestSessionCoverageLoader)
-
-val EtlConfig.incrementalBuildMethodCoverageFromTestLaunchesPipeline
-    get() = pipeline("incremental_build_method_coverage_from_test_launches")
-        .extractWith(testLaunchCoverageExtractor)
+val EtlConfig.buildMethodCoveragePipeline
+    get() = pipeline("build_method_coverage")
+        .extractWith(coverageExtractor)
         .transformWith(buildMethodCoverageAggregator)
         .loadWith(buildMethodCoverageLoader)
 
-val EtlConfig.incrementalMethodCoverageFromTestLaunchesPipeline
-    get() = pipeline("incremental_method_daily_coverage_from_test_launches")
-        .extractWith(testLaunchCoverageExtractor)
+val EtlConfig.methodDailyCoveragePipeline
+    get() = pipeline("method_daily_coverage")
+        .extractWith(coverageExtractor)
         .transformWith(methodCoverageAggregator)
         .loadWith(methodCoverageLoader)
 
-val EtlConfig.incrementalTest2CodeMappingFromTestLaunchesPipeline
-    get() = pipeline("incremental_test_to_code_mapping_from_test_launches")
-        .extractWith(testLaunchCoverageExtractor)
+val EtlConfig.test2CodeMappingPipeline
+    get() = pipeline("test_to_code_mapping")
+        .extractWith(coverageExtractor)
         .transformWith(testPassedFilter)
         .transformWith(test2CodeCoverageAggregator)
         .loadWith(test2CodeMappingLoader)
 
-val EtlConfig.incrementalTestSessionBuildsFromTestLaunchesPipeline
-    get() = pipeline("incremental_test_session_builds_from_test_launches")
-        .extractWith(testLaunchCoverageExtractor)
+val EtlConfig.testSessionBuildsFromCoveragePipeline
+    get() = pipeline("test_session_builds_from_coverage")
+        .extractWith(coverageExtractor)
         .transformWith(hasTestSessionFilter)
         .transformWith(testSessionBuildsAggregator)
         .loadWith(testSessionBuildsLoader)
+
+val EtlConfig.buildCoveragePipeline
+    get() = pipeline("build_coverage")
+        .extractWith(coverageExtractor)
+        .transformWith(buildCoverageEnricher)
+        .transformWith(buildCoverageAggregator)
+        .loadWith(buildCoverageLoader)
 
 internal class ProbesBitSet private constructor(
     private val bits: BitSet,

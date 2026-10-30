@@ -8,12 +8,11 @@ SELECT
     ts.last_heartbeat_at AS last_session_heartbeat_at,
     ts.created_by,
     ts.created_at,
-    COALESCE(ts.last_heartbeat_at, ts.created_at) AS updated_at,
-    DATE_TRUNC('day', ts.created_at) AS created_at_day,
-    DATE_TRUNC('day', COALESCE(ts.last_heartbeat_at, ts.created_at)) AS updated_at_day
+    ts.updated_at,
+    DATE_TRUNC('day', ts.updated_at) AS created_at_day
 FROM raw_data.test_sessions ts
 WHERE ts.group_id = :group_id
-    AND ts.created_at > :since_timestamp
-    AND ts.created_at <= :until_timestamp
-ORDER BY COALESCE(ts.last_heartbeat_at, ts.created_at) ASC, ts.id ASC
+    AND ts.updated_at > :since_timestamp
+    AND ts.updated_at <= :until_timestamp
+ORDER BY ts.updated_at ASC, ts.id ASC
 LIMIT :limit

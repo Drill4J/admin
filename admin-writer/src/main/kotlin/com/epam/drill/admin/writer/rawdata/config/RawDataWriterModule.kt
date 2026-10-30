@@ -100,6 +100,7 @@ val rawDataServicesDIModule
             BuildValidationServiceImpl(
                 buildRepository = instance(),
                 methodRepository = instance(),
+                coverageRepository = instance(),
                 maxValidationWindow = java.time.Duration.ofMinutes(config.maxValidationWindowMinutes),
             )
         }

@@ -20,13 +20,21 @@ import com.epam.drill.admin.writer.rawdata.repository.CoverageRepository
 import com.epam.drill.admin.writer.rawdata.table.InstanceTable
 import com.epam.drill.admin.writer.rawdata.table.MethodCoverageTable
 import com.epam.drill.admin.writer.rawdata.table.TestSessionTable
+import org.jetbrains.exposed.sql.CustomFunction
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.inSubQuery
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.less
 import org.jetbrains.exposed.sql.and
 import org.jetbrains.exposed.sql.batchInsert
 import org.jetbrains.exposed.sql.deleteWhere
+import org.jetbrains.exposed.sql.javatime.JavaLocalDateTimeColumnType
+import org.jetbrains.exposed.sql.update
 import java.time.LocalDate
+
+/**
+ * Per-row timestamp (unlike CURRENT_TIMESTAMP, which is fixed per transaction)
+ */
+private val ClockTimestamp = CustomFunction("clock_timestamp", JavaLocalDateTimeColumnType())
 
 class CoverageRepositoryImpl : CoverageRepository {
     override suspend fun createMany(data: List<Coverage>) {
@@ -40,6 +48,26 @@ class CoverageRepositoryImpl : CoverageRepository {
             this[MethodCoverageTable.testSessionId] = it.testSessionId
             this[MethodCoverageTable.probes] = it.probes
             this[MethodCoverageTable.probesCount] = it.probes.length
+        }
+    }
+
+    override suspend fun updateTimestampByTestIds(groupId: String, testIds: Collection<String>) {
+        if (testIds.isEmpty()) return
+        MethodCoverageTable.update(where = {
+            (MethodCoverageTable.groupId eq groupId) and
+            (MethodCoverageTable.testId inList testIds)
+        }) {
+            it[updatedAt] = ClockTimestamp
+        }
+    }
+
+    override suspend fun updateTimestampByBuildId(groupId: String, appId: String, buildId: String) {
+        MethodCoverageTable.update(where = {
+            (MethodCoverageTable.groupId eq groupId) and
+            (MethodCoverageTable.appId eq appId) and
+            (MethodCoverageTable.buildId eq buildId)
+        }) {
+            it[updatedAt] = ClockTimestamp
         }
     }
 
