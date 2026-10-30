@@ -31,7 +31,7 @@ import java.time.LocalDate
 
 class InstanceRepositoryImpl : InstanceRepository {
 
-    override suspend fun create(instance: Instance) {
+    override suspend fun save(instance: Instance) {
         InstanceTable.upsert(
             onUpdateExclude = listOf(
                 InstanceTable.status,
@@ -51,12 +51,12 @@ class InstanceRepositoryImpl : InstanceRepository {
         }
     }
 
-    override suspend fun updateHeartbeat(instance: InstanceHeartbeat) {
-        InstanceTable.update(where = {
-            (InstanceTable.groupId eq instance.groupId) and
-                    (InstanceTable.appId eq instance.appId) and
-                    (InstanceTable.id eq instance.id)
-        }) {
+    override suspend fun saveHeartbeat(instance: InstanceHeartbeat) {
+        InstanceTable.upsert {
+            it[id] = instance.id
+            it[groupId] = instance.groupId
+            it[appId] = instance.appId
+            it[buildId] = instance.buildId
             it[lastHeartbeatAt] = CurrentDateTime
             it[status] = instance.status.name
         }

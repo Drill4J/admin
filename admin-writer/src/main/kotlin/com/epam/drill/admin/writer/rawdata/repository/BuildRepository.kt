@@ -20,8 +20,9 @@ import com.epam.drill.admin.writer.rawdata.entity.BuildValidationStatus
 import java.time.LocalDate
 
 interface BuildRepository {
-    suspend fun saveBuildInfo(build: Build)
+    suspend fun saveBuildGitInfo(build: Build)
     suspend fun saveBuildId(build: Build)
+    suspend fun saveBuildAgentInfo(build: Build)
     suspend fun existsById(groupId: String, appId: String, buildId: String): Boolean
     suspend fun deleteAllCreatedBefore(groupId: String, createdBefore: LocalDate)
     suspend fun existsByGroupIdAndAppId(groupId: String, appId: String): Boolean

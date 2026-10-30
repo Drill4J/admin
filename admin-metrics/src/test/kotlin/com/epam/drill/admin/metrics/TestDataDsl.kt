@@ -35,6 +35,7 @@ import com.epam.drill.admin.writer.rawdata.config.rawDataServicesDIModule
 import com.epam.drill.admin.writer.rawdata.route.dataIngestRoutes
 import com.epam.drill.admin.writer.rawdata.route.dataManagementRoutes
 import com.epam.drill.admin.writer.rawdata.route.dataManagementWriteRoutes
+import com.epam.drill.admin.writer.rawdata.route.payload.BuildPayload
 import com.epam.drill.admin.writer.rawdata.route.payload.InstancePayload
 import com.epam.drill.admin.writer.rawdata.route.payload.TestSessionPayload
 import com.epam.drill.admin.writer.rawdata.route.payload.SingleMethodPayload
@@ -86,7 +87,8 @@ fun havingData(testsData: suspend TestDataDsl.() -> Unit): HttpClient {
             val testDataDsl = TestDataDsl(this)
             testsData(testDataDsl)
             testDataDsl.build()
-            refreshMetrics(testDataDsl.sessions)
+            reloadMetrics()
+            reloadSessions(testDataDsl.sessions)
         }
     }
 }
@@ -125,16 +127,23 @@ data class ImpactedMethods(
 )
 
 class TestDataDsl(val client: HttpClient) {
-    private val builds = linkedMapOf<InstancePayload, MutableList<SingleMethodPayload>>()
+    private val builds = linkedMapOf<BuildPayload, MutableList<SingleMethodPayload>>()
+    private val instances = linkedMapOf<InstancePayload, MutableList<SingleMethodPayload>>()
     val sessions = mutableSetOf<Pair<String, String>>()
 
     suspend fun build() {
-        builds.forEach { (b, m) -> client.deployInstance(b, m) }
+        builds.forEach { (b, m) -> client.sendBuild(b, m) }
+        instances.forEach { (b, m) -> client.deployInstance(b, m) }
+    }
+
+    suspend infix fun BuildPayload.has(methods: List<SingleMethodPayload>) {
+        val newMethods = methods.recalcProbesStartPos()
+        builds[this] = ArrayList(newMethods)
     }
 
     suspend infix fun InstancePayload.has(methods: List<SingleMethodPayload>) {
         val newMethods = methods.recalcProbesStartPos()
-        builds.put(this, ArrayList(newMethods))
+        instances[this] = ArrayList(newMethods)
     }
 
     suspend infix fun InstancePayload.hasModified(method: SingleMethodPayload) =
@@ -174,8 +183,8 @@ class TestDataDsl(val client: HttpClient) {
     }
 
     suspend infix fun MethodComparison.comparedTo(baseline: InstancePayload) {
-        val baselineMethods = builds.getOrDefault(baseline, ArrayList())
-        val targetMethods = builds.getOrDefault(this.build, ArrayList(baselineMethods)).toMutableList()
+        val baselineMethods = instances.getOrDefault(baseline, ArrayList())
+        val targetMethods = instances.getOrDefault(this.build, ArrayList(baselineMethods)).toMutableList()
         when (this.changeType) {
             ChangeType.NEW -> {
                 targetMethods.add(this.method)
@@ -195,7 +204,7 @@ class TestDataDsl(val client: HttpClient) {
             }
         }
         val newTargetMethods = targetMethods.recalcProbesStartPos()
-        builds.put(this.build, newTargetMethods)
+        instances.put(this.build, newTargetMethods)
     }
 
     private fun List<SingleMethodPayload>.recalcProbesStartPos(): MutableList<SingleMethodPayload> {
@@ -213,8 +222,8 @@ class TestDataDsl(val client: HttpClient) {
     suspend infix fun InstancePayload.hasTheSameMethodsComparedTo(
         baseline: InstancePayload
     ) {
-        val otherMethods = builds.getOrDefault(baseline, ArrayList())
-        builds.put(this, ArrayList(otherMethods))
+        val otherMethods = instances.getOrDefault(baseline, ArrayList())
+        instances.put(this, ArrayList(otherMethods))
     }
 
     private fun isSignatureEqual(one: SingleMethodPayload, other: SingleMethodPayload) =
@@ -224,7 +233,7 @@ class TestDataDsl(val client: HttpClient) {
                 one.returnType == other.returnType
 
     suspend infix fun TestCoverageMap.on(build: InstancePayload) {
-        val methods = builds[build]?.associate {
+        val methods = instances[build]?.associate {
             if (isSignatureEqual(it, this.method))
                 it to this.probes
             else
@@ -239,7 +248,7 @@ class TestDataDsl(val client: HttpClient) {
 }
 
 fun HttpClient.expectThat(
-    onFailed: suspend HttpClient.() -> Unit = { refreshMetrics(emptySet()) },
+    onFailed: suspend HttpClient.() -> Unit = { reloadMetrics() },
     checks: suspend ExpectationDsl.(HttpClient) -> Unit
 ): HttpClient {
     val client = this

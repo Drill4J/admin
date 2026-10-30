@@ -32,7 +32,6 @@ import java.time.ZoneId
 class EtlServiceImpl(
     private val launcher: EtlLauncher,
     private val incrementalEtlName: String,
-    private val historicalEtlName: String,
     private val testSessionCoverageEtlName: String,
     private val mergedCoverageEtlName: String,
     private val buildCoverageEtlName: String,
@@ -81,7 +80,7 @@ class EtlServiceImpl(
         val resolvedTo = to?.takeIf { to.isBefore(today) } ?: yesterday
         val historyJobs = if (from == null || from.isBefore(today)) {
             forEachContextWithPeriod(groupId, from, resolvedTo) { context, period ->
-                launcher.rerun(historicalEtlName, context, period, workers ?: maxWorkers, withDataDeletion)
+                launcher.rerun(incrementalEtlName, context, period, workers ?: maxWorkers, withDataDeletion)
             }.map { it.toJobView() }
         } else
             emptyList()
@@ -109,7 +108,7 @@ class EtlServiceImpl(
         val today = LocalDate.now(ZoneId.systemDefault())
         val yesterday = today.minusDays(1)
         return forEachContextWithPeriod(groupId, from = null, to = yesterday) { context, period ->
-            launcher.resume(historicalEtlName, context, period)
+            launcher.resume(incrementalEtlName, context, period)
         }.map { it.toJobView() }
     }
 
@@ -173,7 +172,7 @@ class EtlServiceImpl(
         val today = LocalDate.now(ZoneId.systemDefault())
         val resolvedTo = to ?: today
         return forEachContextWithPeriod(groupId, from, resolvedTo) { context, period ->
-            launcher.cancel(historicalEtlName, context, period)
+            launcher.cancel(incrementalEtlName, context, period)
         }.map { it.toJobView() }
     }
 
