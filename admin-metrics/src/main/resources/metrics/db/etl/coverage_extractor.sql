@@ -62,7 +62,7 @@ SELECT
     DATE_TRUNC('day', c.updated_at) AS created_at_day,
     c.probes
 FROM coverage c
-JOIN raw_data.instances i ON i.id = c.instance_id AND i.app_id = c.app_id AND i.group_id = c.group_id
+LEFT JOIN raw_data.instances i ON i.id = c.instance_id AND i.app_id = c.app_id AND i.group_id = c.group_id
 LEFT JOIN raw_data.test_sessions ts ON ts.id = c.test_session_id AND ts.group_id = c.group_id
 LEFT JOIN raw_data.test_definitions td ON td.id = c.test_definition_id AND td.group_id = c.group_id
 LEFT JOIN LATERAL unnest(td.tags) AS test_tag ON TRUE
