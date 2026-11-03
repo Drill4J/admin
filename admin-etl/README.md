@@ -47,6 +47,29 @@ The `admin-metrics` module exposes `EtlConfig`, which is consumed by ETL compone
     - Number of items grouped into a single write batch/transaction by `DataLoader`.
     - Affects commit frequency and DB load.
     - Default: `1000`.
+- `transformationBufferSize`, `extractionLimit` – global defaults for aggregation buffers and page size (`2000` / `1000000`).
+
+### Per-pipeline overrides
+
+Settings can be overridden by name; anything not overridden falls back to the global value above.
+
+- Per pipeline (`drill.etl.pipelines.<pipeline_name>`): `bufferSize`.
+- Per extractor (`drill.etl.extractors.<extractor_name>`): `fetchSize`, `extractionLimit`.
+- Per transformer (`drill.etl.transformers.<transformer_name>`): `transformationBufferSize`.
+- Per loader (`drill.etl.loaders.<loader_name>`): `batchSize`.
+
+```hocon
+etl {
+    pipelines {
+        incremental_build_method_coverage { batchSize = 500 }
+    }
+    extractors {
+        coverage { fetchSize = 500, extractionLimit = 200000 }
+    }
+}
+```
+
+Note: the shared flow between an extractor and its pipelines uses the global `bufferSize`; the per-pipeline `bufferSize` sizes each pipeline's own channel.
 
 ## Storing metadata
 

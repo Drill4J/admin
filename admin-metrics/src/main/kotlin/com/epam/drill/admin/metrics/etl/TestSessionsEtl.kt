@@ -28,8 +28,8 @@ val EtlConfig.testSessionsExtractor
         name = "test_sessions",
         sqlQuery = fromResource("/metrics/db/etl/test_sessions_extractor.sql"),
         database = RawDataWriterDatabaseConfig.database,
-        fetchSize = fetchSize,
-        extractionLimit = extractionLimit,
+        fetchSize = fetchSizeFor("test_sessions"),
+        extractionLimit = extractionLimitFor("test_sessions"),
         lastExtractedAtColumnName = "updated_at",
         metrics = metrics,
     )
@@ -40,7 +40,7 @@ val EtlConfig.testSessionsLoader
         sqlUpsert = fromResource("/metrics/db/etl/test_sessions_loader.sql"),
         sqlDelete = fromResource("/metrics/db/etl/test_sessions_delete.sql"),
         database = MetricsDatabaseConfig.database,
-        batchSize = batchSize,
+        batchSize = batchSizeFor("test_sessions"),
         metrics = metrics,
     )
 

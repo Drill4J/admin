@@ -101,7 +101,6 @@ val etlDIModule
                     metrics = metrics,
                     consistencyWindow = consistencyWindow,
                     processingDelay = processingDelay,
-                    bufferSize = bufferSize,
                     lockLeaseSeconds = lockLeaseSeconds,
                 )
             }
@@ -138,7 +137,6 @@ val etlDIModule
                     metrics = metrics,
                     consistencyWindow = consistencyWindow,
                     processingDelay = processingDelay,
-                    bufferSize = bufferSize,
                     lockLeaseSeconds = lockLeaseSeconds,
                 )
             }
@@ -158,7 +156,6 @@ val etlDIModule
                     metrics = metrics,
                     consistencyWindow = consistencyWindow,
                     processingDelay = processingDelay,
-                    bufferSize = bufferSize,
                     lockLeaseSeconds = lockLeaseSeconds,
                 )
             }

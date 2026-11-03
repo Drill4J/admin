@@ -51,6 +51,24 @@ class EtlConfig(private val config: ApplicationConfig, val metrics: EtlMeter) {
     val transformationBufferSize : Int
         get() = config.propertyOrNull("transformationBufferSize")?.getString()?.toIntOrNull() ?: 2000
 
+    /** [bufferSize] unless overridden for the pipeline. */
+    fun bufferSizeFor(pipeline: String): Int = bufferSizeOverride(pipeline) ?: bufferSize
+
+    /** [transformationBufferSize] unless overridden for the transformer. */
+    fun transformationBufferSizeFor(transformer: String): Int =
+        transformationBufferSizeOverride(transformer) ?: transformationBufferSize
+
+    /** [batchSize] unless overridden for the loader. */
+    fun batchSizeFor(loader: String): Int = batchSizeOverride(loader) ?: batchSize
+
+    /** [fetchSize] unless overridden for the extractor. */
+    fun fetchSizeFor(extractor: String): Int =
+        override("extractors", extractor, "fetchSize")?.toIntOrNull() ?: fetchSize
+
+    /** [extractionLimit] unless overridden for the extractor. */
+    fun extractionLimitFor(extractor: String): Int =
+        override("extractors", extractor, "extractionLimit")?.toIntOrNull() ?: extractionLimit
+
     /**
      * Number of seconds to subtract from the last processed timestamp when starting an ETL run.
      * This allows re-processing records that arrived in the source database with a delay
@@ -106,4 +124,15 @@ class EtlConfig(private val config: ApplicationConfig, val metrics: EtlMeter) {
      */
     val buildProbeLayoutCacheSize : Int
         get() = config.propertyOrNull("buildProbeLayoutCacheSize")?.getString()?.toIntOrNull() ?: 100
+
+    private fun override(section: String, name: String, key: String): String? =
+        config.propertyOrNull("$section.$name.$key")?.getString()
+
+    private fun bufferSizeOverride(pipeline: String): Int? = override("pipelines", pipeline, "bufferSize")?.toIntOrNull()
+
+    private fun transformationBufferSizeOverride(transformer: String): Int? =
+        override("transformers", transformer, "transformationBufferSize")?.toIntOrNull()
+
+    private fun batchSizeOverride(loader: String): Int? = override("loaders", loader, "batchSize")?.toIntOrNull()
+
 }

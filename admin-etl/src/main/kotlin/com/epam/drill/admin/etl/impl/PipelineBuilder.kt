@@ -72,7 +72,7 @@ class ExtractStep internal constructor(
         extractor = extractor,
         transformer = UntypedAggregationTransformer(
             name = name + "_aggregator",
-            bufferSize = etlConfig.transformationBufferSize,
+            bufferSize = etlConfig.transformationBufferSizeFor(name + "_aggregator"),
             metrics = etlConfig.metrics,
             groupKeys = groupKeys.toList(),
             aggregate = aggregate,
@@ -99,6 +99,7 @@ class ExtractStep internal constructor(
     ): EtlPipelineImpl<UntypedRow, UntypedRow> =
         EtlPipelineImpl(
             name = name,
+            bufferSize = etlConfig.bufferSizeFor(name),
             extractor = extractor,
             transformer = NoOpTransformer,
             loader = loader,
@@ -131,7 +132,7 @@ class TransformStep internal constructor(
     ): TransformStep = append(
         UntypedAggregationTransformer(
             name = name,
-            bufferSize = etlConfig.transformationBufferSize,
+            bufferSize = etlConfig.transformationBufferSizeFor(name),
             metrics = etlConfig.metrics,
             groupKeys = groupKeys.toList(),
             aggregate = aggregate,
@@ -153,6 +154,7 @@ class TransformStep internal constructor(
     ): EtlPipelineImpl<UntypedRow, UntypedRow> =
         EtlPipelineImpl(
             name = name,
+            bufferSize = etlConfig.bufferSizeFor(name),
             extractor = extractor,
             transformer = transformer,
             loader = loader,
@@ -202,4 +204,3 @@ internal object NoOpTransformer : DataTransformer<UntypedRow, UntypedRow> {
         collector: Flow<UntypedRow>,
     ): Flow<UntypedRow> = collector
 }
-

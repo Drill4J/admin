@@ -33,8 +33,8 @@ val EtlConfig.coverageExtractor
         name = "coverage",
         sqlQuery = fromResource("/metrics/db/etl/coverage_extractor.sql"),
         database = RawDataWriterDatabaseConfig.database,
-        fetchSize = fetchSize,
-        extractionLimit = extractionLimit,
+        fetchSize = fetchSizeFor("coverage"),
+        extractionLimit = extractionLimitFor("coverage"),
         metrics = metrics,
         lastExtractedAtColumnName = "updated_at",
     )
@@ -45,7 +45,7 @@ val EtlConfig.buildMethodTestDefinitionCoverageLoader
         sqlUpsert = fromResource("/metrics/db/etl/build_method_test_definition_coverage_loader.sql"),
         sqlDelete = fromResource("/metrics/db/etl/build_method_test_definition_coverage_delete.sql"),
         database = MetricsDatabaseConfig.database,
-        batchSize = batchSize,
+        batchSize = batchSizeFor("build_method_test_definition_coverage"),
         metrics = metrics,
     )
 
@@ -55,7 +55,7 @@ val EtlConfig.buildMethodTestSessionCoverageLoader
         sqlUpsert = fromResource("/metrics/db/etl/build_method_test_session_coverage_loader.sql"),
         sqlDelete = fromResource("/metrics/db/etl/build_method_test_session_coverage_delete.sql"),
         database = MetricsDatabaseConfig.database,
-        batchSize = batchSize,
+        batchSize = batchSizeFor("build_method_test_session_coverage"),
         metrics = metrics,
     )
 
@@ -65,7 +65,7 @@ val EtlConfig.buildMethodCoverageLoader
         sqlUpsert = fromResource("/metrics/db/etl/build_method_coverage_loader.sql"),
         sqlDelete = fromResource("/metrics/db/etl/build_method_coverage_delete.sql"),
         database = MetricsDatabaseConfig.database,
-        batchSize = batchSize,
+        batchSize = batchSizeFor("build_method_coverage"),
         metrics = metrics,
     )
 
@@ -75,7 +75,7 @@ val EtlConfig.methodCoverageLoader
         sqlUpsert = fromResource("/metrics/db/etl/method_daily_coverage_loader.sql"),
         sqlDelete = fromResource("/metrics/db/etl/method_daily_coverage_delete.sql"),
         database = MetricsDatabaseConfig.database,
-        batchSize = batchSize,
+        batchSize = batchSizeFor("method_daily_coverage"),
         metrics = metrics,
     )
 
@@ -85,7 +85,7 @@ val EtlConfig.test2CodeMappingLoader
         sqlUpsert = fromResource("/metrics/db/etl/test_to_code_mapping_loader.sql"),
         sqlDelete = fromResource("/metrics/db/etl/test_to_code_mapping_delete.sql"),
         database = MetricsDatabaseConfig.database,
-        batchSize = batchSize,
+        batchSize = batchSizeFor("test_to_code_mapping"),
         metrics = metrics,
     )
 
@@ -95,7 +95,7 @@ val EtlConfig.buildCoverageLoader
         sqlUpsert = fromResource("/metrics/db/etl/build_coverage_loader.sql"),
         sqlDelete = fromResource("/metrics/db/etl/build_coverage_delete.sql"),
         database = MetricsDatabaseConfig.database,
-        batchSize = batchSize,
+        batchSize = batchSizeFor("build_coverage"),
         metrics = metrics,
     )
 
@@ -170,7 +170,7 @@ val EtlConfig.methodCoverageAggregator
 val EtlConfig.test2CodeCoverageAggregator
     get() = UntypedAggregationTransformer(
         name = "test_to_code_coverage_aggregator",
-        bufferSize = transformationBufferSize,
+        bufferSize = transformationBufferSizeFor("test_to_code_coverage_aggregator"),
         metrics = metrics,
         groupKeys = listOf(
             "group_id",
@@ -317,7 +317,7 @@ internal fun mergeProbes(current: Any?, next: Any?): PGobject {
 internal fun EtlConfig.coverageAggregator(name: String, groupKeys: List<String>, probeKeys: List<String> = listOf("probes")): UntypedAggregationTransformer {
     return UntypedAggregationTransformer(
         name = name,
-        bufferSize = transformationBufferSize,
+        bufferSize = transformationBufferSizeFor(name),
         metrics = metrics,
         groupKeys = groupKeys,
         aggregate = { current, next ->
