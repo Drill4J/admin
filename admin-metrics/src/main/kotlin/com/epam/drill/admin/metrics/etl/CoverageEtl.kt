@@ -170,7 +170,7 @@ val EtlConfig.methodCoverageAggregator
 val EtlConfig.test2CodeCoverageAggregator
     get() = UntypedAggregationTransformer(
         name = "test_to_code_coverage_aggregator",
-        bufferSize = transformationBufferSizeFor("test_to_code_coverage_aggregator"),
+        bufferSize = aggregationBufferSizeFor("test_to_code_coverage_aggregator"),
         metrics = metrics,
         groupKeys = listOf(
             "group_id",
@@ -207,7 +207,7 @@ val EtlConfig.buildCoverageEnricher
     get() = BuildCoverageTransformer(
         name = "build_coverage_enricher",
         database = RawDataWriterDatabaseConfig.database,
-        lookupCacheSize = buildProbeLayoutCacheSize,
+        lookupCacheSize = lookupCacheSize,
         metrics = metrics,
     )
 
@@ -317,7 +317,7 @@ internal fun mergeProbes(current: Any?, next: Any?): PGobject {
 internal fun EtlConfig.coverageAggregator(name: String, groupKeys: List<String>, probeKeys: List<String> = listOf("probes")): UntypedAggregationTransformer {
     return UntypedAggregationTransformer(
         name = name,
-        bufferSize = transformationBufferSizeFor(name),
+        bufferSize = aggregationBufferSizeFor(name),
         metrics = metrics,
         groupKeys = groupKeys,
         aggregate = { current, next ->

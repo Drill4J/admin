@@ -72,7 +72,7 @@ class ExtractStep internal constructor(
         extractor = extractor,
         transformer = UntypedAggregationTransformer(
             name = name + "_aggregator",
-            bufferSize = etlConfig.transformationBufferSizeFor(name + "_aggregator"),
+            bufferSize = etlConfig.aggregationBufferSizeFor(name + "_aggregator"),
             metrics = etlConfig.metrics,
             groupKeys = groupKeys.toList(),
             aggregate = aggregate,
@@ -132,7 +132,7 @@ class TransformStep internal constructor(
     ): TransformStep = append(
         UntypedAggregationTransformer(
             name = name,
-            bufferSize = etlConfig.transformationBufferSizeFor(name),
+            bufferSize = etlConfig.aggregationBufferSizeFor(name),
             metrics = etlConfig.metrics,
             groupKeys = groupKeys.toList(),
             aggregate = aggregate,

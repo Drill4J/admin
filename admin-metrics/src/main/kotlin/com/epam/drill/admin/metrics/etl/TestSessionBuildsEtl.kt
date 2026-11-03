@@ -38,7 +38,7 @@ val EtlConfig.testSessionBuildsExtractor
 val EtlConfig.testSessionBuildsAggregator
     get() = UntypedAggregationTransformer(
         name = "test_session_builds_aggregator",
-        bufferSize = transformationBufferSizeFor("test_session_builds_aggregator"),
+        bufferSize = aggregationBufferSizeFor("test_session_builds_aggregator"),
         metrics = metrics,
         groupKeys = listOf(
             "group_id",
