@@ -132,7 +132,7 @@ class EtlConfig(private val config: ApplicationConfig, val metrics: EtlMeter) {
         get() = config.propertyOrNull("lookupCacheSize")?.getString()?.toIntOrNull() ?: 100
 
     private fun override(section: String, name: String, key: String): String? =
-        System.getenv("DRILL_ETL_${section.uppercase()}_${name.uppercase()}_${key.camelToUnderscore().uppercase()}")
+        System.getenv("DRILL_ETL_${section.uppercase()}_${name.camelToUnderscore().uppercase()}_${key.camelToUnderscore().uppercase()}")
             ?.trim()
             ?: config.propertyOrNull("$section.$name.$key")?.getString()
 }
