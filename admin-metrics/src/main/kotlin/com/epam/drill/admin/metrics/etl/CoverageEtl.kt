@@ -120,6 +120,13 @@ val EtlConfig.testPassedFilter
         predicate = { it["test_definition_id"] != null && it["test_result"] == "PASSED" },
     )
 
+val EtlConfig.testLaunchConsistencyFilter
+    get() = UntypedFilterTransformer(
+        name = "test_launch_consistency_filter",
+        metrics = metrics,
+        predicate = { it["test_launch_id"] == null || it["test_result"] != null },
+    )
+
 val EtlConfig.buildMethodCoverageAggregator
     get() = coverageAggregator(
         "build_method_coverage_aggregator", listOf(
@@ -211,28 +218,38 @@ val EtlConfig.buildCoverageEnricher
         metrics = metrics,
     )
 
+val EtlConfig.testTagsFlatteningTransformer
+    get() = TestTagsFlatteningTransformer(
+        name = "test_tags_flattening_transformer",
+    )
+
 val EtlConfig.testSessionCoveragePipeline
     get() = pipeline("test_session_coverage")
         .extractWith(coverageExtractor)
         .transformWith(hasTestSessionFilter)
+        .transformWith(testLaunchConsistencyFilter)
         .transformWith(buildMethodTestSessionCoverageAggregator)
+        .transformWith(testTagsFlatteningTransformer)
         .loadWith(buildMethodTestSessionCoverageLoader)
 
 val EtlConfig.testDefinitionCoveragePipeline
     get() = pipeline("test_definition_coverage")
         .extractWith(coverageExtractor)
         .transformWith(hasTestSessionAndDefinitionFilter)
+        .transformWith(testLaunchConsistencyFilter)
         .loadWith(buildMethodTestDefinitionCoverageLoader)
 
 val EtlConfig.buildMethodCoveragePipeline
     get() = pipeline("build_method_coverage")
         .extractWith(coverageExtractor)
+        .transformWith(testLaunchConsistencyFilter)
         .transformWith(buildMethodCoverageAggregator)
         .loadWith(buildMethodCoverageLoader)
 
 val EtlConfig.methodDailyCoveragePipeline
     get() = pipeline("method_daily_coverage")
         .extractWith(coverageExtractor)
+        .transformWith(testLaunchConsistencyFilter)
         .transformWith(methodCoverageAggregator)
         .loadWith(methodCoverageLoader)
 
@@ -247,12 +264,14 @@ val EtlConfig.testSessionBuildsFromCoveragePipeline
     get() = pipeline("test_session_builds_from_coverage")
         .extractWith(coverageExtractor)
         .transformWith(hasTestSessionFilter)
+        .transformWith(testLaunchConsistencyFilter)
         .transformWith(testSessionBuildsAggregator)
         .loadWith(testSessionBuildsLoader)
 
 val EtlConfig.buildCoveragePipeline
     get() = pipeline("build_coverage")
         .extractWith(coverageExtractor)
+        .transformWith(testLaunchConsistencyFilter)
         .transformWith(buildCoverageEnricher)
         .transformWith(buildCoverageAggregator)
         .loadWith(buildCoverageLoader)
