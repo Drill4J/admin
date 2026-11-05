@@ -28,8 +28,8 @@ val EtlConfig.buildMethodsExtractor
         name = "build_methods",
         sqlQuery = fromResource("/metrics/db/etl/build_methods_extractor.sql"),
         database = RawDataWriterDatabaseConfig.database,
-        fetchSize = fetchSize,
-        extractionLimit = extractionLimit,
+        fetchSize = fetchSizeFor("build_methods"),
+        extractionLimit = extractionLimitFor("build_methods"),
         lastExtractedAtColumnName = "created_at",
         metrics = metrics,
     )
@@ -40,7 +40,7 @@ val EtlConfig.buildMethodsLoader
         sqlUpsert = fromResource("/metrics/db/etl/build_methods_loader.sql"),
         sqlDelete = fromResource("/metrics/db/etl/build_methods_delete.sql"),
         database = MetricsDatabaseConfig.database,
-        batchSize = batchSize,
+        batchSize = batchSizeFor("build_methods"),
         metrics = metrics,
     )
 
@@ -50,7 +50,7 @@ val EtlConfig.methodsLoader
         sqlUpsert = fromResource("/metrics/db/etl/methods_loader.sql"),
         sqlDelete = fromResource("/metrics/db/etl/methods_delete.sql"),
         database = MetricsDatabaseConfig.database,
-        batchSize = batchSize,
+        batchSize = batchSizeFor("methods"),
         metrics = metrics,
     )
 

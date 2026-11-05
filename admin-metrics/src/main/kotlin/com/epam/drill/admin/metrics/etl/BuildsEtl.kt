@@ -28,8 +28,8 @@ val EtlConfig.buildsExtractor
         name = "builds",
         sqlQuery = fromResource("/metrics/db/etl/builds_extractor.sql"),
         database = RawDataWriterDatabaseConfig.database,
-        fetchSize = fetchSize,
-        extractionLimit = extractionLimit,
+        fetchSize = fetchSizeFor("builds"),
+        extractionLimit = extractionLimitFor("builds"),
         lastExtractedAtColumnName = "updated_at",
         metrics = metrics,
     )
@@ -40,7 +40,7 @@ val EtlConfig.buildsLoader
         sqlUpsert = fromResource("/metrics/db/etl/builds_loader.sql"),
         sqlDelete = fromResource("/metrics/db/etl/builds_delete.sql"),
         database = MetricsDatabaseConfig.database,
-        batchSize = batchSize,
+        batchSize = batchSizeFor("builds"),
         metrics = metrics,
     )
 

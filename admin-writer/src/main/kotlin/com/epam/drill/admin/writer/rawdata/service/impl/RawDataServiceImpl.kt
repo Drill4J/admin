@@ -71,7 +71,7 @@ class RawDataServiceImpl(
             throw BuildFinalized()
         }
         transaction {
-            buildRepository.saveBuildId(build)
+            buildRepository.saveBuildAgentInfo(build)
         }
     }
 
@@ -95,7 +95,7 @@ class RawDataServiceImpl(
             commitAuthor = buildPayload.commitAuthor
         )
         transaction {
-            buildRepository.saveBuildInfo(build)
+            buildRepository.saveBuildGitInfo(build)
         }
     }
 
@@ -117,34 +117,46 @@ class RawDataServiceImpl(
             agentEnv = instancePayload.agentEnvironment,
             agentParams = instancePayload.agentParams
         )
+        val build = Build(
+            id = buildId,
+            groupId = instancePayload.groupId,
+            appId = instancePayload.appId,
+            instanceId = instancePayload.instanceId,
+            commitSha = instancePayload.commitSha,
+            buildVersion = instancePayload.buildVersion
+        )
         transaction {
-            if (!buildRepository.existsById(instancePayload.groupId, instancePayload.appId, buildId)) {
-                val build = Build(
-                    id = buildId,
-                    groupId = instancePayload.groupId,
-                    appId = instancePayload.appId,
-                    instanceId = instancePayload.instanceId,
-                    commitSha = instancePayload.commitSha,
-                    buildVersion = instancePayload.buildVersion,
-                    agentVersion = instancePayload.agentVersion,
-                    agentEnv = instancePayload.agentEnvironment,
-                    agentParams = instancePayload.agentParams
-                )
-                buildRepository.saveBuildId(build)
-            }
-            instanceRepository.create(instance)
+            instanceRepository.save(instance)
+            buildRepository.saveBuildId(build)
         }
     }
 
-    override suspend fun saveInstanceHeartbeat(agentHeartbeatPayload: AgentHeartbeatPayload) {
+    override suspend fun saveInstanceHeartbeat(heartbeatPayload: InstanceHeartbeatPayload) {
+        val buildId = generateBuildId(
+            heartbeatPayload.groupId,
+            heartbeatPayload.appId,
+            heartbeatPayload.instanceId,
+            heartbeatPayload.commitSha,
+            heartbeatPayload.buildVersion
+        )
         val instance = InstanceHeartbeat(
-            id = agentHeartbeatPayload.instanceId,
-            groupId = agentHeartbeatPayload.groupId,
-            appId = agentHeartbeatPayload.appId,
-            status = agentHeartbeatPayload.status
+            id = heartbeatPayload.instanceId,
+            groupId = heartbeatPayload.groupId,
+            appId = heartbeatPayload.appId,
+            buildId = buildId,
+            status = heartbeatPayload.status
+        )
+        val build = Build(
+            id = buildId,
+            groupId = heartbeatPayload.groupId,
+            appId = heartbeatPayload.appId,
+            instanceId = heartbeatPayload.instanceId,
+            commitSha = heartbeatPayload.commitSha,
+            buildVersion = heartbeatPayload.buildVersion
         )
         transaction {
-            instanceRepository.updateHeartbeat(instance)
+            instanceRepository.saveHeartbeat(instance)
+            buildRepository.saveBuildId(build)
         }
     }
 
@@ -217,7 +229,7 @@ class RawDataServiceImpl(
                     coverage.bodyChecksum,
                     coverage.probes?.size ?: coverage.stringProbes?.length ?: 0
                 ).joinToString(":").md5(),
-                testId = coverage.testId?.takeIf { it != "TEST_CONTEXT_NONE"  },
+                testId = coverage.testId?.takeIf { it != "TEST_CONTEXT_NONE" },
                 testSessionId = coverage.testSessionId?.takeIf { it != "GLOBAL" },
                 probes = coverage.probes?.toBitString() ?: coverage.stringProbes ?: ""
             )
@@ -231,6 +243,7 @@ class RawDataServiceImpl(
     }
 
     // WARNING: keep this method for backward compatibility with existing adoptions
+    @Deprecated("Use saveTestLaunches and saveTestDefinitions instead")
     override suspend fun saveTestMetadata(testsPayload: AddTestsPayload) = transaction {
         testsPayload.tests.map { test ->
             TestLaunch(
@@ -257,6 +270,8 @@ class RawDataServiceImpl(
                 metadata = test.details.metadata
             )
         }.let { testDefinitionRepository.createMany(it) }
+
+        coverageRepository.updateTimestampByTestIds(testsPayload.groupId, testsPayload.tests.map { it.testLaunchId })
     }
 
     override suspend fun saveTestDefinitions(testDefinitionsPayload: AddTestDefinitionsPayload) = transaction {
@@ -287,6 +302,11 @@ class RawDataServiceImpl(
                 duration = launch.duration
             )
         }.let { testLaunchRepository.createMany(it) }
+        // Coverage may arrive before its test launch; touch it so that ETL picks it up again
+        coverageRepository.updateTimestampByTestIds(
+            testLaunchesPayload.groupId,
+            testLaunchesPayload.launches.map { it.id }
+        )
     }
 
     override suspend fun saveTestSession(testSessionPayload: TestSessionPayload, username: String?) {

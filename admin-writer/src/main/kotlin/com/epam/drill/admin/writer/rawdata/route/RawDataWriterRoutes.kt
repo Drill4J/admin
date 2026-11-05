@@ -20,7 +20,7 @@ import com.epam.drill.admin.common.route.ok
 import com.epam.drill.admin.writer.rawdata.service.RawDataWriter
 import com.epam.drill.admin.writer.rawdata.service.QueuedRawDataWriter
 import com.epam.drill.admin.writer.rawdata.route.payload.BuildFinalizePayload
-import com.epam.drill.admin.writer.rawdata.route.payload.AgentHeartbeatPayload
+import com.epam.drill.admin.writer.rawdata.route.payload.InstanceHeartbeatPayload
 import com.epam.drill.admin.writer.rawdata.route.payload.TestSessionHeartbeatPayload
 import com.epam.drill.admin.writer.rawdata.views.BuildFinalizationResultView
 import io.ktor.client.*
@@ -34,7 +34,6 @@ import io.ktor.server.application.*
 import io.ktor.server.auth.*
 import io.ktor.server.plugins.*
 import io.ktor.server.request.*
-import io.ktor.server.resources.*
 import io.ktor.server.resources.post
 import io.ktor.server.resources.put
 import io.ktor.server.routing.*
@@ -152,7 +151,7 @@ fun Route.putInstanceHeartbeat() {
     val rawDataWriter by closestDI().instance<RawDataWriter>()
 
     put<InstanceHeartbeatRoute> {
-        val payload = call.decompressAndReceive<AgentHeartbeatPayload>()
+        val payload = call.decompressAndReceive<InstanceHeartbeatPayload>()
         rawDataWriter.saveInstanceHeartbeat(payload)
         call.ok("Instance heartbeat saved")
     }

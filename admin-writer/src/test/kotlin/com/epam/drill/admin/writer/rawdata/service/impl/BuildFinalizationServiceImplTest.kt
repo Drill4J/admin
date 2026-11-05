@@ -44,10 +44,11 @@ class BuildFinalizationServiceImplTest : DatabaseTests({ RawDataWriterDatabaseCo
 
     private val buildRepository = BuildRepositoryImpl()
     private val methodRepository = MethodRepositoryImpl()
+    private val coverageRepository = CoverageRepositoryImpl()
 
     private fun rawDataWriter(buildValidationService: BuildValidationService) = RawDataServiceImpl(
         instanceRepository = InstanceRepositoryImpl(),
-        coverageRepository = CoverageRepositoryImpl(),
+        coverageRepository = coverageRepository,
         testDefinitionRepository = TestDefinitionRepositoryImpl(),
         testLaunchRepository = TestLaunchRepositoryImpl(),
         methodRepository = methodRepository,
@@ -92,7 +93,7 @@ class BuildFinalizationServiceImplTest : DatabaseTests({ RawDataWriterDatabaseCo
         val checksums = listOf("100", "200", "300")
         seedMethods(groupId, appId, id, checksums)
 
-        val service = BuildValidationServiceImpl(buildRepository, methodRepository)
+        val service = BuildValidationServiceImpl(buildRepository, methodRepository, coverageRepository)
         val status = rawDataWriter(service).finalizeBuild(
             BuildFinalizePayload(
                 groupId = groupId,
@@ -117,7 +118,7 @@ class BuildFinalizationServiceImplTest : DatabaseTests({ RawDataWriterDatabaseCo
         // Only part of the methods have arrived so far (e.g. queue hasn't caught up yet)
         seedMethods(groupId, appId, id, checksums.take(1))
 
-        val service = BuildValidationServiceImpl(buildRepository, methodRepository)
+        val service = BuildValidationServiceImpl(buildRepository, methodRepository, coverageRepository)
         val status = rawDataWriter(service).finalizeBuild(
             BuildFinalizePayload(
                 groupId = groupId,
@@ -155,7 +156,7 @@ class BuildFinalizationServiceImplTest : DatabaseTests({ RawDataWriterDatabaseCo
             // More methods are stored than the agent reported (e.g. leftover/leaked from elsewhere)
             seedMethods(groupId, appId, id, checksums)
 
-            val service = BuildValidationServiceImpl(buildRepository, methodRepository)
+            val service = BuildValidationServiceImpl(buildRepository, methodRepository, coverageRepository)
             val status = rawDataWriter(service).finalizeBuild(
                 BuildFinalizePayload(
                     groupId = groupId,
@@ -182,7 +183,7 @@ class BuildFinalizationServiceImplTest : DatabaseTests({ RawDataWriterDatabaseCo
             val checksums = listOf("100", "200")
             seedMethods(groupId, appId, id, checksums)
 
-            val service = BuildValidationServiceImpl(buildRepository, methodRepository)
+            val service = BuildValidationServiceImpl(buildRepository, methodRepository, coverageRepository)
             val status = rawDataWriter(service).finalizeBuild(
                 BuildFinalizePayload(
                     groupId = groupId,
@@ -207,7 +208,7 @@ class BuildFinalizationServiceImplTest : DatabaseTests({ RawDataWriterDatabaseCo
         seedMethods(groupId, appId, id, checksums)
 
         // A zero-length window means any elapsed time since finalizedAt already exceeds it
-        val service = BuildValidationServiceImpl(buildRepository, methodRepository, maxValidationWindow = Duration.ZERO)
+        val service = BuildValidationServiceImpl(buildRepository, methodRepository, coverageRepository, maxValidationWindow = Duration.ZERO)
         // Attempt #1 (via finalize): count mismatches and the window is already exceeded -> INVALID
         val firstStatus = rawDataWriter(service).finalizeBuild(
             BuildFinalizePayload(
@@ -235,6 +236,7 @@ class BuildFinalizationServiceImplTest : DatabaseTests({ RawDataWriterDatabaseCo
         val service = BuildValidationServiceImpl(
             buildRepository,
             methodRepository,
+            coverageRepository,
             maxValidationWindow = Duration.ofHours(1),
         )
         val firstStatus = rawDataWriter(service).finalizeBuild(
@@ -265,7 +267,7 @@ class BuildFinalizationServiceImplTest : DatabaseTests({ RawDataWriterDatabaseCo
         // Only the first method has arrived so far (e.g. queue hasn't caught up yet)
         seedMethods(groupId, appId, id, checksums.take(1))
 
-        val service = BuildValidationServiceImpl(buildRepository, methodRepository)
+        val service = BuildValidationServiceImpl(buildRepository, methodRepository, coverageRepository)
         val firstStatus = rawDataWriter(service).finalizeBuild(
             BuildFinalizePayload(
                 groupId = groupId,

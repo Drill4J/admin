@@ -19,6 +19,7 @@ import com.epam.drill.admin.writer.rawdata.config.RawDataWriterDatabaseConfig.tr
 import com.epam.drill.admin.writer.rawdata.entity.Build
 import com.epam.drill.admin.writer.rawdata.entity.BuildValidationStatus
 import com.epam.drill.admin.writer.rawdata.repository.BuildRepository
+import com.epam.drill.admin.writer.rawdata.repository.CoverageRepository
 import com.epam.drill.admin.writer.rawdata.repository.MethodRepository
 import com.epam.drill.admin.writer.rawdata.service.BuildValidationService
 import com.epam.drill.admin.writer.rawdata.util.InvalidChecksumException
@@ -33,6 +34,7 @@ private const val RETRY_BATCH_LIMIT = 200
 class BuildValidationServiceImpl(
     private val buildRepository: BuildRepository,
     private val methodRepository: MethodRepository,
+    private val coverageRepository: CoverageRepository,
     private val maxValidationWindow: Duration = Duration.ofHours(1),
 ) : BuildValidationService {
 
@@ -79,6 +81,12 @@ class BuildValidationServiceImpl(
                     appId = build.appId,
                     buildId = build.id,
                     status = BuildValidationStatus.VALID,
+                )
+                // Coverage of non-valid builds is skipped by ETL; touch it so that ETL picks it up now
+                coverageRepository.updateTimestampByBuildId(
+                    groupId = build.groupId,
+                    appId = build.appId,
+                    buildId = build.id,
                 )
                 logger.info { "Build [${build.id}] finalized successfully." }
                 BuildValidationStatus.VALID

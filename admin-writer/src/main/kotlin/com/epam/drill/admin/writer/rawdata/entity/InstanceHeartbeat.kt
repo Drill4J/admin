@@ -20,6 +20,7 @@ import com.epam.drill.admin.writer.rawdata.route.payload.AgentHeartbeatStatus
 class InstanceHeartbeat(
     val groupId: String,
     val appId: String,
+    val buildId: String,
     val id: String,
     val status: AgentHeartbeatStatus,
 )

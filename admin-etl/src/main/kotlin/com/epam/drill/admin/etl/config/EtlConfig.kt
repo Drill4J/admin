@@ -15,6 +15,7 @@
  */
 package com.epam.drill.admin.etl.config
 
+import com.epam.drill.admin.etl.impl.camelToUnderscore
 import io.ktor.server.config.ApplicationConfig
 
 /**
@@ -24,46 +25,69 @@ class EtlConfig(private val config: ApplicationConfig, val metrics: EtlMeter) {
     /**
      * Controls the in-memory buffer capacity used for the shared flow between the extractor and loaders.
      */
-    val bufferSize : Int
+    val bufferSize: Int
         get() = config.propertyOrNull("bufferSize")?.getString()?.toIntOrNull() ?: 2000
 
     /**
      * Hints the JDBC driver how many rows to fetch from the database per round trip for the SQL extractor.
      */
-    val fetchSize : Int
+    val fetchSize: Int
         get() = config.propertyOrNull("fetchSize")?.getString()?.toIntOrNull() ?: 2000
 
     /**
      * Controls how many items are grouped into a single write batch/transaction for loaders.
      */
-    val batchSize : Int
+    val batchSize: Int
         get() = config.propertyOrNull("batchSize")?.getString()?.toIntOrNull() ?: 1000
 
     /**
      * Sets a limit on the total number of records to be extracted by the ETL process in a single query.
      */
-    val extractionLimit : Int
+    val extractionLimit: Int
         get() = config.propertyOrNull("extractionLimit")?.getString()?.toIntOrNull() ?: 1_000_000
 
     /**
      * Controls the in-memory buffer capacity used for the shared flow between the transformer and loaders.
      */
-    val transformationBufferSize : Int
-        get() = config.propertyOrNull("transformationBufferSize")?.getString()?.toIntOrNull() ?: 2000
+    val aggregationBufferSize: Int
+        get() = config.propertyOrNull("aggregationBufferSize")?.getString()?.toIntOrNull() ?: 2000
+
+    /** [bufferSize] unless overridden for the pipeline. */
+    fun bufferSizeFor(pipeline: String): Int =
+        override("pipelines", pipeline, "bufferSize")?.toIntOrNull()
+            ?: bufferSize
+
+    /** [aggregationBufferSize] unless overridden for the transformer. */
+    fun aggregationBufferSizeFor(transformer: String): Int =
+        override("transformers", transformer, "aggregationBufferSize")?.toIntOrNull()
+            ?: aggregationBufferSize
+
+    /** [batchSize] unless overridden for the loader. */
+    fun batchSizeFor(loader: String): Int =
+        override("loaders", loader, "batchSize")?.toIntOrNull()
+            ?: batchSize
+
+    /** [fetchSize] unless overridden for the extractor. */
+    fun fetchSizeFor(extractor: String): Int =
+        override("extractors", extractor, "fetchSize")?.toIntOrNull() ?: fetchSize
+
+    /** [extractionLimit] unless overridden for the extractor. */
+    fun extractionLimitFor(extractor: String): Int =
+        override("extractors", extractor, "extractionLimit")?.toIntOrNull() ?: extractionLimit
 
     /**
      * Number of seconds to subtract from the last processed timestamp when starting an ETL run.
      * This allows re-processing records that arrived in the source database with a delay
      * or were inconsistent at the time of the previous ETL run.
      */
-    val consistencyWindow : Long
+    val consistencyWindow: Long
         get() = config.propertyOrNull("consistencyWindow")?.getString()?.toLongOrNull() ?: 0L
 
     /**
      * Number of seconds to subtract from the current time when calculating the upper bound of the ETL processing window.
      * This delays ETL process to allow current transactions in the data source to complete.
      */
-    val processingDelay : Long
+    val processingDelay: Long
         get() = config.propertyOrNull("processingDelay")?.getString()?.toLongOrNull() ?: 0L
 
     /**
@@ -71,7 +95,7 @@ class EtlConfig(private val config: ApplicationConfig, val metrics: EtlMeter) {
      * The lease is refreshed on each progress tick of an in-flight run; another instance
      * may reclaim the lock once the lease expires.
      */
-    val lockLeaseSeconds : Long
+    val lockLeaseSeconds: Long
         get() = config.propertyOrNull("lockLeaseSeconds")?.getString()?.toLongOrNull() ?: 180L
 
     /**
@@ -98,12 +122,17 @@ class EtlConfig(private val config: ApplicationConfig, val metrics: EtlMeter) {
      *
      * Raising maxWorkers beyond this limit causes connection pool exhaustion.
      */
-    val maxWorkers : Int
+    val maxWorkers: Int
         get() = config.propertyOrNull("maxWorkers")?.getString()?.toIntOrNull() ?: 4
 
     /**
-     * Controls the size of the build probe layout cache used in the build coverage transformation process.
+     * Controls the size of the in-memory cache used in data enrichment transformations.
      */
-    val buildProbeLayoutCacheSize : Int
-        get() = config.propertyOrNull("buildProbeLayoutCacheSize")?.getString()?.toIntOrNull() ?: 100
+    val lookupCacheSize: Int
+        get() = config.propertyOrNull("lookupCacheSize")?.getString()?.toIntOrNull() ?: 100
+
+    private fun override(section: String, name: String, key: String): String? =
+        System.getenv("DRILL_ETL_${section.uppercase()}_${name.camelToUnderscore().uppercase()}_${key.camelToUnderscore().uppercase()}")
+            ?.trim()
+            ?: config.propertyOrNull("$section.$name.$key")?.getString()
 }

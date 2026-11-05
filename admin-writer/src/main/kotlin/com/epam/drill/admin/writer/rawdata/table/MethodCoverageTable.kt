@@ -32,4 +32,5 @@ object MethodCoverageTable : Table("raw_data.method_coverage") {
     val probes = registerColumn<BitString>("probes", ProbesColumnType())
     val probesCount = integer("probes_count")
     val createdAt = datetime("created_at").defaultExpression(CurrentDateTime)
+    val updatedAt = datetime("updated_at").defaultExpression(CurrentDateTime)
 }

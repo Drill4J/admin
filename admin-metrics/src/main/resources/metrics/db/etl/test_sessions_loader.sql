@@ -30,4 +30,5 @@ ON CONFLICT (
 DO UPDATE
 SET
     session_status = EXCLUDED.session_status,
-    last_session_heartbeat_at = EXCLUDED.last_session_heartbeat_at
+    last_session_heartbeat_at = EXCLUDED.last_session_heartbeat_at,
+    created_at_day = EXCLUDED.created_at_day

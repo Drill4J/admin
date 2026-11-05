@@ -15,7 +15,6 @@
  */
 package com.epam.drill.admin.metrics
 
-import com.epam.drill.admin.test.waitUntilIn
 import com.epam.drill.admin.test.waitUntilInBlocking
 import com.epam.drill.admin.writer.rawdata.route.payload.*
 import com.epam.drill.admin.writer.rawdata.util.combineChecksumsCrc64
@@ -101,6 +100,7 @@ suspend fun HttpClient.launchTest(
         duration = duration
     )
 }
+
 suspend fun HttpClient.launchTest(
     session: TestSessionPayload,
     testDefinition: TestDefinitionPayload,
@@ -116,21 +116,6 @@ suspend fun HttpClient.launchTest(
             groupId = instance.groupId,
             testProjectId = session.testProjectId,
             definitions = listOf(testDefinition)
-        )
-    )
-    postTestLaunches(
-        AddTestLaunchesPayload(
-            groupId = session.groupId,
-            testSessionId = session.id,
-            testProjectId = session.testProjectId,
-            launches = listOf(
-                TestLaunchPayload(
-                    id = testLaunchId,
-                    testDefinitionId = testDefinition.id,
-                    result = result.name,
-                    duration = duration
-                )
-            )
         )
     )
     postCoverage(
@@ -155,6 +140,21 @@ suspend fun HttpClient.launchTest(
                     stringProbes = probes.joinToString(separator = "") { if (it != 0) "1" else "0" }
                 )
             }
+        )
+    )
+    postTestLaunches(
+        AddTestLaunchesPayload(
+            groupId = session.groupId,
+            testSessionId = session.id,
+            testProjectId = session.testProjectId,
+            launches = listOf(
+                TestLaunchPayload(
+                    id = testLaunchId,
+                    testDefinitionId = testDefinition.id,
+                    result = result.name,
+                    duration = duration
+                )
+            )
         )
     )
 }
@@ -229,10 +229,31 @@ suspend fun HttpClient.putTestSession(payload: TestSessionPayload): HttpResponse
     }.assertSuccessStatus()
 }
 
-suspend fun HttpClient.refreshMetrics(sessions: Set<Pair<String, String>>) {
+suspend fun HttpClient.putInstanceHeartbeat(payload: InstanceHeartbeatPayload): HttpResponse {
+    return put("/data-ingest/instances/heartbeat") {
+        setBody(payload)
+    }.assertSuccessStatus()
+}
+
+suspend fun HttpClient.putTestSessionHeartbeat(payload: TestSessionHeartbeatPayload): HttpResponse {
+    return put("/data-ingest/sessions/heartbeat") {
+        setBody(payload)
+    }.assertSuccessStatus()
+}
+
+suspend fun HttpClient.syncMetrics(groupId: String) {
+    post("/metrics/sync") {
+        parameter("groupId", groupId)
+    }.assertSuccessStatus()
+}
+
+suspend fun HttpClient.reloadMetrics() {
     post("/metrics/reload") {
         parameter("reset", "true")
     }.assertSuccessStatus()
+}
+
+suspend fun HttpClient.reloadSessions(sessions: Set<Pair<String, String>>) {
     for ((groupId, testSessionId) in sessions) {
         post("/metrics/reload") {
             parameter("groupId", groupId)

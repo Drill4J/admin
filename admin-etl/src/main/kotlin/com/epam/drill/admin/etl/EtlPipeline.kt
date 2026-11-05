@@ -24,6 +24,7 @@ import java.time.Instant
  */
 interface EtlPipeline<T : EtlRow, R : EtlRow> {
     val name: String
+    val bufferSize: Int
     val extractor: DataExtractor<T>
     val transformer: DataTransformer<T, R>
     val loader: DataLoader<R>

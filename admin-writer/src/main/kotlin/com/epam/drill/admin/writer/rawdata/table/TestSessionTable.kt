@@ -15,6 +15,7 @@
  */
 package com.epam.drill.admin.writer.rawdata.table
 
+import org.jetbrains.exposed.sql.javatime.CurrentDateTime
 import org.jetbrains.exposed.sql.javatime.datetime
 
 object TestSessionTable : TrackedStringIdTable("raw_data.test_sessions") {
@@ -24,4 +25,5 @@ object TestSessionTable : TrackedStringIdTable("raw_data.test_sessions") {
     val startedAt = datetime("started_at")
     val lastHeartbeatAt = datetime("last_heartbeat_at").nullable()
     val status = varchar("status", MEDIUM_TEXT_LENGTH).nullable()
+    val updatedAt = datetime("updated_at").defaultExpression(CurrentDateTime)
 }

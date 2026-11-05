@@ -59,7 +59,6 @@ open class EtlOrchestratorImpl(
     open val metrics: EtlMeter,
     open val consistencyWindow: Long = 0,
     open val processingDelay: Long = 0,
-    open val bufferSize: Int = 2000,
     open val lockLeaseSeconds: Long = 180,
     override val lockName: String = name,
 ) : EtlOrchestrator {
@@ -326,11 +325,11 @@ open class EtlOrchestratorImpl(
         }
 
         val minLastProcessedAt = activePipelines.mapNotNull { sinceTimestamps[it.name] }.min()
-        val sharedFlow = SubscribableChannelFlow<T>(bufferSize)
+        val sharedFlow = SubscribableChannelFlow<T>()
         val jobs = activePipelines.map { pipeline ->
             async {
                 val ch = MeteredChannel<T>(
-                    capacity = bufferSize,
+                    capacity = pipeline.bufferSize,
                     beforeSendCounter = metrics.rowsExtracted(pipeline.name, context),
                     afterReceiveCounter = metrics.rowsProcessed(pipeline.name, context)
                 )
