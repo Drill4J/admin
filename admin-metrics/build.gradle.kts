@@ -47,6 +47,7 @@ dependencies {
     implementation(project(":admin-common"))
     implementation(project(":admin-writer"))
     implementation(project(":admin-etl"))
+    implementation(project(":admin-config"))
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:$kotlinxSerializationVersion")
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-protobuf:$kotlinxSerializationVersion")
     implementation("org.jetbrains.kotlinx:kotlinx-datetime:$kotlinxDatetimeVersion")

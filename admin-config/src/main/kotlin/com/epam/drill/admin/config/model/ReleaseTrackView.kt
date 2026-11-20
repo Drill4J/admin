@@ -13,20 +13,15 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.epam.drill.admin.metrics.config
+package com.epam.drill.admin.config.model
 
-import org.kodein.di.DI
-import org.kodein.di.direct
-import org.kodein.type.erased
-import org.quartz.Job
-import org.quartz.Scheduler
-import org.quartz.spi.JobFactory
-import org.quartz.spi.TriggerFiredBundle
+import kotlinx.datetime.LocalDateTime
+import kotlinx.serialization.Serializable
 
-class KodeinJobFactory(private val di: DI) : JobFactory {
-    override fun newJob(bundle: TriggerFiredBundle, scheduler: Scheduler): Job {
-        val jobClass = bundle.jobDetail.jobClass
-        return di.direct.InstanceOrNull(erased(jobClass))
-            ?: jobClass.getDeclaredConstructor().newInstance()
-    }
-}
+@Serializable
+data class ReleaseTrackView(
+    val trackId: String,
+    val createdAt: LocalDateTime,
+    val milestoneCount: Int,
+    val latest: MilestoneLatestView?
+)

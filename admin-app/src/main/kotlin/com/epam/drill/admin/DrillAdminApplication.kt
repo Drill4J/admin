@@ -30,6 +30,8 @@ import com.epam.drill.admin.metrics.config.etlDIModule
 import com.epam.drill.admin.etl.route.etlManagementReadRoutes
 import com.epam.drill.admin.etl.route.etlManagementWriteRoutes
 import com.epam.drill.admin.metrics.config.*
+import com.epam.drill.admin.config.*
+import com.epam.drill.admin.config.route.configRoutes
 import com.epam.drill.admin.route.rootRoute
 import com.epam.drill.admin.route.uiConfigRoute
 import com.epam.drill.admin.writer.rawdata.config.RawDataWriterDatabaseConfig
@@ -88,6 +90,7 @@ fun Application.module() {
         import(rawDataDIModule)
         import(metricsDIModule)
         import(etlDIModule)
+        import(configDIModule)
     }
     initDB()
     initScheduler()
@@ -150,6 +153,9 @@ fun Application.module() {
             //Metrics
             authenticate("jwt", "api-key") {
                 metricsRoutes()
+                withRole(Role.USER, Role.ADMIN) {
+                    configRoutes()
+                }
                 withRole(Role.USER, Role.ADMIN) {
                     route("/metrics") {
                         etlManagementReadRoutes()
@@ -240,6 +246,7 @@ private fun Application.initDB() {
     AuthDatabaseConfig.init(dataSource)
     RawDataWriterDatabaseConfig.init(dataSource)
     MetricsDatabaseConfig.init(metricsDataSource, defaultMaxAttempts = 1)
+    ConfigDatabaseConfig.init(metricsDataSource)
 }
 
 private fun Application.initScheduler() {
