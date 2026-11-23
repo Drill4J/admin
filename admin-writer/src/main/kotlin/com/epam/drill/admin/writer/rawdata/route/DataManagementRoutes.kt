@@ -105,6 +105,7 @@ fun Route.dataManagementReadRoutes() {
         getRawMethodTree()
         getRawMethods()
         getGroupSettings()
+        legacySettingsReadRoutes()
     }
 }
 
@@ -121,6 +122,7 @@ fun Route.dataManagementWriteRoutes() {
         deleteMethodIgnoreRule()
         putGroupSettings()
         deleteGroupSettings()
+        legacySettingsWriteRoutes()
     }
 }
 
