@@ -4,7 +4,7 @@ info:
   version: 1.0.0
 paths:
   #Settings Endpoints
-  /api/group-settings/{groupId}:
+  /api/groups/{groupId}/settings:
     get:
       summary: Get group settings
       description: |

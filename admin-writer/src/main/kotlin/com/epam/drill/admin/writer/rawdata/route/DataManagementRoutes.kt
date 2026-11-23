@@ -20,6 +20,7 @@ import com.epam.drill.admin.common.route.ok
 import com.epam.drill.admin.writer.rawdata.route.payload.ExclusionRulePayload
 import com.epam.drill.admin.writer.rawdata.service.DataManagementService
 import com.epam.drill.admin.writer.rawdata.service.RawMethodBrowseService
+import com.epam.drill.admin.writer.rawdata.service.SettingsService
 import io.ktor.resources.Resource
 import io.ktor.server.auth.principal
 import io.ktor.server.resources.delete
@@ -33,9 +34,11 @@ import org.kodein.di.ktor.closestDI
 import kotlin.getValue
 
 @Resource("/groups")
-class Groups() {
+class Groups {
     @Resource("/{groupId}")
     class Id(val parent: Groups, val groupId: String) {
+        @Resource("/settings")
+        class Settings(val parent: Groups.Id)
         @Resource("/apps")
         class Apps(val parent: Groups.Id) {
             @Resource("/{appId}")
@@ -95,32 +98,29 @@ class MethodIgnoreRulesRoute(
     class Id(val parent: MethodIgnoreRulesRoute, val id: Int)
 }
 
-fun Route.dataManagementRoutes() {
-    route("/data-management") {
-        deleteGroupData()
-        deleteAppData()
-        deleteBuildData()
-        deleteTestProjectData()
-        deleteTestSessionData()
-    }
-}
-
-/** Browse method ignore rules and raw-method hierarchy (USER + ADMIN). */
 fun Route.dataManagementReadRoutes() {
     route("/data-management") {
         getMethodIgnoreRules()
         getExclusionRules()
         getRawMethodTree()
         getRawMethods()
+        getGroupSettings()
     }
 }
 
-/** Create/delete/sync method ignore rules (ADMIN). */
 fun Route.dataManagementWriteRoutes() {
     route("/data-management") {
+        deleteGroupData()
+        deleteAppData()
+        deleteBuildData()
+        deleteTestProjectData()
+        deleteTestSessionData()
+
         putExclusionRules()
         postMethodIgnoreRules()
         deleteMethodIgnoreRule()
+        putGroupSettings()
+        deleteGroupSettings()
     }
 }
 
@@ -295,5 +295,32 @@ fun Route.getRawMethods() {
                 params.pageSize,
             )
         )
+    }
+}
+
+fun Route.getGroupSettings() {
+    val settingsService by closestDI().instance<SettingsService>()
+
+    get<Groups.Id.Settings> { params ->
+        val groupSettingsView = settingsService.getGroupSettings(params.parent.groupId)
+        call.ok(groupSettingsView)
+    }
+}
+
+fun Route.putGroupSettings() {
+    val settingsService by closestDI().instance<SettingsService>()
+
+    put<Groups.Id.Settings> { params ->
+        settingsService.saveGroupSettings(params.parent.groupId, call.decompressAndReceive())
+        call.ok("Group settings saved")
+    }
+}
+
+fun Route.deleteGroupSettings() {
+    val settingsService by closestDI().instance<SettingsService>()
+
+    delete<Groups.Id.Settings> { params ->
+        settingsService.clearGroupSettings(params.parent.groupId)
+        call.ok("Group settings cleared")
     }
 }

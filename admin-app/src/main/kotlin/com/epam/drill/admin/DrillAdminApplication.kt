@@ -129,13 +129,9 @@ fun Application.module() {
             //Admin
             authenticate("jwt", "api-key") {
                 tryApiKeyRoute()
-                withRole(Role.USER, Role.ADMIN) {
-                    settingsReadRoutes()
-                }
                 withRole(Role.ADMIN) {
                     userManagementRoutes()
                     apiKeyManagementRoutes()
-                    settingsWriteRoutes()
                 }
             }
 
@@ -145,7 +141,6 @@ fun Application.module() {
                     dataManagementReadRoutes()
                 }
                 withRole(Role.ADMIN) {
-                    dataManagementRoutes()
                     dataManagementWriteRoutes()
                 }
             }

@@ -33,7 +33,6 @@ import com.epam.drill.admin.test.waitUntilInBlocking
 import com.epam.drill.admin.writer.rawdata.config.dataManagementServicesDIModule
 import com.epam.drill.admin.writer.rawdata.config.rawDataServicesDIModule
 import com.epam.drill.admin.writer.rawdata.route.dataIngestRoutes
-import com.epam.drill.admin.writer.rawdata.route.dataManagementRoutes
 import com.epam.drill.admin.writer.rawdata.route.dataManagementWriteRoutes
 import com.epam.drill.admin.writer.rawdata.route.payload.InstancePayload
 import com.epam.drill.admin.writer.rawdata.route.payload.TestSessionPayload
@@ -76,7 +75,6 @@ fun havingData(testsData: suspend TestDataDsl.() -> Unit): HttpClient {
                 put("drill.rawData.queue.capacity", "0")
             }) {
             dataIngestRoutes()
-            dataManagementRoutes()
             dataManagementWriteRoutes()
             metricsRoutes()
             route("/metrics") {

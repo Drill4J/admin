@@ -15,10 +15,12 @@
  */
 package com.epam.drill.admin.writer.rawdata
 
-import com.epam.drill.admin.writer.rawdata.route.settingsRoutes
 import com.epam.drill.admin.writer.rawdata.config.RawDataWriterDatabaseConfig
 import com.epam.drill.admin.test.*
 import com.epam.drill.admin.writer.rawdata.config.settingsServicesDIModule
+import com.epam.drill.admin.writer.rawdata.route.deleteGroupSettings
+import com.epam.drill.admin.writer.rawdata.route.getGroupSettings
+import com.epam.drill.admin.writer.rawdata.route.putGroupSettings
 import com.epam.drill.admin.writer.rawdata.table.GroupSettingsTable
 import io.ktor.client.HttpClient
 import io.ktor.client.request.*
@@ -42,7 +44,9 @@ class SettingsRoutesTest : DatabaseTests({ RawDataWriterDatabaseConfig.init(it) 
     @BeforeTest
     fun setUp() {
         this.client = drillApplication(settingsServicesDIModule) {
-            settingsRoutes()
+            getGroupSettings()
+            putGroupSettings()
+            deleteGroupSettings()
         }.client
     }
 
@@ -52,8 +56,8 @@ class SettingsRoutesTest : DatabaseTests({ RawDataWriterDatabaseConfig.init(it) 
     }
 
     @Test
-    fun `put group-settings service should save settings in database and return OK`(): Unit = runBlocking {
-        client.put("group-settings/$testGroup") {
+    fun `put group settings should save settings in database and return OK`(): Unit = runBlocking {
+        client.put("groups/$testGroup/settings") {
             contentType(ContentType.Application.Json)
             setBody(
                 """
@@ -74,7 +78,7 @@ class SettingsRoutesTest : DatabaseTests({ RawDataWriterDatabaseConfig.init(it) 
     }
 
     @Test
-    fun `get group-setting service should return saved settings from database`(): Unit = runBlocking {
+    fun `get group settings should return saved settings from database`(): Unit = runBlocking {
         transaction {
             GroupSettingsTable.insert {
                 it[id] = testGroup
@@ -83,7 +87,7 @@ class SettingsRoutesTest : DatabaseTests({ RawDataWriterDatabaseConfig.init(it) 
             }
         }
 
-        client.get("group-settings/$testGroup").apply {
+        client.get("groups/$testGroup/settings").apply {
             assertEquals(HttpStatusCode.OK, status)
             assertJsonEquals(
                 """
@@ -100,7 +104,7 @@ class SettingsRoutesTest : DatabaseTests({ RawDataWriterDatabaseConfig.init(it) 
     }
 
     @Test
-    fun `delete group-setting service should delete settings by group from database and return OK`(): Unit = runBlocking {
+    fun `delete group settings should delete settings by group from database and return OK`(): Unit = runBlocking {
         transaction {
             GroupSettingsTable.insert {
                 it[id] = testGroup
@@ -109,7 +113,7 @@ class SettingsRoutesTest : DatabaseTests({ RawDataWriterDatabaseConfig.init(it) 
             }
         }
 
-        client.delete("group-settings/$testGroup").apply {
+        client.delete("groups/$testGroup/settings").apply {
             assertEquals(HttpStatusCode.OK, status)
         }
         waitUntilInTransaction {
