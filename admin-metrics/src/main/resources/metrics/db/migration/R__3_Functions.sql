@@ -1511,8 +1511,6 @@ RETURNS TABLE (
     isolated_tested_methods BIGINT,
     isolated_missed_methods BIGINT,
     isolated_methods_coverage_ratio FLOAT,
-
-    -- Populated only when include_smart_coverage IS TRUE
     aggregated_covered_probes BIGINT,
     aggregated_missed_probes BIGINT,
     aggregated_probes_coverage_ratio FLOAT,
@@ -1520,7 +1518,6 @@ RETURNS TABLE (
     aggregated_missed_methods BIGINT,
     aggregated_methods_coverage_ratio FLOAT,
 
-    -- Populated only when input_baseline_milestone_id IS NOT NULL
     total_change_probes BIGINT,
     isolated_covered_change_probes BIGINT,
     isolated_missed_change_probes BIGINT,
@@ -1529,8 +1526,6 @@ RETURNS TABLE (
     isolated_tested_change_methods BIGINT,
     isolated_missed_change_methods BIGINT,
     isolated_change_methods_coverage_ratio FLOAT,
-
-    -- Populated only when include_smart_coverage IS TRUE AND input_baseline_milestone_id IS NOT NULL
     aggregated_covered_change_probes BIGINT,
     aggregated_missed_change_probes BIGINT,
     aggregated_change_probes_coverage_ratio FLOAT,
@@ -1582,30 +1577,30 @@ BEGIN
             COALESCE(SUM(b.isolated_tested_methods)::FLOAT / NULLIF(SUM(b.total_methods), 0), 0.0)::FLOAT AS isolated_methods_coverage_ratio,
 
             -- Aggregated (smart/historical) coverage — NULL when include_smart_coverage IS FALSE
-            CASE WHEN include_smart_coverage THEN SUM(b.aggregated_covered_probes)::BIGINT ELSE NULL END AS aggregated_covered_probes,
-            CASE WHEN include_smart_coverage THEN SUM(b.aggregated_missed_probes)::BIGINT ELSE NULL END AS aggregated_missed_probes,
-            CASE WHEN include_smart_coverage THEN COALESCE(SUM(b.aggregated_covered_probes)::FLOAT / NULLIF(SUM(b.total_probes), 0), 0.0)::FLOAT ELSE NULL END AS aggregated_probes_coverage_ratio,
-            CASE WHEN include_smart_coverage THEN SUM(b.aggregated_tested_methods)::BIGINT ELSE NULL END AS aggregated_tested_methods,
-            CASE WHEN include_smart_coverage THEN SUM(b.aggregated_missed_methods)::BIGINT ELSE NULL END AS aggregated_missed_methods,
-            CASE WHEN include_smart_coverage THEN COALESCE(SUM(b.aggregated_tested_methods)::FLOAT / NULLIF(SUM(b.total_methods), 0), 0.0)::FLOAT ELSE NULL END AS aggregated_methods_coverage_ratio,
+            SUM(b.aggregated_covered_probes)::BIGINT AS aggregated_covered_probes,
+            SUM(b.aggregated_missed_probes)::BIGINT AS aggregated_missed_probes,
+            COALESCE(SUM(b.aggregated_covered_probes)::FLOAT / NULLIF(SUM(b.total_probes), 0), 0.0)::FLOAT AS aggregated_probes_coverage_ratio,
+            SUM(b.aggregated_tested_methods)::BIGINT AS aggregated_tested_methods,
+            SUM(b.aggregated_missed_methods)::BIGINT AS aggregated_missed_methods,
+            COALESCE(SUM(b.aggregated_tested_methods)::FLOAT / NULLIF(SUM(b.total_methods), 0), 0.0)::FLOAT AS aggregated_methods_coverage_ratio,
 
             -- Change coverage vs baseline — NULL when input_baseline_milestone_id IS NULL
-            CASE WHEN _baseline_build_ids IS NOT NULL THEN SUM(b.total_change_probes)::BIGINT ELSE NULL END AS total_change_probes,
-            CASE WHEN _baseline_build_ids IS NOT NULL THEN SUM(b.isolated_covered_change_probes)::BIGINT ELSE NULL END AS isolated_covered_change_probes,
-            CASE WHEN _baseline_build_ids IS NOT NULL THEN SUM(b.isolated_missed_change_probes)::BIGINT ELSE NULL END AS isolated_missed_change_probes,
-            CASE WHEN _baseline_build_ids IS NOT NULL THEN COALESCE(SUM(b.isolated_covered_change_probes)::FLOAT / NULLIF(SUM(b.total_change_probes), 0), 0.0)::FLOAT ELSE NULL END AS isolated_change_probes_coverage_ratio,
-            CASE WHEN _baseline_build_ids IS NOT NULL THEN SUM(b.total_change_methods)::BIGINT ELSE NULL END AS total_change_methods,
-            CASE WHEN _baseline_build_ids IS NOT NULL THEN SUM(b.isolated_tested_change_methods)::BIGINT ELSE NULL END AS isolated_tested_change_methods,
-            CASE WHEN _baseline_build_ids IS NOT NULL THEN SUM(b.isolated_missed_change_methods)::BIGINT ELSE NULL END AS isolated_missed_change_methods,
-            CASE WHEN _baseline_build_ids IS NOT NULL THEN COALESCE(SUM(b.isolated_tested_change_methods)::FLOAT / NULLIF(SUM(b.total_change_methods), 0), 0.0)::FLOAT ELSE NULL END AS isolated_change_methods_coverage_ratio,
+            SUM(b.total_change_probes)::BIGINT AS total_change_probes,
+            SUM(b.isolated_covered_change_probes)::BIGINT AS isolated_covered_change_probes,
+            SUM(b.isolated_missed_change_probes)::BIGINT AS isolated_missed_change_probes,
+            COALESCE(SUM(b.isolated_covered_change_probes)::FLOAT / NULLIF(SUM(b.total_change_probes), 0), 0.0)::FLOAT AS isolated_change_probes_coverage_ratio,
+            SUM(b.total_change_methods)::BIGINT AS total_change_methods,
+            SUM(b.isolated_tested_change_methods)::BIGINT AS isolated_tested_change_methods,
+            SUM(b.isolated_missed_change_methods)::BIGINT AS isolated_missed_change_methods,
+            COALESCE(SUM(b.isolated_tested_change_methods)::FLOAT / NULLIF(SUM(b.total_change_methods), 0), 0.0)::FLOAT AS isolated_change_methods_coverage_ratio,
 
             -- Aggregated change coverage — NULL when include_smart_coverage IS FALSE or no baseline
-            CASE WHEN include_smart_coverage AND _baseline_build_ids IS NOT NULL THEN SUM(b.aggregated_covered_change_probes)::BIGINT ELSE NULL END AS aggregated_covered_change_probes,
-            CASE WHEN include_smart_coverage AND _baseline_build_ids IS NOT NULL THEN SUM(b.aggregated_missed_change_probes)::BIGINT ELSE NULL END AS aggregated_missed_change_probes,
-            CASE WHEN include_smart_coverage AND _baseline_build_ids IS NOT NULL THEN COALESCE(SUM(b.aggregated_covered_change_probes)::FLOAT / NULLIF(SUM(b.total_change_probes), 0), 0.0)::FLOAT ELSE NULL END AS aggregated_change_probes_coverage_ratio,
-            CASE WHEN include_smart_coverage AND _baseline_build_ids IS NOT NULL THEN SUM(b.aggregated_tested_change_methods)::BIGINT ELSE NULL END AS aggregated_tested_change_methods,
-            CASE WHEN include_smart_coverage AND _baseline_build_ids IS NOT NULL THEN SUM(b.aggregated_missed_change_methods)::BIGINT ELSE NULL END AS aggregated_missed_change_methods,
-            CASE WHEN include_smart_coverage AND _baseline_build_ids IS NOT NULL THEN COALESCE(SUM(b.aggregated_tested_change_methods)::FLOAT / NULLIF(SUM(b.total_change_methods), 0), 0.0)::FLOAT ELSE NULL END AS aggregated_change_methods_coverage_ratio
+            SUM(b.aggregated_covered_change_probes)::BIGINT AS aggregated_covered_change_probes,
+            SUM(b.aggregated_missed_change_probes)::BIGINT AS aggregated_missed_change_probes,
+            COALESCE(SUM(b.aggregated_covered_change_probes)::FLOAT / NULLIF(SUM(b.total_change_probes), 0), 0.0)::FLOAT AS aggregated_change_probes_coverage_ratio,
+            SUM(b.aggregated_tested_change_methods)::BIGINT AS aggregated_tested_change_methods,
+            SUM(b.aggregated_missed_change_methods)::BIGINT AS aggregated_missed_change_methods,
+            COALESCE(SUM(b.aggregated_tested_change_methods)::FLOAT / NULLIF(SUM(b.total_change_methods), 0), 0.0)::FLOAT AS aggregated_change_methods_coverage_ratio
         FROM metrics.get_builds_with_coverage_v3(
             input_build_ids                 := _build_ids,
             input_baseline_build_ids        := _baseline_build_ids,
