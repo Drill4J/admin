@@ -28,8 +28,8 @@ val EtlConfig.testLaunchesExtractor
         name = "test_launches",
         sqlQuery = fromResource("/metrics/db/etl/test_launches_extractor.sql"),
         database = RawDataWriterDatabaseConfig.database,
-        fetchSize = fetchSize,
-        extractionLimit = extractionLimit,
+        fetchSize = fetchSizeFor("test_launches"),
+        extractionLimit = extractionLimitFor("test_launches"),
         lastExtractedAtColumnName = "created_at",
         metrics = metrics,
     )
@@ -40,7 +40,7 @@ val EtlConfig.testLaunchesLoader
         sqlUpsert = fromResource("/metrics/db/etl/test_launches_loader.sql"),
         sqlDelete = fromResource("/metrics/db/etl/test_launches_delete.sql"),
         database = MetricsDatabaseConfig.database,
-        batchSize = batchSize,
+        batchSize = batchSizeFor("test_launches"),
         metrics = metrics,
     )
 

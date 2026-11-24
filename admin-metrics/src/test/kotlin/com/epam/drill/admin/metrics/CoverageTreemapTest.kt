@@ -18,7 +18,7 @@ package com.epam.drill.admin.metrics
 import com.epam.drill.admin.writer.rawdata.route.payload.BuildInfoPayload
 import com.epam.drill.admin.writer.rawdata.route.payload.InstancePayload
 import com.epam.drill.admin.writer.rawdata.route.payload.SingleMethodPayload
-import com.epam.drill.admin.writer.rawdata.table.*
+import com.epam.drill.admin.writer.rawdata.route.payload.TestDetails
 import io.ktor.client.request.*
 import kotlin.test.Test
 import kotlin.test.assertTrue
@@ -162,6 +162,38 @@ class CoverageTreemapTest : MetricsApiTests() {
                 assertTrue(treemapAny(data) {
                     it["name"].toString().startsWith(method2.name) && it["covered_probes"] == 3
                 })
+            }
+        }
+    }
+
+    @Test
+    fun `given build with tagged tests in sessions, coverage-treemap filtered by testSessionId and testTags should return only matching coverage`() {
+        val taggedTest = TestDetails(runner = "junit", path = testPath, testName = "taggedTest", tags = listOf("tag1", "tag2"))
+        val otherTaggedTest = TestDetails(runner = "junit", path = testPath, testName = "otherTest", tags = listOf("tag3"))
+        havingData {
+            build1 has listOf(method1, method2)
+            taggedTest of session1 covers method1 with probesOf(1, 1) on build1
+            otherTaggedTest of session1 covers method2 with probesOf(1, 1, 1) on build1
+        }.expectThat {
+            // Session1 + tag1 - only method1 coverage
+            client.get("/metrics/coverage-treemap") {
+                parameter("buildId", "${build1.groupId}:${build1.appId}:${build1.buildVersion}")
+                parameter("testSessionId", session1.id)
+                parameter("testTags", "tag1")
+            }.returns { data ->
+                assertTrue(data.isNotEmpty())
+                assertTrue(treemapAny(data) { it["name"].toString().startsWith(method1.name) && it["covered_probes"] == 2 })
+                assertTrue(treemapAny(data) { it["name"].toString().startsWith(method2.name) && it["covered_probes"] == 0 })
+            }
+            // Session1 + tag3 - only method2 coverage
+            client.get("/metrics/coverage-treemap") {
+                parameter("buildId", "${build1.groupId}:${build1.appId}:${build1.buildVersion}")
+                parameter("testSessionId", session1.id)
+                parameter("testTags", "tag3")
+            }.returns { data ->
+                assertTrue(data.isNotEmpty())
+                assertTrue(treemapAny(data) { it["name"].toString().startsWith(method1.name) && it["covered_probes"] == 0 })
+                assertTrue(treemapAny(data) { it["name"].toString().startsWith(method2.name) && it["covered_probes"] == 3 })
             }
         }
     }

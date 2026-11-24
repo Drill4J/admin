@@ -24,18 +24,15 @@ import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.less
 import org.jetbrains.exposed.sql.and
 import org.jetbrains.exposed.sql.deleteWhere
+import org.jetbrains.exposed.sql.javatime.CurrentDateTime
 import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.update
 import org.jetbrains.exposed.sql.upsert
 import java.time.LocalDate
 
 class BuildRepositoryImpl : BuildRepository {
-    override suspend fun saveBuildInfo(build: Build) {
-        BuildTable.upsert(
-            onUpdateExclude = listOf(
-                BuildTable.createdAt,
-            ),
-        ) {
+    override suspend fun saveBuildGitInfo(build: Build) {
+        BuildTable.upsert {
             it[id] = build.id
             it[groupId] = build.groupId
             it[appId] = build.appId
@@ -46,23 +43,24 @@ class BuildRepositoryImpl : BuildRepository {
             it[committedAt] = build.commitDate
             it[commitAuthor] = build.commitAuthor
             it[commitMessage] = build.commitMessage
+            it[updatedAt] = CurrentDateTime
         }
     }
 
     override suspend fun saveBuildId(build: Build) {
-        BuildTable.upsert(
-            onUpdateExclude = listOf(
-                BuildTable.createdAt,
-                BuildTable.branch,
-                BuildTable.committedAt,
-                BuildTable.commitAuthor,
-                BuildTable.commitMessage,
-                BuildTable.commitMessage,
-                BuildTable.validationStatus,
-                BuildTable.validatedAt,
-                BuildTable.finalizedAt,
-            ),
-        ) {
+        BuildTable.upsert {
+            it[id] = build.id
+            it[groupId] = build.groupId
+            it[appId] = build.appId
+            it[commitSha] = build.commitSha
+            it[buildVersion] = build.buildVersion
+            it[instanceId] = build.instanceId
+            it[updatedAt] = CurrentDateTime
+        }
+    }
+
+    override suspend fun saveBuildAgentInfo(build: Build) {
+        BuildTable.upsert {
             it[id] = build.id
             it[groupId] = build.groupId
             it[appId] = build.appId
@@ -72,6 +70,7 @@ class BuildRepositoryImpl : BuildRepository {
             it[agentVersion] = build.agentVersion
             it[agentEnv] = build.agentEnv
             it[agentParams] = build.agentParams
+            it[updatedAt] = CurrentDateTime
         }
     }
 

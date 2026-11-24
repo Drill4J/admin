@@ -75,10 +75,9 @@ class BuildDetailApiTest : MetricsApiTests() {
 
     @Test
     fun `get build by id should return status and agent metadata`() {
-        val build = InstancePayload(
+        val build = BuildPayload(
             groupId = testGroup,
             appId = testApp,
-            instanceId = "instance-1",
             buildVersion = "1.0.0",
             agentVersion = "0.9.1",
             agentEnvironment = buildJsonObject {

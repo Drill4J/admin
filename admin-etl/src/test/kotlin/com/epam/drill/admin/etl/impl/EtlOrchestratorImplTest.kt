@@ -376,7 +376,6 @@ class EtlOrchestratorImplTest {
             metadataRepository = SimpleMetadataRepository(),
             jobsRepository = jobsRepository,
             metrics = metrics,
-            bufferSize = 0,
         )
 
         val result = orchestrator.runIncremental(jobsRepository, EtlContext(groupId = "g1"))

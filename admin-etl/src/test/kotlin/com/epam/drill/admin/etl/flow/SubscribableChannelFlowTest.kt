@@ -21,6 +21,7 @@ import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
+import kotlin.time.Duration.Companion.milliseconds
 
 class SubscribableChannelFlowTest {
 
@@ -48,7 +49,7 @@ class SubscribableChannelFlowTest {
 
     @Test
     fun `producer does not hang when one subscriber throws in collect`() = runBlocking {
-        val flow = SubscribableChannelFlow<Int>(capacity = Channel.RENDEZVOUS)
+        val flow = SubscribableChannelFlow<Int>()
 
         val subAReceived = mutableListOf<Int>()
 
@@ -71,7 +72,7 @@ class SubscribableChannelFlowTest {
         // Wait until both channels are registered
         flow.waitForSubscribers(2)
 
-        withTimeout(2_000) {
+        withTimeout(2_000.milliseconds) {
             flow.emit(1) // subA and subB both receive 1; subB throws and exits
             flow.emit(2) // only subA is left; without fix → hangs on chB.send(2)
             flow.emit(3)

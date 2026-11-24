@@ -28,8 +28,8 @@ val EtlConfig.testDefinitionsExtractor
         name = "test_definitions",
         sqlQuery = fromResource("/metrics/db/etl/test_definitions_extractor.sql"),
         database = RawDataWriterDatabaseConfig.database,
-        fetchSize = fetchSize,
-        extractionLimit = extractionLimit,
+        fetchSize = fetchSizeFor("test_definitions"),
+        extractionLimit = extractionLimitFor("test_definitions"),
         lastExtractedAtColumnName = "updated_at",
         metrics = metrics,
     )
@@ -40,7 +40,7 @@ val EtlConfig.testDefinitionsLoader
         sqlUpsert = fromResource("/metrics/db/etl/test_definitions_loader.sql"),
         sqlDelete = fromResource("/metrics/db/etl/test_definitions_delete.sql"),
         database = MetricsDatabaseConfig.database,
-        batchSize = batchSize,
+        batchSize = batchSizeFor("test_definitions"),
         metrics = metrics,
     )
 

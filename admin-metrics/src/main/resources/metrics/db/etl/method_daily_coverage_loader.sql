@@ -5,7 +5,6 @@ INSERT INTO metrics.method_daily_coverage (
     branch,
     app_env_id,
     test_result,
-    test_tag,
     test_task_id,
     test_project_id,
     created_at_day,
@@ -18,7 +17,6 @@ VALUES (
     :branch,
     :app_env_id,
     :test_result,
-    :test_tag,
     :test_task_id,
     :test_project_id,
     :created_at_day,
@@ -32,7 +30,6 @@ ON CONFLICT (
     COALESCE(branch,''),
     COALESCE(app_env_id,''),
     COALESCE(test_result,''),
-    COALESCE(test_tag,''),
     COALESCE(test_task_id,''),
     COALESCE(test_project_id,'')
 )

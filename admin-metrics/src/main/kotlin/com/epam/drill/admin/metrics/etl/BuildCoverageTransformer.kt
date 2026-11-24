@@ -97,7 +97,7 @@ class BuildCoverageTransformer(
                 }
 
                 if (codeProbes == null || methodProbes == null) {
-                    logger.debug { "ETL transformer [$name] skipping row because probes could not be enriched: $row" }
+                    logger.debug { "ETL transformer [$name] skipping row because method [$methodId] is not found in build [$buildId]" }
                     filtered.increment()
                     return@collect
                 }

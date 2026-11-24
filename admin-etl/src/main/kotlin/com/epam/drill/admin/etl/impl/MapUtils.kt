@@ -24,8 +24,8 @@ enum class NamingConvention {
     UNDERSCORE
 }
 
-private fun camelToUnderscore(name: String): String =
-    name.replace(Regex("([a-z])([A-Z])")) { match ->
+fun String.camelToUnderscore(): String =
+    this.replace(Regex("([a-z])([A-Z])")) { match ->
         "${match.groupValues[1]}_${match.groupValues[2].lowercase()}"
     }
 
@@ -35,7 +35,7 @@ fun EtlContext.toMap(namingConvention: NamingConvention = NamingConvention.CAMEL
         val rawName = prop.name
         val key = when (namingConvention) {
             NamingConvention.CAMELCASE -> rawName
-            NamingConvention.UNDERSCORE -> camelToUnderscore(rawName)
+            NamingConvention.UNDERSCORE -> rawName.camelToUnderscore()
         }
         key to prop.getter.call(this)
     }
@@ -49,7 +49,7 @@ fun Map<String, Any?>.toEtlContext(namingConvention: NamingConvention = NamingCo
     val args = constructor.parameters.associateWith { param ->
         val key = when (namingConvention) {
             NamingConvention.CAMELCASE -> param.name
-            NamingConvention.UNDERSCORE -> param.name?.let { camelToUnderscore(it) }
+            NamingConvention.UNDERSCORE -> param.name?.let { it.camelToUnderscore() }
         }
         this[key]
     }

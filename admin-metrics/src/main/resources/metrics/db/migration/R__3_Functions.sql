@@ -146,7 +146,6 @@ BEGIN
 			-- Filters by isolated coverage
 		  	AND (input_coverage_app_env_ids IS NULL OR ic.app_env_id = ANY(input_coverage_app_env_ids::VARCHAR[]))
 		  	AND (input_coverage_test_task_ids IS NULL OR ic.test_task_id = ANY(input_coverage_test_task_ids::VARCHAR[]))
-		  	AND (input_coverage_test_tags IS NULL OR ic.test_tag = ANY(input_coverage_test_tags::VARCHAR[]))
 		  	AND (input_coverage_test_results IS NULL OR ic.test_result = ANY(input_coverage_test_results::VARCHAR[]))
 		  	AND (input_coverage_test_project_ids IS NULL OR ic.test_project_id = ANY(input_coverage_test_project_ids::VARCHAR[]))
 		  	AND (input_coverage_period_from IS NULL OR ic.created_at_day >= input_coverage_period_from)
@@ -156,7 +155,6 @@ BEGIN
 			AND (input_coverage_branches IS NULL OR sc.branch = ANY(input_coverage_branches::VARCHAR[]))
 		  	AND (input_coverage_app_env_ids IS NULL OR sc.app_env_id = ANY(input_coverage_app_env_ids::VARCHAR[]))
 		  	AND (input_coverage_test_task_ids IS NULL OR sc.test_task_id = ANY(input_coverage_test_task_ids::VARCHAR[]))
-		  	AND (input_coverage_test_tags IS NULL OR sc.test_tag = ANY(input_coverage_test_tags::VARCHAR[]))
 		  	AND (input_coverage_test_results IS NULL OR sc.test_result = ANY(input_coverage_test_results::VARCHAR[]))
 		  	AND (input_coverage_test_project_ids IS NULL OR sc.test_project_id = ANY(input_coverage_test_project_ids::VARCHAR[]))
 		  	AND (input_coverage_period_from IS NULL OR sc.created_at_day >= input_coverage_period_from)

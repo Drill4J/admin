@@ -29,8 +29,8 @@ val EtlConfig.testSessionBuildsExtractor
         name = "test_session_builds",
         sqlQuery = fromResource("/metrics/db/etl/test_session_builds_extractor.sql"),
         database = RawDataWriterDatabaseConfig.database,
-        fetchSize = fetchSize,
-        extractionLimit = extractionLimit,
+        fetchSize = fetchSizeFor("test_session_builds"),
+        extractionLimit = extractionLimitFor("test_session_builds"),
         lastExtractedAtColumnName = "created_at",
         metrics = metrics,
     )
@@ -38,7 +38,7 @@ val EtlConfig.testSessionBuildsExtractor
 val EtlConfig.testSessionBuildsAggregator
     get() = UntypedAggregationTransformer(
         name = "test_session_builds_aggregator",
-        bufferSize = transformationBufferSize,
+        bufferSize = aggregationBufferSizeFor("test_session_builds_aggregator"),
         metrics = metrics,
         groupKeys = listOf(
             "group_id",

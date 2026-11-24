@@ -38,6 +38,7 @@ import kotlin.system.measureTimeMillis
 
 class EtlPipelineImpl<T : EtlRow, R : EtlRow>(
     override val name: String,
+    override val bufferSize: Int = 1000,
     override val extractor: DataExtractor<T>,
     override val transformer: DataTransformer<T, R>,
     override val loader: DataLoader<R>,

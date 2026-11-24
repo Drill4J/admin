@@ -57,11 +57,8 @@ import kotlin.time.Duration.Companion.seconds
  * | **Error**            | [close] with a cause propagates the exception to all subscribers.  |
  * | **Unsubscribe**      | Cancelling a subscriber's collect removes it from the fan-out.     |
  *
- * @param capacity Per-subscriber [Channel] buffer size.
  */
-class SubscribableChannelFlow<T>(
-    val capacity: Int = Channel.BUFFERED,
-) : FlowCollector<T> {
+class SubscribableChannelFlow<T>: FlowCollector<T> {
 
     private val mutex = Mutex()
     private val channels = mutableListOf<Channel<T>>()
@@ -130,7 +127,7 @@ class SubscribableChannelFlow<T>(
      * - The producer calls [close] (Flow completes / throws).
      * - The collector's coroutine is cancelled.
      */
-    suspend fun subscribe(ch: Channel<T> = Channel(capacity)): ClosableFlow<T> {
+    suspend fun subscribe(ch: Channel<T> = Channel()): ClosableFlow<T> {
         // Already closed before we even started collecting
         if (done) {
             doneCause?.let { throw it }
