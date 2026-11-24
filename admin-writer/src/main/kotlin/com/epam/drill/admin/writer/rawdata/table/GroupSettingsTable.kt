@@ -18,4 +18,8 @@ package com.epam.drill.admin.writer.rawdata.table
 object GroupSettingsTable : StringIdTable("raw_data.group_settings", "group_id") {
     val retentionPeriodDays = integer("retention_period_days").nullable()
     val metricsPeriodDays = integer("metrics_period_days").nullable()
+    val smartCoverageEnabled = bool("smart_coverage_enabled").nullable()
+    val smartCoverageBranches = array<String>("smart_coverage_branches", SHORT_TEXT_LENGTH).nullable()
+    val smartCoverageEnvironments = array<String>("smart_coverage_environments", SHORT_TEXT_LENGTH).nullable()
+    val smartCoverageTestStatuses = array<String>("smart_coverage_test_statuses", SHORT_TEXT_LENGTH).nullable()
 }

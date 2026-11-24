@@ -63,7 +63,13 @@ class SettingsRoutesTest : DatabaseTests({ RawDataWriterDatabaseConfig.init(it) 
                 """
                 {
                     "retentionPeriodDays": 30,
-                    "metricsPeriodDays": 10                                        
+                    "metricsPeriodDays": 10   ,
+                    "smartCoverage": {
+                        "enabled": true,
+                        "branches": ["main", "feature*"],
+                        "environments": ["staging"],
+                        "testStatuses": ["PASSED", "FAILED"]
+                    }
                 }
             """.trimIndent()
             )
@@ -74,6 +80,10 @@ class SettingsRoutesTest : DatabaseTests({ RawDataWriterDatabaseConfig.init(it) 
             val savedSettings = GroupSettingsTable.selectAll().where { GroupSettingsTable.id eq testGroup }.single()
             assertEquals(30, savedSettings[GroupSettingsTable.retentionPeriodDays])
             assertEquals(10, savedSettings[GroupSettingsTable.metricsPeriodDays])
+            assertEquals(true, savedSettings[GroupSettingsTable.smartCoverageEnabled])
+            assertEquals(listOf("main", "feature*"), savedSettings[GroupSettingsTable.smartCoverageBranches])
+            assertEquals(listOf("staging"), savedSettings[GroupSettingsTable.smartCoverageEnvironments])
+            assertEquals(listOf("PASSED", "FAILED"), savedSettings[GroupSettingsTable.smartCoverageTestStatuses])
         }
     }
 
@@ -84,6 +94,10 @@ class SettingsRoutesTest : DatabaseTests({ RawDataWriterDatabaseConfig.init(it) 
                 it[id] = testGroup
                 it[retentionPeriodDays] = 15
                 it[metricsPeriodDays] = 5
+                it[smartCoverageEnabled] = true
+                it[smartCoverageBranches] = listOf("main")
+                it[smartCoverageEnvironments] = emptyList()
+                it[smartCoverageTestStatuses] = listOf("PASSED")
             }
         }
 
@@ -94,7 +108,13 @@ class SettingsRoutesTest : DatabaseTests({ RawDataWriterDatabaseConfig.init(it) 
                 {
                     "data": {
                         "retentionPeriodDays": 15,
-                        "metricsPeriodDays": 5
+                        "metricsPeriodDays": 5,
+                        "smartCoverage": {
+                            "enabled": true,
+                            "branches": ["main"],
+                            "environments": [],
+                            "testStatuses": ["PASSED"]
+                        }
                     }
                 }
                 """.trimIndent(),

@@ -15,10 +15,12 @@
  */
 package com.epam.drill.admin.writer.rawdata.views
 
+import com.epam.drill.admin.writer.rawdata.entity.SmartCoverageSettings
 import kotlinx.serialization.Serializable
 
 @Serializable
 class GroupSettingsView(
     val retentionPeriodDays: Int? = null,
     val metricsPeriodDays: Int? = null,
+    val smartCoverage: SmartCoverageSettings? = null,
 )

@@ -4364,6 +4364,33 @@ components:
           type: string
           description: Human-readable description or name for the API key (e.g., 'CI/CD pipeline key', 'Agent key for staging').
     # Settings Schemas
+    SmartCoverageSettings:
+      type: object
+      description: |
+        Controls how coverage is computed for a group. When disabled, coverage reflects the current build alone.
+        When enabled, coverage is aggregated across matching builds from prior test sessions.
+      properties:
+        enabled:
+          type: boolean
+          default: true
+          description: When false, coverage is computed from the build alone and no historical sessions are included.
+        branches:
+          type: array
+          items:
+            type: string
+          description: Branch name patterns (exact or glob, e.g. `feature*`) whose sessions contribute coverage. Empty means all branches. The build's own branch is always included.
+        environments:
+          type: array
+          items:
+            type: string
+          description: Environment identifiers whose sessions contribute coverage. Empty means all environments.
+        testStatuses:
+          type: array
+          items:
+            type: string
+            enum: [PASSED, UNQUALIFIED, FAILED, SKIPPED, SMART_SKIPPED]
+          default: [PASSED, UNQUALIFIED]
+          description: Test execution statuses whose sessions contribute coverage.
     GroupSettingsPayload:
       type: object
       description: |
@@ -4377,6 +4404,11 @@ components:
           type: integer
           nullable: true
           description: Number of days of historical data to include when computing metrics and coverage aggregations. Set to null to use the system default.
+        smartCoverage:
+          nullable: true
+          allOf:
+            - $ref: '#/components/schemas/SmartCoverageSettings'
+          description: Smart coverage aggregation settings. Set to null to use the system default.
     # Metrics Request Schemas
     ImpactedTestsRequest:
       type: object
