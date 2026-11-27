@@ -44,7 +44,6 @@ fun Route.getGroups() {
     val metricsService by closestDI().instance<MetricsService>()
 
     get<Groups> {
-        println("!!! getGroups")
         val data = metricsService.getGroups()
         this.call.respond(HttpStatusCode.OK, ApiResponse(data))
     }

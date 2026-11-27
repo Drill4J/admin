@@ -592,7 +592,6 @@ fun Route.getLegacyGroups() {
     val metricsService by closestDI().instance<MetricsService>()
 
     get<Metrics.Groups> {
-        println("!!! getLegacyGroups")
         val data = metricsService.getGroups()
         this.call.respond(HttpStatusCode.OK, ApiResponse(data))
     }

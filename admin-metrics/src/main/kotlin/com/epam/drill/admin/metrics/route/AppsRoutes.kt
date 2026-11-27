@@ -45,7 +45,10 @@ import org.kodein.di.ktor.closestDI
 class Apps(val parent: Groups.GroupId) {
 
     @Resource("/{appId}")
-    class AppId(val parent: Apps, val appId: String) {
+    class AppId(
+        val parent: Apps,
+        val appId: String
+    ) {
         val groupId = parent.parent.groupId
 
         @Resource("/branches")
@@ -144,19 +147,13 @@ class Builds(val parent: AppId) {
             val testProjectIds: kotlin.collections.List<String> = emptyList(),
         )
 
-        @Resource("/changes/summary")
-        class ChangesSummary(
-            val parent: BuildId,
-            val baselineBuildId: String,
-        )
-
         @Resource("/similar-builds")
         class SimilarBuilds(
             val parent: BuildId,
         )
 
         @Resource("/test-sessions/summary")
-        class TestSessionStats(
+        class TestSessionSummary(
             val parent: BuildId,
         )
 
@@ -174,7 +171,7 @@ class Builds(val parent: AppId) {
         )
 
         @Resource("/coverage-chart")
-        class CoverageTreemap(
+        class CoverageChart(
             val parent: BuildId,
             val testTags: kotlin.collections.List<String> = emptyList(),
             val testResults: kotlin.collections.List<String> = emptyList(),
@@ -189,8 +186,14 @@ class Builds(val parent: AppId) {
             val includeOtherBuilds: Boolean = true,
         )
 
-        @Resource("/changes-chart")
-        class ChangesCoverageTreemap(
+        @Resource("/changes/summary")
+        class ChangesSummary(
+            val parent: BuildId,
+            val baselineBuildId: String,
+        )
+
+        @Resource("/changes/chart")
+        class ChangesChart(
             val parent: BuildId,
             val baselineBuildId: String,
             val testResults: kotlin.collections.List<String> = emptyList(),
@@ -208,7 +211,7 @@ class Builds(val parent: AppId) {
         )
 
         @Resource("/changes")
-        class BuildChanges(
+        class Changes(
             val parent: BuildId,
             val baselineBuildId: String? = null,
             val testResults: kotlin.collections.List<String> = emptyList(),
@@ -226,7 +229,7 @@ class Builds(val parent: AppId) {
         )
 
         @Resource("/methods")
-        class Coverage(
+        class Methods(
             val parent: BuildId,
             val testTags: kotlin.collections.List<String> = emptyList(),
             val testResults: kotlin.collections.List<String> = emptyList(),
@@ -353,7 +356,6 @@ fun Route.getApps() {
     val metricsService by closestDI().instance<MetricsService>()
 
     get<Apps> { params ->
-        println("!!! getApps")
         val data = metricsService.getApplications(
             groupId = params.parent.groupId,
         )
@@ -411,7 +413,7 @@ fun Route.getAppCoverageTrends() {
 
     get<AppId.AppCoverageTrends> { params ->
         val data = metricsService.getAppCoverageTrends(
-            groupId = params.parent.parent.parent.groupId,
+            groupId = params.parent.groupId,
             appId = params.parent.appId,
             branches = params.branches,
             envIds = params.envIds,
@@ -427,10 +429,11 @@ fun Route.getAppChangesTrends() {
     val metricsService by closestDI().instance<MetricsService>()
 
     get<AppId.AppChangesTrends> { params ->
+        check(params.baselineBuildId != null) { "baselineBuildId parameter is required" }
         val data = metricsService.getAppChangesTrends(
-            groupId = params.parent.parent.parent.groupId,
+            groupId = params.parent.groupId,
             appId = params.parent.appId,
-            baselineBuildId = params.baselineBuildId.orEmpty(),
+            baselineBuildId = params.baselineBuildId,
             branches = params.branches,
             envIds = params.envIds,
             testResults = params.testResults,
@@ -447,7 +450,7 @@ fun Route.getBuildTestSessions() {
 
     get<Builds.BuildId.TestSessions> { params ->
         val data = metricsService.getBuildTestSessions(
-            groupId = params.parent.parent.groupId,
+            groupId = params.parent.groupId,
             buildId = params.parent.buildId,
             testTaskIds = params.testTaskIds,
             createdBys = params.createdBys,
@@ -559,7 +562,7 @@ fun Route.getSimilarBuilds() {
 fun Route.getBuildTestSessionStats() {
     val metricsService by closestDI().instance<MetricsService>()
 
-    get<Builds.BuildId.TestSessionStats> { params ->
+    get<Builds.BuildId.TestSessionSummary> { params ->
         val data = metricsService.getBuildTestSessionStats(params.parent.buildId)
         this.call.respond(HttpStatusCode.OK, ApiResponse(data))
     }
@@ -568,7 +571,7 @@ fun Route.getBuildTestSessionStats() {
 fun Route.getCoverageTreemap() {
     val metricsService by closestDI().instance<MetricsService>()
 
-    get<Builds.BuildId.CoverageTreemap> { params ->
+    get<Builds.BuildId.CoverageChart> { params ->
         val treemap = metricsService.getCoverageTreemap(
             buildId = params.parent.buildId,
             envIds = params.envIds,
@@ -590,7 +593,7 @@ fun Route.getCoverageTreemap() {
 fun Route.getChangesCoverageTreemap() {
     val metricsService by closestDI().instance<MetricsService>()
 
-    get<Builds.BuildId.ChangesCoverageTreemap> { params ->
+    get<Builds.BuildId.ChangesChart> { params ->
         val treemap = metricsService.getChangesCoverageTreemap(
             buildId = params.parent.buildId,
             baselineBuildId = params.baselineBuildId,
@@ -614,7 +617,7 @@ fun Route.getChangesCoverageTreemap() {
 fun Route.getBuildChanges() {
     val metricsService by closestDI().instance<MetricsService>()
 
-    get<Builds.BuildId.BuildChanges> { params ->
+    get<Builds.BuildId.Changes> { params ->
         check(params.baselineBuildId != null) { "baselineBuildId is required" }
         val data = metricsService.getBuildChanges(
             groupId = params.parent.groupId,
@@ -647,7 +650,7 @@ fun Route.getBuildChanges() {
 fun Route.getCoverage() {
     val metricsService by closestDI().instance<MetricsService>()
 
-    get<Builds.BuildId.Coverage> { params ->
+    get<Builds.BuildId.Methods> { params ->
         val data = metricsService.getCoverage(
             groupId = params.parent.groupId,
             appId = params.parent.appId,
