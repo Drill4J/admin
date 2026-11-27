@@ -15,8 +15,6 @@
  */
 package com.epam.drill.admin.metrics.service
 
-import com.epam.drill.admin.metrics.models.BaselineBuild
-import com.epam.drill.admin.metrics.models.Build
 import com.epam.drill.admin.metrics.models.BuildSortField
 import com.epam.drill.admin.metrics.models.CoverageCriteria
 import com.epam.drill.admin.metrics.models.MethodCriteria

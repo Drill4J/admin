@@ -173,14 +173,11 @@ class ImpactedTestsApiTest : LegacyMetricsApiTests() {
             test1 covers method1 on build1
             build2 hasModified method1 comparedTo build1
         }.expectThat { client ->
-            val response = client.post("/groups/${build2.groupId}/apps/${build2.appId}/impacted-tests") {
+            val response = client.post("/groups/${build2.groupId}/apps/${build2.appId}/builds/${build2.buildId}/impacted-tests") {
+                parameter("baselineBuildId", build1.buildId)
                 contentType(ContentType.Application.Json)
                 setBody(
                     buildJsonObject {
-                        put("groupId", build2.groupId)
-                        put("appId", build2.appId)
-                        put("buildVersion", build2.buildVersion)
-                        put("baselineBuildVersion", build1.buildVersion)
                         put("sortBy", "invalidSortBy")
                     }
                 )

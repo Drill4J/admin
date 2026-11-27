@@ -71,7 +71,7 @@ class CoverageTreemapTest : LegacyMetricsApiTests() {
             )
         }.expectThat {
             val buildId = "$testGroup:$testApp:1.0.0"
-            client.get("/groups/$testGroup/apps/$testApp/builds/$buildId/reports/coverage-chart").returns { data ->
+            client.get("/groups/$testGroup/apps/$testApp/builds/$buildId/coverage-chart").returns { data ->
                 assertTrue(data.isEmpty())
             }
         }
@@ -82,7 +82,7 @@ class CoverageTreemapTest : LegacyMetricsApiTests() {
         havingData {
             build1 has listOf(method1, method2)
         }.expectThat {
-            client.get("/groups/${build1.groupId}/apps/${build1.appId}/builds/${build1.buildId}/reports/coverage-chart").returns { data ->
+            client.get("/groups/${build1.groupId}/apps/${build1.appId}/builds/${build1.buildId}/coverage-chart").returns { data ->
                 assertTrue(data.isNotEmpty())
                 assertTrue(treemapAll(data) { it["type"] in listOf("package", "class", "method") })
                 assertTrue(treemapAny(data) { it["type"] == "method" && it["signature"] != null })
@@ -101,7 +101,7 @@ class CoverageTreemapTest : LegacyMetricsApiTests() {
             build1 has listOf(method1, method2)
             test1 covers method1 with probesOf(1, 1) on build1
         }.expectThat {
-            client.get("/groups/${build1.groupId}/apps/${build1.appId}/builds/${build1.buildId}/reports/coverage-chart").returns { data ->
+            client.get("/groups/${build1.groupId}/apps/${build1.appId}/builds/${build1.buildId}/coverage-chart").returns { data ->
                 assertTrue(data.isNotEmpty())
                 assertTrue(treemapAny(data) {
                     it["name"].toString().startsWith(method1.name) && it["covered_probes"] == 2
@@ -121,7 +121,7 @@ class CoverageTreemapTest : LegacyMetricsApiTests() {
             test2 of session2 covers method2 with probesOf(1, 1, 1) on build1
         }.expectThat {
             // Without filter - all coverage
-            client.get("/groups/${build1.groupId}/apps/${build1.appId}/builds/${build1.buildId}/reports/coverage-chart").returns { data ->
+            client.get("/groups/${build1.groupId}/apps/${build1.appId}/builds/${build1.buildId}/coverage-chart").returns { data ->
                 assertTrue(data.isNotEmpty())
                 assertTrue(treemapAny(data) {
                     it["name"].toString().startsWith(method1.name) && it["covered_probes"] == 2
@@ -131,7 +131,7 @@ class CoverageTreemapTest : LegacyMetricsApiTests() {
                 })
             }
             // Filter by session1 - only method1 coverage
-            client.get("/groups/${build1.groupId}/apps/${build1.appId}/builds/${build1.buildId}/reports/coverage-chart") {
+            client.get("/groups/${build1.groupId}/apps/${build1.appId}/builds/${build1.buildId}/coverage-chart") {
                 parameter("testSessionId", session1.id)
             }.returns { data ->
                 assertTrue(data.isNotEmpty())
@@ -143,7 +143,7 @@ class CoverageTreemapTest : LegacyMetricsApiTests() {
                 })
             }
             // Filter by session2 - only method2 coverage
-            client.get("/groups/${build1.groupId}/apps/${build1.appId}/builds/${build1.buildId}/reports/coverage-chart") {
+            client.get("/groups/${build1.groupId}/apps/${build1.appId}/builds/${build1.buildId}/coverage-chart") {
                 parameter("testSessionId", session2.id)
             }.returns { data ->
                 assertTrue(data.isNotEmpty())
@@ -167,7 +167,7 @@ class CoverageTreemapTest : LegacyMetricsApiTests() {
             otherTaggedTest of session1 covers method2 with probesOf(1, 1, 1) on build1
         }.expectThat {
             // Session1 + tag1 - only method1 coverage
-            client.get("/groups/${build1.groupId}/apps/${build1.appId}/builds/${build1.buildId}/reports/coverage-chart") {
+            client.get("/groups/${build1.groupId}/apps/${build1.appId}/builds/${build1.buildId}/coverage-chart") {
                 parameter("testSessionId", session1.id)
                 parameter("testTags", "tag1")
             }.returns { data ->
@@ -176,7 +176,7 @@ class CoverageTreemapTest : LegacyMetricsApiTests() {
                 assertTrue(treemapAny(data) { it["name"].toString().startsWith(method2.name) && it["covered_probes"] == 0 })
             }
             // Session1 + tag3 - only method2 coverage
-            client.get("/groups/${build1.groupId}/apps/${build1.appId}/builds/${build1.buildId}/reports/coverage-chart") {
+            client.get("/groups/${build1.groupId}/apps/${build1.appId}/builds/${build1.buildId}/coverage-chart") {
                 parameter("testSessionId", session1.id)
                 parameter("testTags", "tag3")
             }.returns { data ->
@@ -196,7 +196,7 @@ class CoverageTreemapTest : LegacyMetricsApiTests() {
             test2 of session2 covers method2 with probesOf(1, 0, 0) on build1
         }.expectThat {
             // Filter by test1 definition (test1 covering method1) - requires testSessionId
-            client.get("/groups/${build1.groupId}/apps/${build1.appId}/builds/${build1.buildId}/reports/coverage-chart") {
+            client.get("/groups/${build1.groupId}/apps/${build1.appId}/builds/${build1.buildId}/coverage-chart") {
                 parameter("testSessionId", session1.id)
                 parameter("testDefinitionId", test1.definitionId)
             }.returns { data ->
@@ -205,7 +205,7 @@ class CoverageTreemapTest : LegacyMetricsApiTests() {
                 assertTrue(treemapAny(data) { it["name"].toString().startsWith(method2.name) && it["covered_probes"] == 0 })
             }
             // Filter by test2 definition (test2 covering method2) - requires testSessionId
-            client.get("/groups/${build1.groupId}/apps/${build1.appId}/builds/${build1.buildId}/reports/coverage-chart") {
+            client.get("/groups/${build1.groupId}/apps/${build1.appId}/builds/${build1.buildId}/coverage-chart") {
                 parameter("testSessionId", session1.id)
                 parameter("testDefinitionId", test2.definitionId)
             }.returns { data ->
@@ -245,16 +245,16 @@ class CoverageTreemapTest : LegacyMetricsApiTests() {
                 )
             }
             // Get coverage treemap by buildId
-            client.get("/groups/${build1.groupId}/apps/${build1.appId}/builds/${build1.buildId}/reports/coverage-chart") {
+            client.get("/groups/${build1.groupId}/apps/${build1.appId}/builds/${build1.buildId}/coverage-chart") {
                 parameter("packageNamePattern", "com.example.foo")
             }.returns { onlyMatchingMethods(it) }
             // Get coverage treemap by buildId + testSessionId
-            client.get("/groups/${build1.groupId}/apps/${build1.appId}/builds/${build1.buildId}/reports/coverage-chart") {
+            client.get("/groups/${build1.groupId}/apps/${build1.appId}/builds/${build1.buildId}/coverage-chart") {
                 parameter("testSessionId", session1.id)
                 parameter("packageNamePattern", "com.example.foo")
             }.returns { onlyMatchingMethods(it) }
             // Get coverage treemap by buildId + testSessionId + testDefinitionId
-            client.get("/groups/${build1.groupId}/apps/${build1.appId}/builds/${build1.buildId}/reports/coverage-chart") {
+            client.get("/groups/${build1.groupId}/apps/${build1.appId}/builds/${build1.buildId}/coverage-chart") {
                 parameter("testSessionId", session1.id)
                 parameter("testDefinitionId", test1.definitionId)
                 parameter("packageNamePattern", "com.example.foo")
@@ -291,16 +291,16 @@ class CoverageTreemapTest : LegacyMetricsApiTests() {
                 )
             }
             // Get coverage treemap by buildId
-            client.get("/groups/${build1.groupId}/apps/${build1.appId}/builds/${build1.buildId}/reports/coverage-chart") {
+            client.get("/groups/${build1.groupId}/apps/${build1.appId}/builds/${build1.buildId}/coverage-chart") {
                 parameter("classNamePattern", "com.example.foo.ClassA")
             }.returns { onlyMatchingMethods(it) }
             // Get coverage treemap by buildId + testSessionId
-            client.get("/groups/${build1.groupId}/apps/${build1.appId}/builds/${build1.buildId}/reports/coverage-chart") {
+            client.get("/groups/${build1.groupId}/apps/${build1.appId}/builds/${build1.buildId}/coverage-chart") {
                 parameter("testSessionId", session1.id)
                 parameter("classNamePattern", "com.example.foo.ClassA")
             }.returns { onlyMatchingMethods(it) }
             // Get coverage treemap by buildId + testSessionId + testDefinitionId
-            client.get("/groups/${build1.groupId}/apps/${build1.appId}/builds/${build1.buildId}/reports/coverage-chart") {
+            client.get("/groups/${build1.groupId}/apps/${build1.appId}/builds/${build1.buildId}/coverage-chart") {
                 parameter("testSessionId", session1.id)
                 parameter("testDefinitionId", test1.definitionId)
                 parameter("classNamePattern", "com.example.foo.ClassA")
@@ -315,7 +315,7 @@ class CoverageTreemapTest : LegacyMetricsApiTests() {
             test1 of session1.testProjectId("project-a") covers method1 with probesOf(1, 1) on build1
             test2 of session2.testProjectId("project-b") covers method2 with probesOf(1, 1, 1) on build1
         }.expectThat {
-            client.get("/groups/${build1.groupId}/apps/${build1.appId}/builds/${build1.buildId}/reports/coverage-chart") {
+            client.get("/groups/${build1.groupId}/apps/${build1.appId}/builds/${build1.buildId}/coverage-chart") {
                 parameter("testProjectIds", "project-a")
             }.returns { data ->
                 assertTrue(data.isNotEmpty())
@@ -358,16 +358,16 @@ class CoverageTreemapTest : LegacyMetricsApiTests() {
                 )
             }
             // Get coverage treemap by buildId
-            client.get("/groups/${build1.groupId}/apps/${build1.appId}/builds/${build1.buildId}/reports/coverage-chart") {
+            client.get("/groups/${build1.groupId}/apps/${build1.appId}/builds/${build1.buildId}/coverage-chart") {
                 parameter("envIds", "env-A")
             }.returns { onlyMatchingEnvironments(it) }
             // Get coverage treemap by buildId + testSessionId
-            client.get("/groups/${build1.groupId}/apps/${build1.appId}/builds/${build1.buildId}/reports/coverage-chart") {
+            client.get("/groups/${build1.groupId}/apps/${build1.appId}/builds/${build1.buildId}/coverage-chart") {
                 parameter("testSessionId", session1.id)
                 parameter("envIds", "env-A")
             }.returns { onlyMatchingEnvironments(it) }
             // Get coverage treemap by buildId + testSessionId + testDefinitionId
-            client.get("/groups/${build1.groupId}/apps/${build1.appId}/builds/${build1.buildId}/reports/coverage-chart") {
+            client.get("/groups/${build1.groupId}/apps/${build1.appId}/builds/${build1.buildId}/coverage-chart") {
                 parameter("testSessionId", session1.id)
                 parameter("testDefinitionId", test1.definitionId)
                 parameter("envIds", "env-A")

@@ -36,7 +36,7 @@ class BuildChangesApiTest : LegacyMetricsApiTests() {
             initBuildsAndMethodsData()
         }.expectThat {
             client.get("/groups/$testGroup/apps/$testApp/builds/${build3.buildId}/changes") {
-                parameter("baselineBuildVersion", "1.0.0")
+                parameter("baselineBuildId", build1.buildId)
             }.returns { data ->
                 assertEquals(3, data.size)
                 assertTrue(data.any { it["name"] == method2.name && it["changeType"] == ChangeType.MODIFIED.name })
@@ -57,7 +57,7 @@ class BuildChangesApiTest : LegacyMetricsApiTests() {
             )
         }.expectThat {
             client.get("/groups/$testGroup/apps/$testApp/builds/${build3.buildId}/changes") {
-                parameter("baselineBuildVersion", "1.0.0")
+                parameter("baselineBuildId", build1.buildId)
             }.returns { data ->
                 assertEquals(2, data.size)
                 assertTrue(data.none { it["name"] == method4.name }, "Ignored method should not be present in the response")
@@ -72,7 +72,7 @@ class BuildChangesApiTest : LegacyMetricsApiTests() {
             test1 covers method2 with probesOf(1, 1, 0) on build3
         }.expectThat {
             client.get("/groups/$testGroup/apps/$testApp/builds/${build3.buildId}/changes") {
-                parameter("baselineBuildVersion", "1.0.0")
+                parameter("baselineBuildId", build1.buildId)
             }.returns { data ->
                 assertTrue(data.any { it["name"] == method2.name && (it["coveredProbes"] as Int) == 2 })
             }
@@ -87,7 +87,7 @@ class BuildChangesApiTest : LegacyMetricsApiTests() {
             test2 covers method2 with probesOf(0, 0, 1) on build3
         }.expectThat {
             client.get("/groups/$testGroup/apps/$testApp/builds/${build3.buildId}/changes") {
-                parameter("baselineBuildVersion", "1.0.0")
+                parameter("baselineBuildId", build1.buildId)
             }.returns { data ->
                 assertTrue(data.any { it["name"] == method2.name && (it["coveredProbes"] as Int) == 1 })
                 assertTrue(data.any { it["name"] == method2.name && (it["coveredProbesInOtherBuilds"] as Int) == 3 })
@@ -103,7 +103,7 @@ class BuildChangesApiTest : LegacyMetricsApiTests() {
             test2 of session2.testProjectId("project-b") covers method2 with probesOf(0, 0, 1) on build3
         }.expectThat {
             client.get("/groups/$testGroup/apps/$testApp/builds/${build3.buildId}/changes") {
-                parameter("baselineBuildVersion", "1.0.0")
+                parameter("baselineBuildId", build1.buildId)
                 parameter("testProjectIds", "project-a")
             }.returns { data ->
                 assertTrue(data.any { it["name"] == method2.name && (it["coveredProbes"] as Int) == 2 })
@@ -117,7 +117,7 @@ class BuildChangesApiTest : LegacyMetricsApiTests() {
             initBuildsAndMethodsData()
         }.expectThat {
             client.get("/groups/$testGroup/apps/$testApp/builds/${build3.buildId}/changes") {
-                parameter("baselineBuildVersion", "1.0.0")
+                parameter("baselineBuildId", build1.buildId)
                 parameter("changeTypes", "deleted")
             }.returns { data ->
                 assertEquals(1, data.size)
@@ -145,7 +145,7 @@ class BuildChangesApiTest : LegacyMetricsApiTests() {
 
         }.expectThat {
             client.get("/groups/$testGroup/apps/$testApp/builds/${build2.buildId}/changes") {
-                parameter("baselineBuildVersion", "1.0.0")
+                parameter("baselineBuildId", build1.buildId)
                 parameter("page", 1)
                 parameter("pageSize", 5)
             }.returns { data ->
@@ -153,7 +153,7 @@ class BuildChangesApiTest : LegacyMetricsApiTests() {
             }
 
             client.get("/groups/$testGroup/apps/$testApp/builds/${build2.buildId}/changes") {
-                parameter("baselineBuildVersion", "1.0.0")
+                parameter("baselineBuildId", build1.buildId)
                 parameter("page", 2)
                 parameter("pageSize", 10)
             }.returns { data ->

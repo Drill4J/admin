@@ -34,9 +34,9 @@ import io.ktor.resources.*
 import io.ktor.server.application.ApplicationCall
 import io.ktor.server.request.receive
 import io.ktor.server.resources.*
+import io.ktor.server.resources.post
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
-import io.ktor.server.routing.post
 import kotlinx.serialization.Serializable
 import org.kodein.di.instance
 import org.kodein.di.ktor.closestDI
@@ -96,23 +96,26 @@ class Apps(val parent: Groups.GroupId) {
 }
 
 @Resource("/builds")
-class Builds(
-    val parent: AppId,
+class Builds(val parent: AppId) {
+    val groupId: String = parent.parent.parent.groupId
+    val appId: String = parent.appId
 
-    val groupId: String = parent.parent.parent.groupId,
-    val appId: String = parent.appId,
+    @Resource("")
+    class List(
+        val parent: Builds,
 
-    val branches: List<String> = emptyList(),
-    val envIds: List<String> = emptyList(),
-    val commitSha: String? = null,
-    val buildVersion: String? = null,
+        val branches: kotlin.collections.List<String> = emptyList(),
+        val envIds: kotlin.collections.List<String> = emptyList(),
+        val commitSha: String? = null,
+        val buildVersion: String? = null,
 
-    val sortBy: BuildSortField? = null,
-    val sortOrder: SortOrder? = null,
+        val sortBy: BuildSortField? = null,
+        val sortOrder: SortOrder? = null,
 
-    val page: Int? = null,
-    val pageSize: Int? = null
-) {
+        val page: Int? = null,
+        val pageSize: Int? = null
+    )
+
     @Resource("/{buildId}")
     class BuildId(
         val parent: Builds,
@@ -125,20 +128,20 @@ class Builds(
         class CoverageByProbes(
             val parent: BuildId,
             val baselineBuildId: String? = null,
-            val envIds: List<String> = emptyList(),
-            val branches: List<String> = emptyList(),
-            val testResults: List<String> = emptyList(),
-            val testProjectIds: List<String> = emptyList(),
+            val envIds: kotlin.collections.List<String> = emptyList(),
+            val branches: kotlin.collections.List<String> = emptyList(),
+            val testResults: kotlin.collections.List<String> = emptyList(),
+            val testProjectIds: kotlin.collections.List<String> = emptyList(),
         )
 
         @Resource("/coverage-by-methods")
         class CoverageByMethods(
             val parent: BuildId,
             val baselineBuildId: String? = null,
-            val envIds: List<String> = emptyList(),
-            val branches: List<String> = emptyList(),
-            val testResults: List<String> = emptyList(),
-            val testProjectIds: List<String> = emptyList(),
+            val envIds: kotlin.collections.List<String> = emptyList(),
+            val branches: kotlin.collections.List<String> = emptyList(),
+            val testResults: kotlin.collections.List<String> = emptyList(),
+            val testProjectIds: kotlin.collections.List<String> = emptyList(),
         )
 
         @Resource("/changes/summary")
@@ -160,10 +163,10 @@ class Builds(
         @Resource("/test-sessions")
         class TestSessions(
             val parent: BuildId,
-            val testTaskIds: List<String> = emptyList(),
-            val createdBys: List<String> = emptyList(),
-            val results: List<String> = emptyList(),
-            val testProjectIds: List<String> = emptyList(),
+            val testTaskIds: kotlin.collections.List<String> = emptyList(),
+            val createdBys: kotlin.collections.List<String> = emptyList(),
+            val results: kotlin.collections.List<String> = emptyList(),
+            val testProjectIds: kotlin.collections.List<String> = emptyList(),
             val sortBy: String? = null,
             val sortOrder: SortOrder? = null,
             val page: Int? = null,
@@ -173,11 +176,11 @@ class Builds(
         @Resource("/coverage-chart")
         class CoverageTreemap(
             val parent: BuildId,
-            val testTags: List<String> = emptyList(),
-            val testResults: List<String> = emptyList(),
-            val envIds: List<String> = emptyList(),
-            val branches: List<String> = emptyList(),
-            val testProjectIds: List<String> = emptyList(),
+            val testTags: kotlin.collections.List<String> = emptyList(),
+            val testResults: kotlin.collections.List<String> = emptyList(),
+            val envIds: kotlin.collections.List<String> = emptyList(),
+            val branches: kotlin.collections.List<String> = emptyList(),
+            val testProjectIds: kotlin.collections.List<String> = emptyList(),
             val packageNamePattern: String? = null,
             val classNamePattern: String? = null,
             val rootId: String? = null,
@@ -190,10 +193,10 @@ class Builds(
         class ChangesCoverageTreemap(
             val parent: BuildId,
             val baselineBuildId: String,
-            val testResults: List<String> = emptyList(),
-            val envIds: List<String> = emptyList(),
-            val branches: List<String> = emptyList(),
-            val testProjectIds: List<String> = emptyList(),
+            val testResults: kotlin.collections.List<String> = emptyList(),
+            val envIds: kotlin.collections.List<String> = emptyList(),
+            val branches: kotlin.collections.List<String> = emptyList(),
+            val testProjectIds: kotlin.collections.List<String> = emptyList(),
             val packageNamePattern: String? = null,
             val classNamePattern: String? = null,
             val rootId: String? = null,
@@ -208,11 +211,11 @@ class Builds(
         class BuildChanges(
             val parent: BuildId,
             val baselineBuildId: String? = null,
-            val testResults: List<String> = emptyList(),
-            val envIds: List<String> = emptyList(),
-            val branches: List<String> = emptyList(),
-            val testProjectIds: List<String> = emptyList(),
-            val changeTypes: List<String> = emptyList(),
+            val testResults: kotlin.collections.List<String> = emptyList(),
+            val envIds: kotlin.collections.List<String> = emptyList(),
+            val branches: kotlin.collections.List<String> = emptyList(),
+            val testProjectIds: kotlin.collections.List<String> = emptyList(),
+            val changeTypes: kotlin.collections.List<String> = emptyList(),
             val hasImpactedTests: Boolean? = null,
             val methodSignature: String? = null,
             val testDefinitionId: String? = null,
@@ -225,11 +228,11 @@ class Builds(
         @Resource("/methods")
         class Coverage(
             val parent: BuildId,
-            val testTags: List<String> = emptyList(),
-            val testResults: List<String> = emptyList(),
-            val envIds: List<String> = emptyList(),
-            val branches: List<String> = emptyList(),
-            val testProjectIds: List<String> = emptyList(),
+            val testTags: kotlin.collections.List<String> = emptyList(),
+            val testResults: kotlin.collections.List<String> = emptyList(),
+            val envIds: kotlin.collections.List<String> = emptyList(),
+            val branches: kotlin.collections.List<String> = emptyList(),
+            val testProjectIds: kotlin.collections.List<String> = emptyList(),
             val packageName: String? = null,
             val className: String? = null,
 
@@ -246,21 +249,21 @@ class Builds(
         @Resource("/packages")
         class CoverageByPackage(
             val parent: BuildId,
-            val testResults: List<String> = emptyList(),
-            val envIds: List<String> = emptyList(),
-            val branches: List<String> = emptyList(),
-            val testProjectIds: List<String> = emptyList(),
+            val testResults: kotlin.collections.List<String> = emptyList(),
+            val envIds: kotlin.collections.List<String> = emptyList(),
+            val branches: kotlin.collections.List<String> = emptyList(),
+            val testProjectIds: kotlin.collections.List<String> = emptyList(),
         )
 
         @Resource("/classes")
         class CoverageByClass(
             val parent: BuildId,
             val packageName: String? = null,
-            val testTags: List<String> = emptyList(),
-            val testResults: List<String> = emptyList(),
-            val envIds: List<String> = emptyList(),
-            val branches: List<String> = emptyList(),
-            val testProjectIds: List<String> = emptyList(),
+            val testTags: kotlin.collections.List<String> = emptyList(),
+            val testResults: kotlin.collections.List<String> = emptyList(),
+            val envIds: kotlin.collections.List<String> = emptyList(),
+            val branches: kotlin.collections.List<String> = emptyList(),
+            val testProjectIds: kotlin.collections.List<String> = emptyList(),
             val sortBy: String? = null,
             val sortOrder: SortOrder? = null,
             val page: Int? = null,
@@ -316,6 +319,9 @@ class ImpactedMethods(
     val parent: Builds.BuildId,
     val baselineBuildId: String? = null,
 ) : ImpactedTestFilters()
+
+@Serializable
+class ImpactedTestFiltersBody : ImpactedTestFilters()
 
 fun Route.appsRoutes() {
     getApps()
@@ -465,10 +471,10 @@ fun Route.getBuildTestSessions() {
 fun Route.getBuilds() {
     val metricsService by closestDI().instance<MetricsService>()
 
-    get<Builds> { params ->
+    get<Builds.List> { params ->
         val data = metricsService.getBuilds(
-            groupId = params.groupId,
-            appId = params.appId,
+            groupId = params.parent.groupId,
+            appId = params.parent.appId,
             branches = params.branches,
             envIds = params.envIds,
             commitSha = params.commitSha,
@@ -718,7 +724,7 @@ fun Route.postImpactedTests() {
     val metricsService by closestDI().instance<MetricsService>()
 
     post<ImpactedTests> { params ->
-        val filters = call.receive<ImpactedTestFilters>()
+        val filters = call.receive<ImpactedTestFiltersBody>()
         val data = getImpactedTests(
             groupId = params.parent.groupId,
             appId = params.parent.appId,
@@ -737,7 +743,7 @@ fun Route.postImpactedTests() {
     }
 
     post<ImpactedTests.FilterOptions> { params ->
-        val filters = call.receive<ImpactedTests>()
+        val filters = call.receive<ImpactedTestFiltersBody>()
         check(params.parent.baselineBuildId != null) { "baselineBuildId is required" }
         val data = metricsService.getImpactedTestsFilterOptions(
             buildId = params.parent.parent.buildId,
@@ -838,7 +844,7 @@ fun Route.postImpactedMethods() {
     val metricsService by closestDI().instance<MetricsService>()
 
     post<ImpactedMethods> { params ->
-        val filters = call.receive<ImpactedTestFilters>()
+        val filters = call.receive<ImpactedTestFiltersBody>()
         val data = getImpactedMethods(
             groupId = params.parent.groupId,
             appId = params.parent.appId,

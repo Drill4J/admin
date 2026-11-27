@@ -23,8 +23,6 @@ import com.epam.drill.admin.etl.service.EtlService
 import com.epam.drill.admin.metrics.config.MetricsConfig
 import com.epam.drill.admin.metrics.config.MetricsDatabaseConfig.transaction
 import com.epam.drill.admin.metrics.config.MetricsServiceUiLinksConfig
-import com.epam.drill.admin.metrics.models.BaselineBuild
-import com.epam.drill.admin.metrics.models.Build
 import com.epam.drill.admin.metrics.models.BuildSortField
 import com.epam.drill.admin.metrics.models.CoverageCriteria
 import com.epam.drill.admin.metrics.models.MethodCriteria
