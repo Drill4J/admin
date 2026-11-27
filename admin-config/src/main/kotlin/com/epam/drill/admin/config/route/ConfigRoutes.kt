@@ -16,7 +16,9 @@
 package com.epam.drill.admin.config.route
 
 import com.epam.drill.admin.common.config.ApiResponse
-import com.epam.drill.admin.common.route.Groups
+import com.epam.drill.admin.common.route.Apps
+import com.epam.drill.admin.common.route.Milestones
+import com.epam.drill.admin.common.route.ReleaseTracks
 import com.epam.drill.admin.config.model.AppImpactGateTargets
 import com.epam.drill.admin.config.model.AppOverallGateTargets
 import com.epam.drill.admin.config.model.ImpactQualityGateTargets
@@ -32,55 +34,31 @@ import io.ktor.server.resources.post
 import io.ktor.server.resources.put
 import io.ktor.server.response.respond
 import io.ktor.server.routing.Route
-import kotlinx.serialization.Serializable
 import org.kodein.di.instance
 import org.kodein.di.ktor.closestDI
 
-@Serializable
-@Resource("/release-tracks")
-data class ReleaseTracks(val parent: Groups.GroupId) {
-    @Serializable
-    @Resource("/list")
-    data class List(val parent: ReleaseTracks)
+@Resource("/list")
+class ReleaseTrackList(val parent: ReleaseTracks)
 
-    @Serializable
-    @Resource("/{trackId}")
-    data class TrackId(val parent: ReleaseTracks, val trackId: String) {
-        val groupId: String = parent.parent.groupId
-        @Serializable
-        @Resource("/milestones")
-        data class Milestones(val parent: TrackId) {
-            @Serializable
-            @Resource("/{milestoneId}")
-            data class MilestoneId(val parent: Milestones, val milestoneId: String) {
-                val groupId: String = parent.parent.groupId
-                val trackId: String = parent.parent.trackId
-                @Serializable
-                @Resource("/quality-gates/overall")
-                data class QualityGateOverall(val parent: MilestoneId)
+@Resource("/list")
+class MilestoneList(val parent: Milestones)
 
-                @Serializable
-                @Resource("/quality-gates/impact")
-                data class QualityGateImpact(val parent: MilestoneId)
-            }
-        }
-    }
+@Resource("/quality-gates")
+class MilestoneQualityGates(val parent: Milestones.MilestoneId) {
+    @Resource("/overall")
+    class Overall(val parent: MilestoneQualityGates)
+
+    @Resource("/impact")
+    class Impact(val parent: MilestoneQualityGates)
 }
 
-@Serializable
-@Resource("/groups/{groupId}/apps")
-data class Apps(val groupId: String) {
-    @Serializable
-    @Resource("/{appId}")
-    data class AppId(val parent: Apps, val appId: String) {
-        @Serializable
-        @Resource("/quality-gates/overall")
-        data class QualityGatesOverall(val parent: AppId)
+@Resource("/quality-gates")
+class AppQualityGates(val parent: Apps.AppId) {
+    @Resource("/overall")
+    class Overall(val parent: AppQualityGates)
 
-        @Serializable
-        @Resource("/quality-gates/impact")
-        data class QualityGatesImpact(val parent: AppId)
-    }
+    @Resource("/impact")
+    class Impact(val parent: AppQualityGates)
 }
 
 fun Route.configRoutes() {
@@ -92,63 +70,63 @@ fun Route.configRoutes() {
         call.respond(HttpStatusCode.OK, ApiResponse(null))
     }
 
-    get<ReleaseTracks> { params ->
-        val tracks = configService.getTracks(params.parent.groupId)
+    get<ReleaseTrackList> { params ->
+        val tracks = configService.getTracks(params.parent.parent.groupId)
         call.respond(HttpStatusCode.OK, ApiResponse(tracks))
     }
 
-    put<ReleaseTracks.TrackId.Milestones> { params ->
+    put<Milestones> { params ->
         val payload = call.receive<MilestonePayload>()
         configService.saveMilestone(params.parent.groupId, params.parent.trackId, payload)
         call.respond(HttpStatusCode.OK, ApiResponse(null))
     }
 
-    get<ReleaseTracks.TrackId.Milestones> { params ->
-        val milestones = configService.getMilestones(params.parent.groupId, params.parent.trackId)
+    get<MilestoneList> { params ->
+        val milestones = configService.getMilestones(params.parent.parent.groupId, params.parent.parent.trackId)
         call.respond(HttpStatusCode.OK, ApiResponse(milestones))
     }
 
-    put<ReleaseTracks.TrackId.Milestones.MilestoneId.QualityGateOverall> { params ->
+    put<MilestoneQualityGates.Overall> { params ->
         val targets = call.receive<OverallQualityGateTargets>()
         configService.saveMilestoneOverallTargets(
-            params.parent.groupId,
-            params.parent.trackId,
-            params.parent.milestoneId,
+            params.parent.parent.groupId,
+            params.parent.parent.trackId,
+            params.parent.parent.milestoneId,
             targets
         )
         call.respond(HttpStatusCode.OK, ApiResponse(null))
     }
 
-    put<ReleaseTracks.TrackId.Milestones.MilestoneId.QualityGateImpact> { params ->
+    put<MilestoneQualityGates.Impact> { params ->
         val targets = call.receive<ImpactQualityGateTargets>()
         configService.saveMilestoneImpactTargets(
-            params.parent.groupId,
-            params.parent.trackId,
-            params.parent.milestoneId,
+            params.parent.parent.groupId,
+            params.parent.parent.trackId,
+            params.parent.parent.milestoneId,
             targets
         )
         call.respond(HttpStatusCode.OK, ApiResponse(null))
     }
 
-    get<Apps.AppId.QualityGatesOverall> { params ->
-        val targets = configService.getAppOverallTargets(params.parent.parent.groupId, params.parent.appId)
+    get<AppQualityGates.Overall> { params ->
+        val targets = configService.getAppOverallTargets(params.parent.parent.groupId, params.parent.parent.appId)
         call.respond(HttpStatusCode.OK, ApiResponse(targets))
     }
 
-    put<Apps.AppId.QualityGatesOverall> { params ->
+    put<AppQualityGates.Overall> { params ->
         val targets = call.receive<AppOverallGateTargets>()
-        configService.saveAppOverallTargets(params.parent.parent.groupId, params.parent.appId, targets)
+        configService.saveAppOverallTargets(params.parent.parent.groupId, params.parent.parent.appId, targets)
         call.respond(HttpStatusCode.OK, ApiResponse(null))
     }
 
-    get<Apps.AppId.QualityGatesImpact> { params ->
-        val targets = configService.getAppImpactTargets(params.parent.parent.groupId, params.parent.appId)
+    get<AppQualityGates.Impact> { params ->
+        val targets = configService.getAppImpactTargets(params.parent.parent.groupId, params.parent.parent.appId)
         call.respond(HttpStatusCode.OK, ApiResponse(targets))
     }
 
-    put<Apps.AppId.QualityGatesImpact> { params ->
+    put<AppQualityGates.Impact> { params ->
         val targets = call.receive<AppImpactGateTargets>()
-        configService.saveAppImpactTargets(params.parent.parent.groupId, params.parent.appId, targets)
+        configService.saveAppImpactTargets(params.parent.parent.groupId, params.parent.parent.appId, targets)
         call.respond(HttpStatusCode.OK, ApiResponse(null))
     }
 }

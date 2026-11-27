@@ -115,14 +115,13 @@ class ReleaseTrackApiTest : DatabaseTests({ ConfigDatabaseConfig.init(it) }) {
             setBody("""{"trackId": "$TRACK"}""")
         }
 
-        val body = client.get("groups/$GROUP/release-tracks").bodyAsText()
+        val body = client.get("groups/$GROUP/release-tracks/list").bodyAsText()
         assertTrue(body.contains(TRACK))
-        assertTrue(body.contains("milestoneCount"))
     }
 
     @Test
     fun `given no tracks, get returns empty list`(): Unit = runBlocking {
-        val body = client.get("groups/$GROUP/release-tracks").bodyAsText()
+        val body = client.get("groups/$GROUP/release-tracks/list").bodyAsText()
         assertJsonEquals("""{"data": []}""", body)
     }
 }

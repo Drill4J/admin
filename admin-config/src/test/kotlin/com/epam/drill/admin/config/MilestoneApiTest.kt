@@ -150,7 +150,7 @@ class MilestoneApiTest : DatabaseTests({ ConfigDatabaseConfig.init(it) }) {
         insertMilestone(GROUP, TRACK, "v1")
         insertMilestone(GROUP, TRACK, "v2")
 
-        val body = client.get("groups/$GROUP/release-tracks/$TRACK/milestones").bodyAsText()
+        val body = client.get("groups/$GROUP/release-tracks/$TRACK/milestones/list").bodyAsText()
         assertTrue(body.contains("v1"))
         assertTrue(body.contains("v2"))
     }
