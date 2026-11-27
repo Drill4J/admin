@@ -16,6 +16,7 @@
 package com.epam.drill.admin.metrics.route
 
 import com.epam.drill.admin.common.config.ApiResponse
+import com.epam.drill.admin.common.route.Groups
 import com.epam.drill.admin.metrics.service.MetricsService
 import io.ktor.http.HttpStatusCode
 import io.ktor.resources.Resource
@@ -25,16 +26,8 @@ import io.ktor.server.routing.Route
 import org.kodein.di.instance
 import org.kodein.di.ktor.closestDI
 
-@Resource("/groups")
-class Groups {
-    @Resource("/{groupId}")
-    class GroupId(
-        val parent: Groups,
-        val groupId: String
-    ) {
-
-    }
-}
+@Resource("")
+class GroupList(val parent: Groups)
 
 fun Route.groupRoutes() {
     getGroups()
@@ -43,7 +36,7 @@ fun Route.groupRoutes() {
 fun Route.getGroups() {
     val metricsService by closestDI().instance<MetricsService>()
 
-    get<Groups> {
+    get<GroupList> {
         val data = metricsService.getGroups()
         this.call.respond(HttpStatusCode.OK, ApiResponse(data))
     }
