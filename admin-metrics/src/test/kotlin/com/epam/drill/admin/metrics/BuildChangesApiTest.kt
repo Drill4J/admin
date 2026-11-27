@@ -16,14 +16,13 @@
 package com.epam.drill.admin.metrics
 
 import com.epam.drill.admin.metrics.views.ChangeType
-import com.epam.drill.admin.test.*
 import com.epam.drill.admin.writer.rawdata.route.payload.SingleMethodPayload
 import io.ktor.client.request.*
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
-class BuildChangesApiTest : MetricsApiTests() {
+class BuildChangesApiTest : LegacyMetricsApiTests() {
     private suspend fun TestDataDsl.initBuildsAndMethodsData() {
         build1 has listOf(method1, method2, method4)
         build2 hasModified method2 comparedTo build1
@@ -36,11 +35,8 @@ class BuildChangesApiTest : MetricsApiTests() {
         havingData {
             initBuildsAndMethodsData()
         }.expectThat {
-            client.get("/metrics/build-changes") {
-                parameter("groupId", testGroup)
-                parameter("appId", testApp)
-                parameter("buildVersion", "3.0.0")
-                parameter("baselineBuildVersion", "1.0.0")
+            client.get("/groups/$testGroup/apps/$testApp/builds/${build3.buildId}/changes") {
+                parameter("baselineBuildId", build1.buildId)
             }.returns { data ->
                 assertEquals(3, data.size)
                 assertTrue(data.any { it["name"] == method2.name && it["changeType"] == ChangeType.MODIFIED.name })
@@ -60,11 +56,8 @@ class BuildChangesApiTest : MetricsApiTests() {
                 namePattern = method4.name
             )
         }.expectThat {
-            client.get("/metrics/build-changes") {
-                parameter("groupId", testGroup)
-                parameter("appId", testApp)
-                parameter("buildVersion", "3.0.0")
-                parameter("baselineBuildVersion", "1.0.0")
+            client.get("/groups/$testGroup/apps/$testApp/builds/${build3.buildId}/changes") {
+                parameter("baselineBuildId", build1.buildId)
             }.returns { data ->
                 assertEquals(2, data.size)
                 assertTrue(data.none { it["name"] == method4.name }, "Ignored method should not be present in the response")
@@ -78,11 +71,8 @@ class BuildChangesApiTest : MetricsApiTests() {
             initBuildsAndMethodsData()
             test1 covers method2 with probesOf(1, 1, 0) on build3
         }.expectThat {
-            client.get("/metrics/build-changes") {
-                parameter("groupId", testGroup)
-                parameter("appId", testApp)
-                parameter("buildVersion", "3.0.0")
-                parameter("baselineBuildVersion", "1.0.0")
+            client.get("/groups/$testGroup/apps/$testApp/builds/${build3.buildId}/changes") {
+                parameter("baselineBuildId", build1.buildId)
             }.returns { data ->
                 assertTrue(data.any { it["name"] == method2.name && (it["coveredProbes"] as Int) == 2 })
             }
@@ -96,11 +86,8 @@ class BuildChangesApiTest : MetricsApiTests() {
             test1 covers method2 with probesOf(1, 1, 0) on build2
             test2 covers method2 with probesOf(0, 0, 1) on build3
         }.expectThat {
-            client.get("/metrics/build-changes") {
-                parameter("groupId", testGroup)
-                parameter("appId", testApp)
-                parameter("buildVersion", "3.0.0")
-                parameter("baselineBuildVersion", "1.0.0")
+            client.get("/groups/$testGroup/apps/$testApp/builds/${build3.buildId}/changes") {
+                parameter("baselineBuildId", build1.buildId)
             }.returns { data ->
                 assertTrue(data.any { it["name"] == method2.name && (it["coveredProbes"] as Int) == 1 })
                 assertTrue(data.any { it["name"] == method2.name && (it["coveredProbesInOtherBuilds"] as Int) == 3 })
@@ -115,11 +102,8 @@ class BuildChangesApiTest : MetricsApiTests() {
             test1 of session1.testProjectId("project-a") covers method2 with probesOf(1, 1, 0) on build3
             test2 of session2.testProjectId("project-b") covers method2 with probesOf(0, 0, 1) on build3
         }.expectThat {
-            client.get("/metrics/build-changes") {
-                parameter("groupId", testGroup)
-                parameter("appId", testApp)
-                parameter("buildVersion", "3.0.0")
-                parameter("baselineBuildVersion", "1.0.0")
+            client.get("/groups/$testGroup/apps/$testApp/builds/${build3.buildId}/changes") {
+                parameter("baselineBuildId", build1.buildId)
                 parameter("testProjectIds", "project-a")
             }.returns { data ->
                 assertTrue(data.any { it["name"] == method2.name && (it["coveredProbes"] as Int) == 2 })
@@ -132,11 +116,8 @@ class BuildChangesApiTest : MetricsApiTests() {
         havingData {
             initBuildsAndMethodsData()
         }.expectThat {
-            client.get("/metrics/build-changes") {
-                parameter("groupId", testGroup)
-                parameter("appId", testApp)
-                parameter("buildVersion", "3.0.0")
-                parameter("baselineBuildVersion", "1.0.0")
+            client.get("/groups/$testGroup/apps/$testApp/builds/${build3.buildId}/changes") {
+                parameter("baselineBuildId", build1.buildId)
                 parameter("changeTypes", "deleted")
             }.returns { data ->
                 assertEquals(1, data.size)
@@ -163,22 +144,16 @@ class BuildChangesApiTest : MetricsApiTests() {
             client.deployInstance(instance = build2, methods = methods.map { it.changeChecksum() })
 
         }.expectThat {
-            client.get("/metrics/build-changes") {
-                parameter("groupId", testGroup)
-                parameter("appId", testApp)
-                parameter("buildVersion", "2.0.0")
-                parameter("baselineBuildVersion", "1.0.0")
+            client.get("/groups/$testGroup/apps/$testApp/builds/${build2.buildId}/changes") {
+                parameter("baselineBuildId", build1.buildId)
                 parameter("page", 1)
                 parameter("pageSize", 5)
             }.returns { data ->
                 assertEquals(5, data.size)
             }
 
-            client.get("/metrics/build-changes") {
-                parameter("groupId", testGroup)
-                parameter("appId", testApp)
-                parameter("buildVersion", "2.0.0")
-                parameter("baselineBuildVersion", "1.0.0")
+            client.get("/groups/$testGroup/apps/$testApp/builds/${build2.buildId}/changes") {
+                parameter("baselineBuildId", build1.buildId)
                 parameter("page", 2)
                 parameter("pageSize", 10)
             }.returns { data ->

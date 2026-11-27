@@ -25,7 +25,7 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
-class AppTrendsApiTest : MetricsApiTests() {
+class AppTrendsApiTest : LegacyMetricsApiTests() {
     private val build1Id = generateBuildId(
         testGroup, testApp, build1.instanceId, null, build1.buildVersion
     )
@@ -41,9 +41,7 @@ class AppTrendsApiTest : MetricsApiTests() {
             test1 covers method1 with probesOf(1, 1) on build1
             test1 covers method2 with probesOf(1, 0, 1) on build2
         }.expectThat {
-            client.get("/metrics/apps/trends/coverage") {
-                parameter("groupId", testGroup)
-                parameter("appId", testApp)
+            client.get("/groups/$testGroup/apps/$testApp/coverage-trends") {
                 parameter("size", 10)
             }.apply {
                 assertEquals(HttpStatusCode.OK, status)
@@ -70,9 +68,7 @@ class AppTrendsApiTest : MetricsApiTests() {
             build2 hasModified method2 comparedTo build1
             test1 covers method2 with probesOf(1, 0, 1) on build2
         }.expectThat {
-            client.get("/metrics/apps/trends/changes") {
-                parameter("groupId", testGroup)
-                parameter("appId", testApp)
+            client.get("/groups/$testGroup/apps/$testApp/changes-trends") {
                 parameter("size", 10)
             }.apply {
                 assertTrue(
@@ -81,9 +77,7 @@ class AppTrendsApiTest : MetricsApiTests() {
                 )
             }
 
-            client.get("/metrics/apps/trends/changes") {
-                parameter("groupId", testGroup)
-                parameter("appId", testApp)
+            client.get("/groups/$testGroup/apps/$testApp/changes-trends") {
                 parameter("baselineBuildId", build1Id)
                 parameter("size", 10)
             }.apply {
@@ -117,14 +111,10 @@ class AppTrendsApiTest : MetricsApiTests() {
             test1 of session1.testProjectId("project-a") covers method1 with probesOf(1, 1) on build1
             test2 of session2.testProjectId("project-b") covers method2 with probesOf(1, 1, 1) on build1
         }.expectThat {
-            val respA = client.get("/metrics/apps/trends/coverage") {
-                parameter("groupId", testGroup)
-                parameter("appId", testApp)
+            val respA = client.get("/groups/$testGroup/apps/$testApp/coverage-trends") {
                 parameter("testProjectIds", "project-a")
             }
-            val respB = client.get("/metrics/apps/trends/coverage") {
-                parameter("groupId", testGroup)
-                parameter("appId", testApp)
+            val respB = client.get("/groups/$testGroup/apps/$testApp/coverage-trends") {
                 parameter("testProjectIds", "project-b")
             }
             assertEquals(HttpStatusCode.OK, respA.status)

@@ -20,7 +20,7 @@ import com.epam.drill.admin.writer.rawdata.route.payload.TestDetails
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
-class TestImpactAnalysisTest : MetricsApiTests() {
+class TestImpactAnalysisTest : LegacyMetricsApiTests() {
 
     @Test
     fun `given modified methods compared to baseline, impacted tests service should return tests which cover modified methods`() {

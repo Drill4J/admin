@@ -47,10 +47,6 @@ suspend fun HttpClient.postImpactedTests(
     extras.otherParameters()
     extras.putIfAbsent("impactStatuses", listOf(impactStatus.name))
     val body = buildJsonObject {
-        put("groupId", build.groupId)
-        put("appId", build.appId)
-        put("buildVersion", build.buildVersion)
-        put("baselineBuildVersion", baselineBuild.buildVersion)
         extras.forEach { (key, value) ->
             when (value) {
                 null -> Unit
@@ -65,7 +61,8 @@ suspend fun HttpClient.postImpactedTests(
             }
         }
     }
-    return post("/metrics/impacted-tests") {
+    return post("/groups/${build.groupId}/apps/${build.appId}/builds/${build.buildId}/impacted-tests") {
+        parameter("baselineBuildId", baselineBuild.buildId)
         contentType(ContentType.Application.Json)
         setBody(body)
     }.assertSuccessStatus()
@@ -79,10 +76,6 @@ suspend fun HttpClient.postImpactedTestsFilterOptions(
     val extras = mutableMapOf<String, Any?>()
     extras.otherParameters()
     val body = buildJsonObject {
-        put("groupId", build.groupId)
-        put("appId", build.appId)
-        put("buildVersion", build.buildVersion)
-        put("baselineBuildVersion", baselineBuild.buildVersion)
         extras.forEach { (key, value) ->
             when (value) {
                 null -> Unit
@@ -97,7 +90,8 @@ suspend fun HttpClient.postImpactedTestsFilterOptions(
             }
         }
     }
-    return post("/metrics/impacted-tests/filter-options") {
+    return post("/groups/${build.groupId}/apps/${build.appId}/builds/${build.buildId}/impacted-tests/filter-options") {
+        parameter("baselineBuildId", baselineBuild.buildId)
         contentType(ContentType.Application.Json)
         setBody(body)
     }.assertSuccessStatus()
@@ -109,11 +103,8 @@ suspend fun HttpClient.getBuildChanges(
     hasImpactedTests: Boolean? = null,
     otherParameters: HttpRequestBuilder.() -> Unit = {}
 ): HttpResponse {
-    return get("/metrics/build-changes") {
-        parameter("groupId", build.groupId)
-        parameter("appId", build.appId)
-        parameter("buildVersion", build.buildVersion)
-        parameter("baselineBuildVersion", baselineBuild.buildVersion)
+    return get("/groups/${build.groupId}/apps/${build.appId}/builds/${build.buildId}/changes") {
+        parameter("baselineBuildId", baselineBuild.buildId)
         if (hasImpactedTests == true) {
             parameter("hasImpactedTests", true)
         }
@@ -126,11 +117,8 @@ suspend fun HttpClient.getImpactedMethods(
     baselineBuild: InstancePayload,
     otherParameters: HttpRequestBuilder.() -> Unit = {}
 ): HttpResponse {
-    return get("/metrics/impacted-methods") {
-        parameter("groupId", build.groupId)
-        parameter("appId", build.appId)
-        parameter("buildVersion", build.buildVersion)
-        parameter("baselineBuildVersion", baselineBuild.buildVersion)
+    return get("/groups/${build.groupId}/apps/${build.appId}/builds/${build.buildId}/impacted-methods") {
+        parameter("baselineBuildId", baselineBuild.buildId)
         otherParameters()
     }.assertSuccessStatus()
 }
@@ -139,10 +127,7 @@ suspend fun HttpClient.getCoverage(
     build: InstancePayload,
     otherParameters: HttpRequestBuilder.() -> Unit
 ): HttpResponse {
-    return get("/metrics/coverage") {
-        parameter("groupId", build.groupId)
-        parameter("appId", build.appId)
-        parameter("buildVersion", build.buildVersion)
+    return get("/groups/${build.groupId}/apps/${build.appId}/builds/${build.buildId}/methods") {
         otherParameters()
     }.assertSuccessStatus()
 }

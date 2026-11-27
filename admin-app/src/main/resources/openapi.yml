@@ -4,7 +4,7 @@ info:
   version: 1.0.0
 paths:
   #Settings Endpoints
-  /api/group-settings/{groupId}:
+  /api/groups/{groupId}/settings:
     get:
       summary: Get group settings
       description: |
@@ -3520,6 +3520,358 @@ paths:
               schema:
                 $ref: '#/components/schemas/MessageResponse'
 
+  /api/groups/{groupId}/release-tracks:
+    post:
+      summary: Create a release track
+      operationId: createReleaseTrack
+      tags:
+        - quality-gates
+      security:
+        - apiKeyAuth: [ ]
+        - bearerAuth: [ ]
+      parameters:
+        - name: groupId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReleaseTrackPayload'
+      responses:
+        '200':
+          description: Track created
+        '409':
+          description: Track already exists
+
+  /api/groups/{groupId}/release-tracks/list:
+    get:
+      summary: Lightweight list of release tracks for dropdowns
+      operationId: listReleaseTracksLight
+      tags:
+        - quality-gates
+      security:
+        - apiKeyAuth: [ ]
+        - bearerAuth: [ ]
+      parameters:
+        - name: groupId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Lightweight list of release tracks
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DataResponse'
+
+  /api/groups/{groupId}/release-tracks/{trackId}/milestones:
+    put:
+      summary: Create or replace a milestone
+      operationId: upsertMilestone
+      tags:
+        - quality-gates
+      security:
+        - apiKeyAuth: [ ]
+        - bearerAuth: [ ]
+      parameters:
+        - name: groupId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: trackId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MilestonePayload'
+      responses:
+        '200':
+          description: Milestone created or replaced
+
+  /api/groups/{groupId}/release-tracks/{trackId}/milestones/list:
+    get:
+      summary: Lightweight list of milestones for dropdowns
+      operationId: listMilestonesLight
+      tags:
+        - quality-gates
+      security:
+        - apiKeyAuth: [ ]
+        - bearerAuth: [ ]
+      parameters:
+        - name: groupId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: trackId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Lightweight list of milestones
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DataResponse'
+
+  /api/groups/{groupId}/release-tracks/{trackId}/milestones/{milestoneId}/quality-gates/overall:
+    get:
+      summary: Get overall quality gate targets for a milestone
+      operationId: getMilestoneOverallTargets
+      tags:
+        - quality-gates
+      security:
+        - apiKeyAuth: [ ]
+        - bearerAuth: [ ]
+      parameters:
+        - name: groupId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: trackId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: milestoneId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: App overall gate targets
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DataResponse'
+    put:
+      summary: Save overall quality gate targets for a milestone
+      operationId: saveMilestoneOverallTargets
+      tags:
+        - quality-gates
+      security:
+        - apiKeyAuth: [ ]
+        - bearerAuth: [ ]
+      parameters:
+        - name: groupId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: trackId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: milestoneId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OverallQualityGateTargets'
+      responses:
+        '200':
+          description: Overall targets saved
+
+  /api/groups/{groupId}/release-tracks/{trackId}/milestones/{milestoneId}/quality-gates/impact:
+    get:
+      summary: Get impact quality gate targets for a milestone
+      operationId: getMilestoneImpactTargets
+      tags:
+        - quality-gates
+      security:
+        - apiKeyAuth: [ ]
+        - bearerAuth: [ ]
+      parameters:
+        - name: groupId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: trackId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: milestoneId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: App impact gate targets
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DataResponse'
+    put:
+      summary: Save impact quality gate targets for a milestone
+      operationId: saveMilestoneImpactTargets
+      tags:
+        - quality-gates
+      security:
+        - apiKeyAuth: [ ]
+        - bearerAuth: [ ]
+      parameters:
+        - name: groupId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: trackId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: milestoneId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ImpactQualityGateTargets'
+      responses:
+        '200':
+          description: Impact targets saved
+
+  /api/groups/{groupId}/apps/{appId}/quality-gates/overall:
+    get:
+      summary: Get overall quality gate targets for an app
+      operationId: getAppOverallGateTargets
+      tags:
+        - quality-gates
+      security:
+        - apiKeyAuth: [ ]
+        - bearerAuth: [ ]
+      parameters:
+        - name: groupId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: appId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: App overall gate targets
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DataResponse'
+    put:
+      summary: Save overall quality gate targets for an app
+      operationId: putAppOverallGateTargets
+      tags:
+        - quality-gates
+      security:
+        - apiKeyAuth: [ ]
+        - bearerAuth: [ ]
+      parameters:
+        - name: groupId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: appId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AppOverallGateTargets'
+      responses:
+        '200':
+          description: App overall targets saved
+
+  /api/groups/{groupId}/apps/{appId}/quality-gates/impact:
+    get:
+      summary: Get impact quality gate targets for an app
+      operationId: getAppImpactGateTargets
+      tags:
+        - quality-gates
+      security:
+        - apiKeyAuth: [ ]
+        - bearerAuth: [ ]
+      parameters:
+        - name: groupId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: appId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: App impact gate targets
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DataResponse'
+    put:
+      summary: Save impact quality gate targets for an app
+      operationId: putAppImpactGateTargets
+      tags:
+        - quality-gates
+      security:
+        - apiKeyAuth: [ ]
+        - bearerAuth: [ ]
+      parameters:
+        - name: groupId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: appId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AppImpactGateTargets'
+      responses:
+        '200':
+          description: App impact targets saved
+
 components:
   securitySchemes:
     apiKeyAuth:
@@ -4364,6 +4716,33 @@ components:
           type: string
           description: Human-readable description or name for the API key (e.g., 'CI/CD pipeline key', 'Agent key for staging').
     # Settings Schemas
+    SmartCoverageSettings:
+      type: object
+      description: |
+        Controls how coverage is computed for a group. When disabled, coverage reflects the current build alone.
+        When enabled, coverage is aggregated across matching builds from prior test sessions.
+      properties:
+        enabled:
+          type: boolean
+          default: true
+          description: When false, coverage is computed from the build alone and no historical sessions are included.
+        branches:
+          type: array
+          items:
+            type: string
+          description: Branch name patterns (exact or glob, e.g. `feature*`) whose sessions contribute coverage. Empty means all branches. The build's own branch is always included.
+        environments:
+          type: array
+          items:
+            type: string
+          description: Environment identifiers whose sessions contribute coverage. Empty means all environments.
+        testStatuses:
+          type: array
+          items:
+            type: string
+            enum: [PASSED, UNQUALIFIED, FAILED, SKIPPED, SMART_SKIPPED]
+          default: [PASSED, UNQUALIFIED]
+          description: Test execution statuses whose sessions contribute coverage.
     GroupSettingsPayload:
       type: object
       description: |
@@ -4377,6 +4756,11 @@ components:
           type: integer
           nullable: true
           description: Number of days of historical data to include when computing metrics and coverage aggregations. Set to null to use the system default.
+        smartCoverage:
+          nullable: true
+          allOf:
+            - $ref: '#/components/schemas/SmartCoverageSettings'
+          description: Smart coverage aggregation settings. Set to null to use the system default.
     # Metrics Request Schemas
     ImpactedTestsRequest:
       type: object
@@ -4644,3 +5028,94 @@ components:
           format: int64
           nullable: true
           description: Unix timestamp in milliseconds. Guarantees that the returned data will not be older than this timestamp.
+
+    # Quality Gates Schemas
+    ReleaseTrackPayload:
+      type: object
+      required:
+        - trackId
+      properties:
+        trackId:
+          type: string
+    MilestonePayload:
+      type: object
+      required:
+        - milestoneId
+        - apps
+      properties:
+        milestoneId:
+          type: string
+        apps:
+          type: array
+          items:
+            $ref: '#/components/schemas/MilestoneAppInput'
+    MilestoneAppInput:
+      type: object
+      required:
+        - appId
+        - buildId
+      properties:
+        appId:
+          type: string
+        buildId:
+          type: string
+    OverallQualityGateTargets:
+      type: object
+      properties:
+        coverageTargetPercentage:
+          type: number
+          format: double
+          nullable: true
+        methodsCoverageTargetPercentage:
+          type: number
+          format: double
+          nullable: true
+        passedTestsTargetPercentage:
+          type: number
+          format: double
+          nullable: true
+    ImpactQualityGateTargets:
+      type: object
+      properties:
+        coverageTargetPercentage:
+          type: number
+          format: double
+          nullable: true
+        methodsCoverageTargetPercentage:
+          type: number
+          format: double
+          nullable: true
+        passedTestsTargetPercentage:
+          type: number
+          format: double
+          nullable: true
+    AppOverallGateTargets:
+      type: object
+      properties:
+        codeCoveragePercentage:
+          type: number
+          format: double
+          nullable: true
+        methodCoveragePercentage:
+          type: number
+          format: double
+          nullable: true
+        testsPassedPercentage:
+          type: number
+          format: double
+          nullable: true
+    AppImpactGateTargets:
+      type: object
+      properties:
+        changeCoveragePercentage:
+          type: number
+          format: double
+          nullable: true
+        changeMethodsCoveragePercentage:
+          type: number
+          format: double
+          nullable: true
+        impactedTestsPassedPercentage:
+          type: number
+          format: double
+          nullable: true

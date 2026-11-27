@@ -16,8 +16,10 @@
 package com.epam.drill.admin.writer.rawdata.repository.impl
 
 import com.epam.drill.admin.writer.rawdata.entity.GroupSettings
+import com.epam.drill.admin.writer.rawdata.entity.SmartCoverageSettings
 import com.epam.drill.admin.writer.rawdata.repository.GroupSettingsRepository
 import com.epam.drill.admin.writer.rawdata.table.GroupSettingsTable
+import org.jetbrains.exposed.sql.ResultRow
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
 import org.jetbrains.exposed.sql.deleteWhere
 import org.jetbrains.exposed.sql.selectAll
@@ -25,25 +27,13 @@ import org.jetbrains.exposed.sql.upsert
 
 class GroupSettingsRepositoryImpl : GroupSettingsRepository {
     override suspend fun getAll(): List<GroupSettings> {
-        return GroupSettingsTable.selectAll().map {
-            GroupSettings(
-                groupId = it[GroupSettingsTable.id].value,
-                retentionPeriodDays = it[GroupSettingsTable.retentionPeriodDays],
-                metricsPeriodDays = it[GroupSettingsTable.metricsPeriodDays],
-            )
-        }
+        return GroupSettingsTable.selectAll().map { it.toGroupSettings() }
     }
 
     override suspend fun getByGroupId(groupId: String): GroupSettings? {
         return GroupSettingsTable.selectAll()
             .where { GroupSettingsTable.id eq groupId }
-            .limit(1).singleOrNull()?.let {
-                GroupSettings(
-                    groupId = it[GroupSettingsTable.id].value,
-                    retentionPeriodDays = it[GroupSettingsTable.retentionPeriodDays],
-                    metricsPeriodDays = it[GroupSettingsTable.metricsPeriodDays],
-                )
-            }
+            .limit(1).singleOrNull()?.toGroupSettings()
     }
 
     override suspend fun save(settings: GroupSettings) {
@@ -51,10 +41,28 @@ class GroupSettingsRepositoryImpl : GroupSettingsRepository {
             it[id] = settings.groupId
             it[retentionPeriodDays] = settings.retentionPeriodDays
             it[metricsPeriodDays] = settings.metricsPeriodDays
+            it[smartCoverageEnabled] = settings.smartCoverage?.enabled
+            it[smartCoverageBranches] = settings.smartCoverage?.branches
+            it[smartCoverageEnvironments] = settings.smartCoverage?.environments
+            it[smartCoverageTestStatuses] = settings.smartCoverage?.testStatuses
         }
     }
 
     override suspend fun deleteByGroupId(groupId: String) {
         GroupSettingsTable.deleteWhere { GroupSettingsTable.id eq groupId }
     }
+
+    private fun ResultRow.toGroupSettings() = GroupSettings(
+        groupId = this[GroupSettingsTable.id].value,
+        retentionPeriodDays = this[GroupSettingsTable.retentionPeriodDays],
+        metricsPeriodDays = this[GroupSettingsTable.metricsPeriodDays],
+        smartCoverage = this[GroupSettingsTable.smartCoverageEnabled]?.let { enabled ->
+            SmartCoverageSettings(
+                enabled = enabled,
+                branches = this[GroupSettingsTable.smartCoverageBranches] ?: emptyList(),
+                environments = this[GroupSettingsTable.smartCoverageEnvironments] ?: emptyList(),
+                testStatuses = this[GroupSettingsTable.smartCoverageTestStatuses] ?: listOf("PASSED", "UNQUALIFIED"),
+            )
+        },
+    )
 }

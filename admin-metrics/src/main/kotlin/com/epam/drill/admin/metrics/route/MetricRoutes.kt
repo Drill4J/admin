@@ -15,7 +15,6 @@
  */
 package com.epam.drill.admin.metrics.route
 
-import com.epam.drill.admin.common.config.AnySerializer
 import com.epam.drill.admin.metrics.models.BaselineBuild
 import com.epam.drill.admin.metrics.models.Build
 import com.epam.drill.admin.metrics.models.CoverageCriteria
@@ -25,6 +24,7 @@ import com.epam.drill.admin.metrics.models.TestCriteria
 import com.epam.drill.admin.common.config.ApiResponse
 import com.epam.drill.admin.common.config.PagedDataResponse
 import com.epam.drill.admin.common.config.Paging
+import com.epam.drill.admin.common.service.parseBuildId
 import com.epam.drill.admin.metrics.models.BuildSortField
 import com.epam.drill.admin.metrics.service.MetricsService
 import com.epam.drill.admin.metrics.views.MethodView
@@ -33,7 +33,6 @@ import com.epam.drill.admin.metrics.views.TestImpactStatus
 import com.epam.drill.admin.metrics.views.TestView
 import io.ktor.http.*
 import io.ktor.resources.*
-import io.ktor.server.application.ApplicationCall
 import io.ktor.server.request.receive
 import io.ktor.server.resources.*
 import io.ktor.server.response.*
@@ -43,7 +42,6 @@ import kotlinx.serialization.Serializable
 import mu.KotlinLogging
 import org.kodein.di.instance
 import org.kodein.di.ktor.closestDI
-import java.time.Instant
 
 private val logger = KotlinLogging.logger {}
 
@@ -550,54 +548,47 @@ class Metrics(
     )
 }
 
-@Serializable
-data class PagedDataWithFreshnessResponse(
-    @Serializable(with = AnySerializer::class) val data: Any?,
-    val paging: Paging,
-    val refreshedAt : Long?
-)
-
-fun Route.metricsRoutes() {
-    getGroups()
-    getApplications()
-    getAppBranches()
-    getAppEnvIds()
-    getAppTestTags()
-    getAppCoverageTrends()
-    getAppChangesTrends()
-    getTestSessions()
-    getBuildTestSessions()
-    getTestSessionFilterOptions()
-    getTestSessionById()
-    getTestSessionBuilds()
-    getTestSessionCoverageSummary()
-    getTestSessionDefinitions()
-    getTestLaunches()
-    getTestLaunchFilterOptions()
-    getTestLaunchPage()
-    getTestFileLaunches()
-    getTestFileLaunchFilterOptions()
-    getTestFileLaunchPage()
-    getBuilds()
-    getBuildById()
-    getBuildCoverageByProbes()
-    getBuildCoverageByMethods()
-    getBuildChangesSummary()
-    getSimilarBuilds()
-    getBuildTestSessionStats()
-    getBuildDiffReport()
-    getCoverageTreemap()
-    getChangesCoverageTreemap()
-    getBuildChanges()
-    getCoverage()
-    getCoverageByPackage()
-    getCoverageByClass()
-    postImpactedTests()
-    getImpactedMethods()
-    postImpactedMethods()
+fun Route.legacyMetricsRoutes() {
+    getLegacyGroups()
+    getLegacyApplications()
+    getLegacyAppBranches()
+    getLegacyAppEnvIds()
+    getLegacyAppTestTags()
+    getLegacyAppCoverageTrends()
+    getLegacyAppChangesTrends()
+    getLegacyTestSessions()
+    getLegacyBuildTestSessions()
+    getLegacyTestSessionFilterOptions()
+    getLegacyTestSessionById()
+    getLegacyTestSessionBuilds()
+    getLegacyTestSessionCoverageSummary()
+    getLegacyTestSessionDefinitions()
+    getLegacyTestLaunches()
+    getLegacyTestLaunchFilterOptions()
+    getLegacyTestLaunchPage()
+    getLegacyTestFileLaunches()
+    getLegacyTestFileLaunchFilterOptions()
+    getLegacyTestFileLaunchPage()
+    getLegacyBuilds()
+    getLegacyBuildById()
+    getLegacyBuildCoverageByProbes()
+    getLegacyBuildCoverageByMethods()
+    getLegacyBuildChangesSummary()
+    getLegacySimilarBuilds()
+    getLegacyBuildTestSessionStats()
+    getLegacyBuildDiffReport()
+    getLegacyCoverageTreemap()
+    getLegacyChangesCoverageTreemap()
+    getLegacyBuildChanges()
+    getLegacyCoverage()
+    getLegacyCoverageByPackage()
+    getLegacyCoverageByClass()
+    postLegacyImpactedTests()
+    getLegacyImpactedMethods()
+    postLegacyImpactedMethods()
 }
 
-fun Route.getGroups() {
+fun Route.getLegacyGroups() {
     val metricsService by closestDI().instance<MetricsService>()
 
     get<Metrics.Groups> {
@@ -606,7 +597,7 @@ fun Route.getGroups() {
     }
 }
 
-fun Route.getApplications() {
+fun Route.getLegacyApplications() {
     val metricsService by closestDI().instance<MetricsService>()
 
     get<Metrics.Applications> { params ->
@@ -617,7 +608,7 @@ fun Route.getApplications() {
     }
 }
 
-fun Route.getAppBranches() {
+fun Route.getLegacyAppBranches() {
     val metricsService by closestDI().instance<MetricsService>()
 
     get<Metrics.AppBranches> { params ->
@@ -632,7 +623,7 @@ fun Route.getAppBranches() {
     }
 }
 
-fun Route.getAppEnvIds() {
+fun Route.getLegacyAppEnvIds() {
     val metricsService by closestDI().instance<MetricsService>()
 
     get<Metrics.AppEnvIds> { params ->
@@ -647,7 +638,7 @@ fun Route.getAppEnvIds() {
     }
 }
 
-fun Route.getAppTestTags() {
+fun Route.getLegacyAppTestTags() {
     val metricsService by closestDI().instance<MetricsService>()
 
     get<Metrics.AppTestTags> { params ->
@@ -662,7 +653,7 @@ fun Route.getAppTestTags() {
     }
 }
 
-fun Route.getAppCoverageTrends() {
+fun Route.getLegacyAppCoverageTrends() {
     val metricsService by closestDI().instance<MetricsService>()
 
     get<Metrics.AppCoverageTrends> { params ->
@@ -679,7 +670,7 @@ fun Route.getAppCoverageTrends() {
     }
 }
 
-fun Route.getAppChangesTrends() {
+fun Route.getLegacyAppChangesTrends() {
     val metricsService by closestDI().instance<MetricsService>()
 
     get<Metrics.AppChangesTrends> { params ->
@@ -697,7 +688,7 @@ fun Route.getAppChangesTrends() {
     }
 }
 
-fun Route.getTestSessions() {
+fun Route.getLegacyTestSessions() {
     val metricsService by closestDI().instance<MetricsService>()
 
     get<Metrics.TestSessions> { params ->
@@ -722,7 +713,7 @@ fun Route.getTestSessions() {
     }
 }
 
-fun Route.getBuildTestSessions() {
+fun Route.getLegacyBuildTestSessions() {
     val metricsService by closestDI().instance<MetricsService>()
 
     get<Metrics.BuildById.TestSessions> { params ->
@@ -748,7 +739,7 @@ fun Route.getBuildTestSessions() {
     }
 }
 
-fun Route.getTestSessionFilterOptions() {
+fun Route.getLegacyTestSessionFilterOptions() {
     val metricsService by closestDI().instance<MetricsService>()
 
     get<Metrics.TestSessionFilterOptions> { params ->
@@ -764,7 +755,7 @@ fun Route.getTestSessionFilterOptions() {
     }
 }
 
-fun Route.getTestSessionById() {
+fun Route.getLegacyTestSessionById() {
     val metricsService by closestDI().instance<MetricsService>()
 
     get<Metrics.TestSessionById> { params ->
@@ -777,7 +768,7 @@ fun Route.getTestSessionById() {
     }
 }
 
-fun Route.getTestSessionBuilds() {
+fun Route.getLegacyTestSessionBuilds() {
     val metricsService by closestDI().instance<MetricsService>()
 
     get<Metrics.TestSessionById.Builds> { params ->
@@ -801,7 +792,7 @@ fun Route.getTestSessionBuilds() {
     }
 }
 
-fun Route.getTestSessionCoverageSummary() {
+fun Route.getLegacyTestSessionCoverageSummary() {
     val metricsService by closestDI().instance<MetricsService>()
 
     get<Metrics.TestSessionById.CoverageSummary> { params ->
@@ -815,7 +806,7 @@ fun Route.getTestSessionCoverageSummary() {
     }
 }
 
-fun Route.getTestSessionDefinitions() {
+fun Route.getLegacyTestSessionDefinitions() {
     val metricsService by closestDI().instance<MetricsService>()
 
     get<Metrics.TestSessionById.Definitions> { params ->
@@ -841,7 +832,7 @@ fun Route.getTestSessionDefinitions() {
     }
 }
 
-fun Route.getTestLaunches() {
+fun Route.getLegacyTestLaunches() {
     val metricsService by closestDI().instance<MetricsService>()
 
     get<Metrics.TestSessionById.Launches> { params ->
@@ -872,7 +863,7 @@ fun Route.getTestLaunches() {
     }
 }
 
-fun Route.getTestFileLaunches() {
+fun Route.getLegacyTestFileLaunches() {
     val metricsService by closestDI().instance<MetricsService>()
 
     get<Metrics.TestSessionById.FileLaunches> { params ->
@@ -901,7 +892,7 @@ fun Route.getTestFileLaunches() {
     }
 }
 
-fun Route.getTestLaunchFilterOptions() {
+fun Route.getLegacyTestLaunchFilterOptions() {
     val metricsService by closestDI().instance<MetricsService>()
 
     get<Metrics.TestSessionById.Launches.FilterOptions> { params ->
@@ -917,7 +908,7 @@ fun Route.getTestLaunchFilterOptions() {
     }
 }
 
-fun Route.getTestLaunchPage() {
+fun Route.getLegacyTestLaunchPage() {
     val metricsService by closestDI().instance<MetricsService>()
 
     get<Metrics.TestSessionById.Launches.Page> { params ->
@@ -940,7 +931,7 @@ fun Route.getTestLaunchPage() {
     }
 }
 
-fun Route.getTestFileLaunchFilterOptions() {
+fun Route.getLegacyTestFileLaunchFilterOptions() {
     val metricsService by closestDI().instance<MetricsService>()
 
     get<Metrics.TestSessionById.FileLaunchFilterOptions> { params ->
@@ -966,7 +957,7 @@ fun Route.getTestFileLaunchFilterOptions() {
     }
 }
 
-fun Route.getTestFileLaunchPage() {
+fun Route.getLegacyTestFileLaunchPage() {
     val metricsService by closestDI().instance<MetricsService>()
 
     get<Metrics.TestSessionById.FileLaunches.Page> { params ->
@@ -987,7 +978,7 @@ fun Route.getTestFileLaunchPage() {
     }
 }
 
-fun Route.getBuilds() {
+fun Route.getLegacyBuilds() {
     val metricsService by closestDI().instance<MetricsService>()
 
     get<Metrics.Builds> { params ->
@@ -1013,7 +1004,7 @@ fun Route.getBuilds() {
     }
 }
 
-fun Route.getBuildById() {
+fun Route.getLegacyBuildById() {
     val metricsService by closestDI().instance<MetricsService>()
 
     get<Metrics.BuildById> { params ->
@@ -1022,7 +1013,7 @@ fun Route.getBuildById() {
     }
 }
 
-fun Route.getBuildCoverageByProbes() {
+fun Route.getLegacyBuildCoverageByProbes() {
     val metricsService by closestDI().instance<MetricsService>()
 
     get<Metrics.BuildById.CoverageByProbes> { params ->
@@ -1038,7 +1029,7 @@ fun Route.getBuildCoverageByProbes() {
     }
 }
 
-fun Route.getBuildCoverageByMethods() {
+fun Route.getLegacyBuildCoverageByMethods() {
     val metricsService by closestDI().instance<MetricsService>()
 
     get<Metrics.BuildById.CoverageByMethods> { params ->
@@ -1054,7 +1045,7 @@ fun Route.getBuildCoverageByMethods() {
     }
 }
 
-fun Route.getBuildChangesSummary() {
+fun Route.getLegacyBuildChangesSummary() {
     val metricsService by closestDI().instance<MetricsService>()
 
     get<Metrics.BuildById.ChangesSummary> { params ->
@@ -1066,7 +1057,7 @@ fun Route.getBuildChangesSummary() {
     }
 }
 
-fun Route.getSimilarBuilds() {
+fun Route.getLegacySimilarBuilds() {
     val metricsService by closestDI().instance<MetricsService>()
 
     get<Metrics.BuildById.SimilarBuilds> { params ->
@@ -1075,7 +1066,7 @@ fun Route.getSimilarBuilds() {
     }
 }
 
-fun Route.getBuildTestSessionStats() {
+fun Route.getLegacyBuildTestSessionStats() {
     val metricsService by closestDI().instance<MetricsService>()
 
     get<Metrics.BuildById.TestSessionStats> { params ->
@@ -1084,7 +1075,7 @@ fun Route.getBuildTestSessionStats() {
     }
 }
 
-fun Route.getCoverageTreemap() {
+fun Route.getLegacyCoverageTreemap() {
     val metricsService by closestDI().instance<MetricsService>()
 
     get<Metrics.CoverageTreemap> { params ->
@@ -1106,7 +1097,7 @@ fun Route.getCoverageTreemap() {
     }
 }
 
-fun Route.getChangesCoverageTreemap() {
+fun Route.getLegacyChangesCoverageTreemap() {
     val metricsService by closestDI().instance<MetricsService>()
 
     get<Metrics.ChangesCoverageTreemap> { params ->
@@ -1128,7 +1119,7 @@ fun Route.getChangesCoverageTreemap() {
     }
 }
 
-fun Route.getBuildDiffReport() {
+fun Route.getLegacyBuildDiffReport() {
     val metricsService by closestDI().instance<MetricsService>()
 
     get<Metrics.BuildDiffReport> { params ->
@@ -1148,19 +1139,31 @@ fun Route.getBuildDiffReport() {
 }
 
 // TODO: discuss with team later — replaces main's getChanges() (/changes); see commented Metrics.Changes stub above.
-fun Route.getBuildChanges() {
+fun Route.getLegacyBuildChanges() {
     val metricsService by closestDI().instance<MetricsService>()
 
     get<Metrics.BuildChanges> { params ->
-        val data = metricsService.getBuildChanges(
+        val buildId = Build(
             groupId = params.groupId,
             appId = params.appId,
             instanceId = params.instanceId,
             commitSha = params.commitSha,
-            buildVersion = params.buildVersion,
+            buildVersion = params.buildVersion
+        ).id
+
+        val baselineBuildId = BaselineBuild(
+            groupId = params.groupId,
+            appId = params.appId,
             baselineInstanceId = params.baselineInstanceId,
             baselineCommitSha = params.baselineCommitSha,
-            baselineBuildVersion = params.baselineBuildVersion,
+            baselineBuildVersion = params.baselineBuildVersion
+        ).id
+
+        val data = metricsService.getBuildChanges(
+            groupId = params.groupId,
+            appId = params.appId,
+            buildId = buildId,
+            baselineBuildId = baselineBuildId,
             testResults = params.testResults,
             envIds = params.envIds,
             branches = params.branches,
@@ -1184,17 +1187,34 @@ fun Route.getBuildChanges() {
     }
 }
 
-fun Route.getCoverage() {
+fun Route.getLegacyCoverage() {
     val metricsService by closestDI().instance<MetricsService>()
 
     get<Metrics.Coverage> { params ->
-        val data = metricsService.getCoverage(
-            buildId = params.buildId,
-            groupId = params.groupId,
-            appId = params.appId,
+        val groupId = params.groupId
+            ?: parseBuildId(
+                params.buildId
+                    ?: throw IllegalArgumentException("buildId or groupId is required")
+            ).groupId
+
+        val appId = params.appId
+            ?: parseBuildId(
+                params.buildId
+                    ?: throw IllegalArgumentException("buildId or appId is required")
+            ).appId
+
+        val buildId = params.buildId ?: Build(
+            groupId = groupId,
+            appId = appId,
             instanceId = params.instanceId,
             commitSha = params.commitSha,
-            buildVersion = params.buildVersion,
+            buildVersion = params.buildVersion
+        ).id
+
+        val data = metricsService.getCoverage(
+            groupId = groupId,
+            appId = appId,
+            buildId = buildId,
             testTags = params.testTags,
             testResults = params.testResults,
             envIds = params.envIds,
@@ -1219,7 +1239,7 @@ fun Route.getCoverage() {
     }
 }
 
-fun Route.getCoverageByPackage() {
+fun Route.getLegacyCoverageByPackage() {
     val metricsService by closestDI().instance<MetricsService>()
 
     get<Metrics.CoverageByPackage> { params ->
@@ -1234,7 +1254,7 @@ fun Route.getCoverageByPackage() {
     }
 }
 
-fun Route.getCoverageByClass() {
+fun Route.getLegacyCoverageByClass() {
     val metricsService by closestDI().instance<MetricsService>()
 
     get<Metrics.CoverageByClass> { params ->
@@ -1263,7 +1283,7 @@ fun Route.getCoverageByClass() {
     }
 }
 
-fun Route.postImpactedTests() {
+fun Route.postLegacyImpactedTests() {
     val metricsService by closestDI().instance<MetricsService>()
 
     post("metrics/impacted-tests") {
@@ -1279,23 +1299,24 @@ fun Route.postImpactedTests() {
 
     post("metrics/impacted-tests/filter-options") {
         val params = call.receive<Metrics.ImpactedTests>()
-        val targetBuild = Build(
-            params.groupId,
-            params.appId,
-            params.instanceId,
-            params.commitSha,
-            params.buildVersion
-        )
-        val baselineBuild = BaselineBuild(
-            params.groupId,
-            params.appId,
-            params.baselineInstanceId,
-            params.baselineCommitSha,
-            params.baselineBuildVersion
-        )
+        val buildId = Build(
+            groupId = params.groupId,
+            appId = params.appId,
+            instanceId = params.instanceId,
+            commitSha = params.commitSha,
+            buildVersion = params.buildVersion
+        ).id
+        val baselineBuildId = BaselineBuild(
+            groupId = params.groupId,
+            appId = params.appId,
+            baselineInstanceId = params.baselineInstanceId,
+            baselineCommitSha = params.baselineCommitSha,
+            baselineBuildVersion = params.baselineBuildVersion
+        ).id
+
         val data = metricsService.getImpactedTestsFilterOptions(
-            build = targetBuild,
-            baselineBuild = baselineBuild,
+            buildId = buildId,
+            baselineBuildId = baselineBuildId,
             methodCriteria = MethodCriteria(
                 packageName = params.packageName ?: params.packageNamePattern,
                 className = params.className ?: params.classNamePattern,
@@ -1316,24 +1337,23 @@ private suspend fun getImpactedTests(
     params: Metrics.ImpactedTests,
     service: MetricsService
 ): PagedList<TestView> {
-
-    val targetBuild = Build(
+    val buildId = Build(
         params.groupId,
         params.appId,
         params.instanceId,
         params.commitSha,
         params.buildVersion
-    )
-    val baselineBuild = BaselineBuild(
+    ).id
+    val baselineBuildId = BaselineBuild(
         params.groupId,
         params.appId,
         params.baselineInstanceId,
         params.baselineCommitSha,
         params.baselineBuildVersion
-    )
+    ).id
     return service.getImpactedTests(
-        build = targetBuild,
-        baselineBuild = baselineBuild,
+        buildId = buildId,
+        baselineBuildId = baselineBuildId,
         testCriteria = TestCriteria(
             testTags = listOfNotNull(params.testTag),
             testPath = params.testPath,
@@ -1362,21 +1382,7 @@ private suspend fun getImpactedTests(
     )
 }
 
-private suspend fun ApplicationCall.respondPagedStrings(data: PagedList<String>) {
-    respond(
-        HttpStatusCode.OK,
-        PagedDataResponse(
-            data = data.items,
-            paging = Paging(
-                page = data.page,
-                pageSize = data.pageSize,
-                total = data.total,
-            ),
-        ),
-    )
-}
-
-fun Route.getImpactedMethods() {
+fun Route.getLegacyImpactedMethods() {
     val metricsService by closestDI().instance<MetricsService>()
 
     get<Metrics.ImpactedMethods> { params ->
@@ -1391,7 +1397,7 @@ fun Route.getImpactedMethods() {
     }
 }
 
-fun Route.postImpactedMethods() {
+fun Route.postLegacyImpactedMethods() {
     val metricsService by closestDI().instance<MetricsService>()
 
     post("metrics/impacted-methods") {
@@ -1410,23 +1416,23 @@ private suspend fun getImpactedMethods(
     params: Metrics.ImpactedMethods,
     metricsService: MetricsService
 ): PagedList<MethodView> {
-    val targetBuild = Build(
+    val buildId = Build(
         params.groupId,
         params.appId,
         params.instanceId,
         params.commitSha,
         params.buildVersion
-    )
-    val baselineBuild = BaselineBuild(
+    ).id
+    val baselineBuildId = BaselineBuild(
         params.groupId,
         params.appId,
         params.baselineInstanceId,
         params.baselineCommitSha,
         params.baselineBuildVersion
-    )
+    ).id
     return metricsService.getImpactedMethods(
-        build = targetBuild,
-        baselineBuild = baselineBuild,
+        buildId = buildId,
+        baselineBuildId = baselineBuildId,
         testCriteria = TestCriteria(
             testTags = listOfNotNull(params.testTag),
             testPath = params.testPath,
@@ -1449,5 +1455,3 @@ private suspend fun getImpactedMethods(
         pageSize = params.pageSize,
     )
 }
-
-private fun Long?.toInstant(): Instant? = this?.let { Instant.ofEpochMilli(it) }

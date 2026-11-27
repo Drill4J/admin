@@ -17,22 +17,17 @@ package com.epam.drill.admin.metrics
 
 import com.epam.drill.admin.writer.rawdata.route.payload.SingleMethodPayload
 import io.ktor.client.request.*
-import io.ktor.client.statement.*
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
-class CoverageApiTest : MetricsApiTests() {
+class CoverageApiTest : LegacyMetricsApiTests() {
     @Test
     fun `given build with no coverage, coverage service should return methods list with zero coverage`() {
         havingData {
             build1 has listOf(method1, method2)
         }.expectThat {
-            client.get("/metrics/coverage") {
-                parameter("groupId", build1.groupId)
-                parameter("appId", build1.appId)
-                parameter("buildVersion", build1.buildVersion)
-            }.returns { data ->
+            client.get("/groups/${build1.groupId}/apps/${build1.appId}/builds/${build1.buildId}/methods").returns { data ->
                 assertEquals(2, data.size)
                 assertTrue(data.all { it["coveredProbes"] == 0 })
             }
@@ -48,11 +43,7 @@ class CoverageApiTest : MetricsApiTests() {
                 namePattern = method2.name
             )
         }.expectThat {
-            client.get("/metrics/coverage") {
-                parameter("groupId", build1.groupId)
-                parameter("appId", build1.appId)
-                parameter("buildVersion", build1.buildVersion)
-            }.returns { data ->
+            client.get("/groups/${build1.groupId}/apps/${build1.appId}/builds/${build1.buildId}/methods").returns { data ->
                 assertEquals(2, data.size)
                 assertTrue(data.none { it["name"] == method2.name })
             }
@@ -66,11 +57,7 @@ class CoverageApiTest : MetricsApiTests() {
             test1 covers method1 with probesOf(1, 1) on build1
             test1 covers method2 with probesOf(0, 0, 1) on build1
         }.expectThat {
-            client.get("/metrics/coverage") {
-                parameter("groupId", build1.groupId)
-                parameter("appId", build1.appId)
-                parameter("buildVersion", build1.buildVersion)
-            }.returns { data ->
+            client.get("/groups/${build1.groupId}/apps/${build1.appId}/builds/${build1.buildId}/methods").returns { data ->
                 assertEquals(2, data.size)
                 assertTrue(data.any { it["name"] == method1.name && it["coveredProbes"] == 2 })
                 assertTrue(data.any { it["name"] == method2.name && it["coveredProbes"] == 1 })
@@ -84,10 +71,7 @@ class CoverageApiTest : MetricsApiTests() {
             test1 of session1.testProjectId("project-a") covers method1 with probesOf(1, 1) on build1
             test2 of session2.testProjectId("project-b") covers method2 with probesOf(1, 1, 1) on build1
         }.expectThat {
-            client.get("/metrics/coverage") {
-                parameter("groupId", build1.groupId)
-                parameter("appId", build1.appId)
-                parameter("buildVersion", build1.buildVersion)
+            client.get("/groups/${build1.groupId}/apps/${build1.appId}/builds/${build1.buildId}/methods") {
                 parameter("testProjectIds", "project-a")
             }.returns { data ->
                 assertTrue(data.any { it["name"] == method1.name && it["coveredProbes"] == 2 })
@@ -111,20 +95,14 @@ class CoverageApiTest : MetricsApiTests() {
             }
             build1 has methods.toList()
         }.expectThat {
-            client.get("/metrics/coverage") {
-                parameter("groupId", build1.groupId)
-                parameter("appId", build1.appId)
-                parameter("buildVersion", build1.buildVersion)
+            client.get("/groups/${build1.groupId}/apps/${build1.appId}/builds/${build1.buildId}/methods") {
                 parameter("page", 1)
                 parameter("pageSize", 10)
             }.returns { data ->
                 assertEquals(10, data.size)
             }
 
-            client.get("/metrics/coverage") {
-                parameter("groupId", build1.groupId)
-                parameter("appId", build1.appId)
-                parameter("buildVersion", build1.buildVersion)
+            client.get("/groups/${build1.groupId}/apps/${build1.appId}/builds/${build1.buildId}/methods") {
                 parameter("page", 2)
                 parameter("pageSize", 10)
             }.returns { data ->

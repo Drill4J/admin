@@ -20,7 +20,7 @@ import com.epam.drill.admin.common.principal.Role
 import com.epam.drill.admin.auth.route.*
 import com.epam.drill.admin.common.principal.User
 import com.epam.drill.admin.config.dataSourceDIModule
-import com.epam.drill.admin.metrics.route.metricsRoutes
+import com.epam.drill.admin.metrics.route.legacyMetricsRoutes
 import com.epam.drill.admin.common.route.commonStatusPages
 import com.epam.drill.admin.common.scheduler.DrillScheduler
 import com.epam.drill.admin.config.SchedulerConfig
@@ -30,6 +30,11 @@ import com.epam.drill.admin.metrics.config.etlDIModule
 import com.epam.drill.admin.etl.route.etlManagementReadRoutes
 import com.epam.drill.admin.etl.route.etlManagementWriteRoutes
 import com.epam.drill.admin.metrics.config.*
+import com.epam.drill.admin.config.*
+import com.epam.drill.admin.config.route.configRoutes
+import com.epam.drill.admin.metrics.route.appsRoutes
+import com.epam.drill.admin.metrics.route.groupRoutes
+import com.epam.drill.admin.metrics.route.testsRoutes
 import com.epam.drill.admin.route.rootRoute
 import com.epam.drill.admin.route.uiConfigRoute
 import com.epam.drill.admin.writer.rawdata.config.RawDataWriterDatabaseConfig
@@ -88,6 +93,7 @@ fun Application.module() {
         import(rawDataDIModule)
         import(metricsDIModule)
         import(etlDIModule)
+        import(configDIModule)
     }
     initDB()
     initScheduler()
@@ -126,13 +132,9 @@ fun Application.module() {
             //Admin
             authenticate("jwt", "api-key") {
                 tryApiKeyRoute()
-                withRole(Role.USER, Role.ADMIN) {
-                    settingsReadRoutes()
-                }
                 withRole(Role.ADMIN) {
                     userManagementRoutes()
                     apiKeyManagementRoutes()
-                    settingsWriteRoutes()
                 }
             }
 
@@ -142,14 +144,19 @@ fun Application.module() {
                     dataManagementReadRoutes()
                 }
                 withRole(Role.ADMIN) {
-                    dataManagementRoutes()
                     dataManagementWriteRoutes()
                 }
             }
 
             //Metrics
             authenticate("jwt", "api-key") {
-                metricsRoutes()
+                legacyMetricsRoutes()
+                groupRoutes()
+                appsRoutes()
+                testsRoutes()
+                withRole(Role.USER, Role.ADMIN) {
+                    configRoutes()
+                }
                 withRole(Role.USER, Role.ADMIN) {
                     route("/metrics") {
                         etlManagementReadRoutes()
@@ -240,6 +247,7 @@ private fun Application.initDB() {
     AuthDatabaseConfig.init(dataSource)
     RawDataWriterDatabaseConfig.init(dataSource)
     MetricsDatabaseConfig.init(metricsDataSource, defaultMaxAttempts = 1)
+    ConfigDatabaseConfig.init(metricsDataSource)
 }
 
 private fun Application.initScheduler() {

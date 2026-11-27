@@ -299,11 +299,11 @@ class MetricsRepositoryImpl : MetricsRepository {
                     total_methods,
                     isolated_tested_methods,
                     aggregated_tested_methods
-                FROM metrics.get_builds_with_coverage_v2(
-                    input_build_id => ?
+                FROM metrics.get_builds_with_coverage_v3(
+                    input_build_ids => ARRAY[?]
                 """.trimIndent(), buildId
             )
-            appendOptional(", input_baseline_build_id => ?", baselineBuildId)
+            appendOptional(", input_baseline_build_ids => ARRAY[?]", baselineBuildId)
             appendCoverageFilterParams(
                 coverageAppEnvIds = envIds,
                 coverageBranches = branches,
@@ -356,7 +356,7 @@ class MetricsRepositoryImpl : MetricsRepository {
                     COALESCE(c.isolated_probes_coverage_ratio, 0) AS isolated_probes_coverage_ratio,
                     COALESCE(c.aggregated_probes_coverage_ratio, 0) AS aggregated_probes_coverage_ratio
                 FROM builds b
-                LEFT JOIN metrics.get_builds_with_coverage_v2(
+                LEFT JOIN metrics.get_builds_with_coverage_v3(
                     input_build_ids => ARRAY(SELECT build_id FROM builds)
                 """.trimIndent(),
                 size,
@@ -434,9 +434,9 @@ class MetricsRepositoryImpl : MetricsRepository {
                     COALESCE(c.isolated_tested_change_methods, 0) AS isolated_tested_methods,
                     COALESCE(c.aggregated_tested_change_methods, 0) AS aggregated_tested_methods
                 FROM builds b
-                LEFT JOIN metrics.get_builds_with_coverage_v2(
+                LEFT JOIN metrics.get_builds_with_coverage_v3(
                     input_build_ids => ARRAY(SELECT build_id FROM builds),
-                    input_baseline_build_id => ?
+                    input_baseline_build_ids => ARRAY[?]
                 """.trimIndent(),
                 size,
                 baselineBuildId,
@@ -2487,9 +2487,9 @@ class MetricsRepositoryImpl : MetricsRepository {
                             aggregated_probes_coverage_ratio,
                             isolated_change_probes_coverage_ratio,
                             aggregated_change_probes_coverage_ratio                            
-                        FROM metrics.get_builds_with_coverage_v2(
-                            input_build_id => ?,
-                            input_baseline_build_id => ?                            
+                        FROM metrics.get_builds_with_coverage_v3(
+                            input_build_ids => ARRAY[?],
+                            input_baseline_build_ids => ARRAY[?]
                         )
                     ),
             """.trimIndent(), buildId, baselineBuildId

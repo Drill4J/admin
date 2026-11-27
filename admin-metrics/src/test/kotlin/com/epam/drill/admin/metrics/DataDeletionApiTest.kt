@@ -22,12 +22,11 @@ import com.epam.drill.admin.writer.rawdata.route.payload.TestSessionPayload
 import io.ktor.client.request.*
 import kotlinx.datetime.Clock
 import kotlin.test.Test
-import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 
-class DataDeletionApiTest : MetricsApiTests() {
+class DataDeletionApiTest : LegacyMetricsApiTests() {
 
     @Test
     fun `delete group should remove all metrics for the group`() {

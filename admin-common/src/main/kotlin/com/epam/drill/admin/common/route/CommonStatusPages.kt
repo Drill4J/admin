@@ -17,6 +17,7 @@ package com.epam.drill.admin.common.route
 
 import com.epam.drill.admin.common.exception.BuildFinalized
 import com.epam.drill.admin.common.exception.BuildNotFound
+import com.epam.drill.admin.common.exception.ConflictException
 import com.epam.drill.admin.common.exception.InvalidParameters
 import com.epam.drill.admin.common.exception.ResourceNotFoundException
 import com.epam.drill.admin.common.model.MessageResponse
@@ -53,5 +54,9 @@ fun StatusPagesConfig.commonStatusPages() {
     exception<BuildFinalized> { call, exception ->
         logger.trace(exception) { "422 Build finalized" }
         call.unprocessableEntity(exception, "Build finalized")
+    }
+    exception<ConflictException> { call, exception ->
+        logger.trace(exception) { "409 Conflict" }
+        call.respond(HttpStatusCode.Conflict, MessageResponse(exception.message ?: "Conflict"))
     }
 }

@@ -33,7 +33,7 @@ import com.epam.drill.admin.writer.rawdata.table.TestSessionTable
 import org.jetbrains.exposed.sql.deleteAll
 import org.junit.jupiter.api.AfterEach
 
-abstract class MetricsApiTests : MetricsDatabaseTests(initialization = { default, metrics ->
+abstract class LegacyMetricsApiTests : MetricsDatabaseTests(initialization = { default, metrics ->
     RawDataWriterDatabaseConfig.init(default)
     MetricsDatabaseConfig.init(metrics)
 }) {

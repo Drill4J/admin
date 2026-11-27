@@ -23,8 +23,6 @@ import com.epam.drill.admin.etl.service.EtlService
 import com.epam.drill.admin.metrics.config.MetricsConfig
 import com.epam.drill.admin.metrics.config.MetricsDatabaseConfig.transaction
 import com.epam.drill.admin.metrics.config.MetricsServiceUiLinksConfig
-import com.epam.drill.admin.metrics.models.BaselineBuild
-import com.epam.drill.admin.metrics.models.Build
 import com.epam.drill.admin.metrics.models.BuildSortField
 import com.epam.drill.admin.metrics.models.CoverageCriteria
 import com.epam.drill.admin.metrics.models.MethodCriteria
@@ -1027,12 +1025,8 @@ class MetricsServiceImpl(
     override suspend fun getBuildChanges(
         groupId: String,
         appId: String,
-        instanceId: String?,
-        commitSha: String?,
-        buildVersion: String?,
-        baselineInstanceId: String?,
-        baselineCommitSha: String?,
-        baselineBuildVersion: String?,
+        buildId: String,
+        baselineBuildId: String,
         testResults: List<String>,
         envIds: List<String>,
         branches: List<String>,
@@ -1047,22 +1041,11 @@ class MetricsServiceImpl(
         pageSize: Int?,
     ): PagedList<BuildChangeView> {
         val validatedSortBy = validateBuildChangeSortBy(sortBy)
-        val baselineBuildId = generateBuildId(
-            groupId,
-            appId,
-            baselineInstanceId,
-            baselineCommitSha,
-            baselineBuildVersion,
-            """
-                Provide at least one the following: baselineInstanceId, baselineCommitSha, baselineBuildVersion
-                """.trimIndent()
-        )
 
         if (!metricsRepository.buildExists(baselineBuildId)) {
             throw BuildNotFound("Baseline build info not found for $baselineBuildId")
         }
 
-        val buildId = generateBuildId(groupId, appId, instanceId, commitSha, buildVersion)
         if (!metricsRepository.buildExists(buildId)) {
             throw BuildNotFound("Build info not found for $buildId")
         }
@@ -1107,12 +1090,9 @@ class MetricsServiceImpl(
     }
 
     override suspend fun getCoverage(
-        buildId: String?,
-        groupId: String?,
-        appId: String?,
-        instanceId: String?,
-        commitSha: String?,
-        buildVersion: String?,
+        groupId: String,
+        appId: String,
+        buildId: String,
         testTags: List<String>,
         testResults: List<String>,
         envIds: List<String>,
@@ -1125,12 +1105,11 @@ class MetricsServiceImpl(
         page: Int?,
         pageSize: Int?,
         testSessionId: String?,
-        testDefinitionId: String?,
+        testDefinitionId: String?
     ): PagedList<MethodView> {
-        val resolvedBuildId = buildId?.takeIf { it.isNotBlank() }
-            ?: generateBuildId(groupId!!, appId!!, instanceId, commitSha, buildVersion)
-        if (!metricsRepository.buildExists(resolvedBuildId)) {
-            throw BuildNotFound("Build info not found for $resolvedBuildId")
+
+        if (!metricsRepository.buildExists(buildId)) {
+            throw BuildNotFound("Build info not found for $buildId")
         }
         val packageFilter = packageNamePattern?.takeIf { it.isNotBlank() }
         val classFilter = classNamePattern?.takeIf { it.isNotBlank() }
@@ -1148,14 +1127,14 @@ class MetricsServiceImpl(
                 testDefinitionId != null -> {
                     val resolvedTestSessionId = testSessionId
                         ?: throw IllegalArgumentException("testSessionId is required when testDefinitionId is specified")
-                    validateTestSessionBuildForCoverage(resolvedTestSessionId, resolvedBuildId)
+                    validateTestSessionBuildForCoverage(resolvedTestSessionId, buildId)
 
                     return@transaction pagedListOf(
                         page = page ?: 1,
                         pageSize = pageSize ?: metricsConfig.pageSize
                     ) { offset, limit ->
                         metricsRepository.getMethodsWithCoverageByTestDefinition(
-                            buildId = resolvedBuildId,
+                            buildId = buildId,
                             testSessionId = resolvedTestSessionId,
                             testDefinitionId = testDefinitionId,
                             packageNamePattern = methodCriteria.packageNamePattern,
@@ -1168,7 +1147,7 @@ class MetricsServiceImpl(
                         ).map(::mapToMethodView)
                     } withTotal {
                         metricsRepository.getMethodsWithCoverageByTestDefinitionCount(
-                            buildId = resolvedBuildId,
+                            buildId = buildId,
                             testSessionId = resolvedTestSessionId,
                             testDefinitionId = testDefinitionId,
                             packageNamePattern = methodCriteria.packageNamePattern,
@@ -1178,14 +1157,14 @@ class MetricsServiceImpl(
                     }
                 }
                 testSessionId != null -> {
-                    validateTestSessionBuildForCoverage(testSessionId, resolvedBuildId)
+                    validateTestSessionBuildForCoverage(testSessionId, buildId)
 
                     return@transaction pagedListOf(
                         page = page ?: 1,
                         pageSize = pageSize ?: metricsConfig.pageSize
                     ) { offset, limit ->
                         metricsRepository.getMethodsWithCoverageByTestSession(
-                            buildId = resolvedBuildId,
+                            buildId = buildId,
                             testSessionId = testSessionId,
                             testTags = testTags,
                             packageNamePattern = methodCriteria.packageNamePattern,
@@ -1198,7 +1177,7 @@ class MetricsServiceImpl(
                         ).map(::mapToMethodView)
                     } withTotal {
                         metricsRepository.getMethodsWithCoverageByTestSessionCount(
-                            buildId = resolvedBuildId,
+                            buildId = buildId,
                             testSessionId = testSessionId,
                             testTags = testTags,
                             packageNamePattern = methodCriteria.packageNamePattern,
@@ -1220,7 +1199,7 @@ class MetricsServiceImpl(
                         pageSize = pageSize ?: metricsConfig.pageSize
                     ) { offset, limit ->
                         metricsRepository.getMethodsWithCoverage(
-                            buildId = resolvedBuildId,
+                            buildId = buildId,
                             coverageAppEnvIds = envIds,
                             coverageBranches = branches,
                             coverageTestResults = testResults,
@@ -1234,7 +1213,7 @@ class MetricsServiceImpl(
                         ).map(::mapToMethodView)
                     } withTotal {
                         metricsRepository.getMethodsCount(
-                            buildId = resolvedBuildId,
+                            buildId = buildId,
                             packageNamePattern = packageFilter,
                             classNamePattern = classFilter,
                         )
@@ -1386,8 +1365,8 @@ class MetricsServiceImpl(
     }
 
     override suspend fun getImpactedTests(
-        build: Build,
-        baselineBuild: BaselineBuild,
+        buildId: String,
+        baselineBuildId: String,
         testCriteria: TestCriteria,
         methodCriteria: MethodCriteria,
         coverageCriteria: CoverageCriteria,
@@ -1395,19 +1374,19 @@ class MetricsServiceImpl(
         sortBy: String?,
         sortOrder: SortOrder?,
         page: Int?,
-        pageSize: Int?,
+        pageSize: Int?
     ): PagedList<TestView> {
-        val targetBuildId = build.id.takeIf { metricsRepository.buildExists(it) }
-            ?: throw BuildNotFound("Target build info not found for ${build.id}")
+//        val targetBuildId = build.id.takeIf { metricsRepository.buildExists(it) }
+//            ?: throw BuildNotFound("Target build info not found for ${build.id}")
 
-        val baselineBuildId = baselineBuild.id.takeIf { metricsRepository.buildExists(it) }
-            ?: throw BuildNotFound("Baseline build info not found for ${baselineBuild.id}")
+//        val baselineBuildId = baselineBuild.id.takeIf { metricsRepository.buildExists(it) }
+//            ?: throw BuildNotFound("Baseline build info not found for ${baselineBuild.id}")
 
         val mappedSortBy = validateImpactedTestsSortBy(sortBy)
 
         return pagedListOf(page, pageSize) { offset, limit ->
             metricsRepository.getImpactedTests(
-                targetBuildId = targetBuildId,
+                targetBuildId = buildId,
                 baselineBuildId = baselineBuildId,
 
                 testTaskId = testCriteria.testTaskId,
@@ -1448,7 +1427,7 @@ class MetricsServiceImpl(
             }
         } withTotal {
             metricsRepository.getImpactedTestsCount(
-                targetBuildId = targetBuildId,
+                targetBuildId = buildId,
                 baselineBuildId = baselineBuildId,
 
                 testTaskId = testCriteria.testTaskId,
@@ -1472,18 +1451,18 @@ class MetricsServiceImpl(
     }
 
     override suspend fun getImpactedTestsFilterOptions(
-        build: Build,
-        baselineBuild: BaselineBuild,
+        buildId: String,
+        baselineBuildId: String,
         methodCriteria: MethodCriteria,
-        coverageCriteria: CoverageCriteria,
+        coverageCriteria: CoverageCriteria
     ): ImpactedTestsFilterOptionsView = transaction {
-        val targetBuildId = build.id.takeIf { metricsRepository.buildExists(it) }
-            ?: throw BuildNotFound("Target build info not found for ${build.id}")
-        val baselineBuildId = baselineBuild.id.takeIf { metricsRepository.buildExists(it) }
-            ?: throw BuildNotFound("Baseline build info not found for ${baselineBuild.id}")
+//        val targetBuildId = build.id.takeIf { metricsRepository.buildExists(it) }
+//            ?: throw BuildNotFound("Target build info not found for ${build.id}")
+//        val baselineBuildId = baselineBuild.id.takeIf { metricsRepository.buildExists(it) }
+//            ?: throw BuildNotFound("Baseline build info not found for ${baselineBuild.id}")
 
         val options = metricsRepository.getImpactedTestsFilterOptions(
-            targetBuildId = targetBuildId,
+            targetBuildId = buildId,
             baselineBuildId = baselineBuildId,
             packageNamePattern = methodCriteria.packageNamePattern,
             methodSignaturePattern = methodCriteria.signaturePattern,
@@ -1502,27 +1481,27 @@ class MetricsServiceImpl(
     }
 
     override suspend fun getImpactedMethods(
-        build: Build,
-        baselineBuild: BaselineBuild,
+        buildId: String,
+        baselineBuildId: String,
         testCriteria: TestCriteria,
         methodCriteria: MethodCriteria,
         coverageCriteria: CoverageCriteria,
         sortBy: String?,
         sortOrder: SortOrder?,
         page: Int?,
-        pageSize: Int?,
+        pageSize: Int?
     ): PagedList<MethodView> {
-        val targetBuildId = build.id.takeIf { metricsRepository.buildExists(it) }
-            ?: throw BuildNotFound("Target build info not found for ${build.id}")
-
-        val baselineBuildId = baselineBuild.id.takeIf { metricsRepository.buildExists(it) }
-            ?: throw BuildNotFound("Baseline build info not found for ${baselineBuild.id}")
+//        val targetBuildId = build.id.takeIf { metricsRepository.buildExists(it) }
+//            ?: throw BuildNotFound("Target build info not found for ${build.id}")
+//
+//        val baselineBuildId = baselineBuild.id.takeIf { metricsRepository.buildExists(it) }
+//            ?: throw BuildNotFound("Baseline build info not found for ${baselineBuild.id}")
 
         val mappedSortBy = validateImpactedMethodsSortBy(sortBy)
 
         return pagedListOf(page, pageSize) { offset, limit ->
             metricsRepository.getImpactedMethods(
-                targetBuildId = targetBuildId,
+                targetBuildId = buildId,
                 baselineBuildId = baselineBuildId,
 
                 testTaskId = testCriteria.testTaskId,

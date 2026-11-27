@@ -20,7 +20,6 @@ import com.epam.drill.admin.etl.EtlContext
 import com.epam.drill.admin.etl.UntypedRow
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
-import org.postgresql.jdbc.PgArray
 import java.time.Instant
 import kotlin.collections.filterIsInstance
 

@@ -32,7 +32,8 @@ class SettingsServiceImpl(
         groupSettingsRepository.getByGroupId(groupId).let { settings ->
             GroupSettingsView(
                 retentionPeriodDays = settings?.retentionPeriodDays,
-                metricsPeriodDays = settings?.metricsPeriodDays
+                metricsPeriodDays = settings?.metricsPeriodDays,
+                smartCoverage = settings?.smartCoverage,
             )
         }
     }
@@ -42,7 +43,8 @@ class SettingsServiceImpl(
             GroupSettings(
                 groupId = groupId,
                 retentionPeriodDays = payload.retentionPeriodDays,
-                metricsPeriodDays = payload.metricsPeriodDays
+                metricsPeriodDays = payload.metricsPeriodDays,
+                smartCoverage = payload.smartCoverage,
             )
         )
     }
@@ -57,7 +59,8 @@ class SettingsServiceImpl(
             .mapValues { (_, settings) ->
                 GroupSettingsView(
                     retentionPeriodDays = settings.retentionPeriodDays,
-                    metricsPeriodDays = settings.metricsPeriodDays
+                    metricsPeriodDays = settings.metricsPeriodDays,
+                    smartCoverage = settings.smartCoverage,
                 )
             }.toMutableMap()
         val defaults = groupRepository.getAll().associate { it.groupId to GroupSettingsView() }

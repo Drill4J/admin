@@ -18,7 +18,6 @@ package com.epam.drill.admin.writer.rawdata.route
 import com.epam.drill.admin.common.route.ok
 import com.epam.drill.admin.writer.rawdata.service.SettingsService
 import io.ktor.resources.*
-import io.ktor.server.application.*
 import io.ktor.server.request.*
 import io.ktor.server.routing.*
 import io.ktor.server.resources.get
@@ -28,49 +27,44 @@ import org.kodein.di.instance
 import org.kodein.di.ktor.closestDI
 
 @Resource("group-settings")
-class GroupSettingsRoute {
+class LegacyGroupSettingsRoute {
     @Resource("/{groupId}")
-    class GroupId(val parent: GroupSettingsRoute, val groupId: String)
+    class GroupId(val parent: LegacyGroupSettingsRoute, val groupId: String)
 }
 
-fun Route.settingsRoutes() {
-    settingsReadRoutes()
-    settingsWriteRoutes()
+@Deprecated("Use /groups/{groupId}/settings instead")
+fun Route.legacySettingsReadRoutes() {
+    legacyGetGroupSettings()
 }
 
-/** Read group settings (USER + ADMIN). */
-fun Route.settingsReadRoutes() {
-    getGroupSettings()
+@Deprecated("Use /groups/{groupId}/settings instead")
+fun Route.legacySettingsWriteRoutes() {
+    legacyPutGroupSettings()
+    legacyDeleteGroupSettings()
 }
 
-/** Save or clear group settings (ADMIN). */
-fun Route.settingsWriteRoutes() {
-    putGroupSettings()
-    deleteGroupSettings()
-}
-
-fun Route.getGroupSettings() {
+fun Route.legacyGetGroupSettings() {
     val settingsService by closestDI().instance<SettingsService>()
 
-    get<GroupSettingsRoute.GroupId> { params ->
+    get<LegacyGroupSettingsRoute.GroupId> { params ->
         val groupSettingsView = settingsService.getGroupSettings(params.groupId)
         call.ok(groupSettingsView)
     }
 }
 
-fun Route.putGroupSettings() {
+fun Route.legacyPutGroupSettings() {
     val settingsService by closestDI().instance<SettingsService>()
 
-    put<GroupSettingsRoute.GroupId> { params ->
+    put<LegacyGroupSettingsRoute.GroupId> { params ->
         settingsService.saveGroupSettings(params.groupId, call.receive())
         call.ok("Group settings saved")
     }
 }
 
-fun Route.deleteGroupSettings() {
+fun Route.legacyDeleteGroupSettings() {
     val settingsService by closestDI().instance<SettingsService>()
 
-    delete<GroupSettingsRoute.GroupId> { params ->
+    delete<LegacyGroupSettingsRoute.GroupId> { params ->
         settingsService.clearGroupSettings(params.groupId)
         call.ok("Group settings cleared")
     }

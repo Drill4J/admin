@@ -19,7 +19,7 @@ import io.ktor.client.request.*
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
-class BuildDiffReportApiTest : MetricsApiTests() {
+class BuildDiffReportApiTest : LegacyMetricsApiTests() {
     @Test
     fun `given builds with different methods, build-diff-report service should calculate total changes`() {
         havingData {

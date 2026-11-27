@@ -15,10 +15,12 @@
  */
 package com.epam.drill.admin.writer.rawdata.route.payload
 
+import com.epam.drill.admin.writer.rawdata.entity.SmartCoverageSettings
 import kotlinx.serialization.Serializable
 
 @Serializable
 class GroupSettingsPayload(
     val retentionPeriodDays: Int?,
     val metricsPeriodDays: Int?,
+    val smartCoverage: SmartCoverageSettings? = null,
 )

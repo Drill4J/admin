@@ -16,10 +16,12 @@
 package com.epam.drill.admin.writer.rawdata.route
 
 import com.epam.drill.admin.common.principal.User
+import com.epam.drill.admin.common.route.Groups
 import com.epam.drill.admin.common.route.ok
 import com.epam.drill.admin.writer.rawdata.route.payload.ExclusionRulePayload
 import com.epam.drill.admin.writer.rawdata.service.DataManagementService
 import com.epam.drill.admin.writer.rawdata.service.RawMethodBrowseService
+import com.epam.drill.admin.writer.rawdata.service.SettingsService
 import io.ktor.resources.Resource
 import io.ktor.server.auth.principal
 import io.ktor.server.resources.delete
@@ -32,55 +34,51 @@ import org.kodein.di.instance
 import org.kodein.di.ktor.closestDI
 import kotlin.getValue
 
-@Resource("/groups")
-class Groups() {
-    @Resource("/{groupId}")
-    class Id(val parent: Groups, val groupId: String) {
-        @Resource("/apps")
-        class Apps(val parent: Groups.Id) {
-            @Resource("/{appId}")
-            class Id(val parent: Apps, val appId: String) {
-                @Resource("/builds")
-                class Builds(val parent: Apps.Id) {
-                    @Resource("/{buildId}")
-                    class Id(val parent: Builds, val buildId: String) {
-                        @Resource("/raw-methods")
-                        class RawMethods(val parent: Id) {
-                            @Resource("/tree")
-                            class Tree(val parent: RawMethods)
+@Resource("/settings")
+class Settings(val parent: Groups.GroupId)
+@Resource("/apps")
+class Apps(val parent: Groups.GroupId) {
+    @Resource("/{appId}")
+    class Id(val parent: Apps, val appId: String) {
+        @Resource("/builds")
+        class Builds(val parent: Apps.Id) {
+            @Resource("/{buildId}")
+            class Id(val parent: Builds, val buildId: String) {
+                @Resource("/raw-methods")
+                class RawMethods(val parent: Id) {
+                    @Resource("/tree")
+                    class Tree(val parent: RawMethods)
 
-                            @Resource("/methods")
-                            class Methods(
-                                val parent: RawMethods,
-                                val className: String,
-                                val page: Int = 1,
-                                val pageSize: Int = 100,
-                            )
-                        }
-                    }
-                }
-                @Resource("exclusion-rules")
-                class ExclusionRules(val parent: Apps.Id, val page: Int = 1, val pageSize: Int = 20)
-            }
-        }
-        @Resource("/tests")
-        class Tests(val parent: Groups.Id) {
-
-            @Resource("/{testProjectId}")
-            class Id(val parent: Tests, val testProjectId: String) {
-                @Resource("/sessions")
-                class Sessions(val parent: Tests.Id) {
-                    @Resource("/{testSessionId}")
-                    class Id(val parent: Sessions, val testSessionId: String)
+                    @Resource("/methods")
+                    class Methods(
+                        val parent: RawMethods,
+                        val className: String,
+                        val page: Int = 1,
+                        val pageSize: Int = 100,
+                    )
                 }
             }
-            @Deprecated("Use /{testProjectId}/sessions instead")
-            @Resource("/sessions")
-            class Sessions(val parent: Tests) {
-                @Resource("/{testSessionId}")
-                class Id(val parent: Sessions, val testSessionId: String)
-            }
         }
+        @Resource("exclusion-rules")
+        class ExclusionRules(val parent: Apps.Id, val page: Int = 1, val pageSize: Int = 20)
+    }
+}
+@Resource("/tests")
+class Tests(val parent: Groups.GroupId) {
+
+    @Resource("/{testProjectId}")
+    class Id(val parent: Tests, val testProjectId: String) {
+        @Resource("/sessions")
+        class Sessions(val parent: Tests.Id) {
+            @Resource("/{testSessionId}")
+            class Id(val parent: Sessions, val testSessionId: String)
+        }
+    }
+    @Deprecated("Use /{testProjectId}/sessions instead")
+    @Resource("/sessions")
+    class Sessions(val parent: Tests) {
+        @Resource("/{testSessionId}")
+        class Id(val parent: Sessions, val testSessionId: String)
     }
 }
 
@@ -95,39 +93,38 @@ class MethodIgnoreRulesRoute(
     class Id(val parent: MethodIgnoreRulesRoute, val id: Int)
 }
 
-fun Route.dataManagementRoutes() {
-    route("/data-management") {
-        deleteGroupData()
-        deleteAppData()
-        deleteBuildData()
-        deleteTestProjectData()
-        deleteTestSessionData()
-    }
-}
-
-/** Browse method ignore rules and raw-method hierarchy (USER + ADMIN). */
 fun Route.dataManagementReadRoutes() {
     route("/data-management") {
         getMethodIgnoreRules()
         getExclusionRules()
         getRawMethodTree()
         getRawMethods()
+        getGroupSettings()
+        legacySettingsReadRoutes()
     }
 }
 
-/** Create/delete/sync method ignore rules (ADMIN). */
 fun Route.dataManagementWriteRoutes() {
     route("/data-management") {
+        deleteGroupData()
+        deleteAppData()
+        deleteBuildData()
+        deleteTestProjectData()
+        deleteTestSessionData()
+
         putExclusionRules()
         postMethodIgnoreRules()
         deleteMethodIgnoreRule()
+        putGroupSettings()
+        deleteGroupSettings()
+        legacySettingsWriteRoutes()
     }
 }
 
 fun Route.deleteGroupData() {
     val dataManagementService by closestDI().instance<DataManagementService>()
 
-    delete<Groups.Id> { params ->
+    delete<Groups.GroupId> { params ->
         dataManagementService.deleteGroupData(
             groupId = params.groupId,
             user = call.principal<User>()
@@ -139,7 +136,7 @@ fun Route.deleteGroupData() {
 fun Route.deleteAppData() {
     val dataManagementService by closestDI().instance<DataManagementService>()
 
-    delete<Groups.Id.Apps.Id> { params ->
+    delete<Apps.Id> { params ->
         dataManagementService.deleteAppData(
             groupId = params.parent.parent.groupId,
             appId = params.appId,
@@ -152,7 +149,7 @@ fun Route.deleteAppData() {
 fun Route.deleteBuildData() {
     val dataManagementService by closestDI().instance<DataManagementService>()
 
-    delete<Groups.Id.Apps.Id.Builds.Id> { params ->
+    delete<Apps.Id.Builds.Id> { params ->
         dataManagementService.deleteBuildData(
             groupId = params.parent.parent.parent.parent.groupId,
             appId = params.parent.parent.appId,
@@ -166,7 +163,7 @@ fun Route.deleteBuildData() {
 fun Route.deleteTestProjectData() {
     val dataManagementService by closestDI().instance<DataManagementService>()
 
-    delete<Groups.Id.Tests.Id> { params ->
+    delete<Tests.Id> { params ->
         dataManagementService.deleteTestProjectData(
             groupId = params.parent.parent.groupId,
             testProjectId = params.testProjectId,
@@ -179,7 +176,7 @@ fun Route.deleteTestProjectData() {
 fun Route.deleteTestSessionData() {
     val dataManagementService by closestDI().instance<DataManagementService>()
 
-    delete<Groups.Id.Tests.Id.Sessions.Id> { params ->
+    delete<Tests.Id.Sessions.Id> { params ->
         dataManagementService.deleteTestSessionData(
             groupId = params.parent.parent.parent.parent.groupId,
             testProjectId = params.parent.parent.testProjectId,
@@ -189,7 +186,7 @@ fun Route.deleteTestSessionData() {
         call.ok("Test session data deleted successfully")
     }
 
-    delete<Groups.Id.Tests.Sessions.Id> { params ->
+    delete<Tests.Sessions.Id> { params ->
         dataManagementService.deleteTestSessionData(
             groupId = params.parent.parent.parent.groupId,
             testProjectId = null,
@@ -213,7 +210,7 @@ fun Route.postMethodIgnoreRules() {
 fun Route.putExclusionRules() {
     val dataManagementService by closestDI().instance<DataManagementService>()
 
-    put<Groups.Id.Apps.Id.ExclusionRules> { params ->
+    put<Apps.Id.ExclusionRules> { params ->
         val groupId = params.parent.parent.parent.groupId
         val appId = params.parent.appId
         val rules = call.decompressAndReceive<List<ExclusionRulePayload>>()
@@ -225,7 +222,7 @@ fun Route.putExclusionRules() {
 fun Route.getExclusionRules() {
     val dataManagementService by closestDI().instance<DataManagementService>()
 
-    get<Groups.Id.Apps.Id.ExclusionRules> { params ->
+    get<Apps.Id.ExclusionRules> { params ->
         call.ok(
             dataManagementService.getExclusionRules(
                 params.parent.parent.parent.groupId,
@@ -268,7 +265,7 @@ fun Route.deleteMethodIgnoreRule() {
 fun Route.getRawMethodTree() {
     val service by closestDI().instance<RawMethodBrowseService>()
 
-    get<Groups.Id.Apps.Id.Builds.Id.RawMethods.Tree> { params ->
+    get<Apps.Id.Builds.Id.RawMethods.Tree> { params ->
         val build = params.parent.parent
         call.ok(
             service.getTree(
@@ -283,7 +280,7 @@ fun Route.getRawMethodTree() {
 fun Route.getRawMethods() {
     val service by closestDI().instance<RawMethodBrowseService>()
 
-    get<Groups.Id.Apps.Id.Builds.Id.RawMethods.Methods> { params ->
+    get<Apps.Id.Builds.Id.RawMethods.Methods> { params ->
         val build = params.parent.parent
         call.ok(
             service.getMethods(
@@ -295,5 +292,32 @@ fun Route.getRawMethods() {
                 params.pageSize,
             )
         )
+    }
+}
+
+fun Route.getGroupSettings() {
+    val settingsService by closestDI().instance<SettingsService>()
+
+    get<Settings> { params ->
+        val groupSettingsView = settingsService.getGroupSettings(params.parent.groupId)
+        call.ok(groupSettingsView)
+    }
+}
+
+fun Route.putGroupSettings() {
+    val settingsService by closestDI().instance<SettingsService>()
+
+    put<Settings> { params ->
+        settingsService.saveGroupSettings(params.parent.groupId, call.decompressAndReceive())
+        call.ok("Group settings saved")
+    }
+}
+
+fun Route.deleteGroupSettings() {
+    val settingsService by closestDI().instance<SettingsService>()
+
+    delete<Settings> { params ->
+        settingsService.clearGroupSettings(params.parent.groupId)
+        call.ok("Group settings cleared")
     }
 }

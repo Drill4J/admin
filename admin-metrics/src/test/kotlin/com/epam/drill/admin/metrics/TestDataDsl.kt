@@ -23,7 +23,10 @@ import com.epam.drill.admin.etl.job.IncrementalRunEtlJob
 import com.epam.drill.admin.etl.job.incrementalRunEtlJobKey
 import com.epam.drill.admin.etl.route.etlManagementRoutes
 import com.epam.drill.admin.metrics.job.DeleteMetricsDataJob
-import com.epam.drill.admin.metrics.route.metricsRoutes
+import com.epam.drill.admin.metrics.route.appsRoutes
+import com.epam.drill.admin.metrics.route.groupRoutes
+import com.epam.drill.admin.metrics.route.legacyMetricsRoutes
+import com.epam.drill.admin.metrics.route.testsRoutes
 import com.epam.drill.admin.metrics.views.ChangeType
 import com.epam.drill.admin.metrics.views.TestImpactStatus
 import com.epam.drill.admin.test.StubDrillScheduler
@@ -33,7 +36,6 @@ import com.epam.drill.admin.test.waitUntilInBlocking
 import com.epam.drill.admin.writer.rawdata.config.dataManagementServicesDIModule
 import com.epam.drill.admin.writer.rawdata.config.rawDataServicesDIModule
 import com.epam.drill.admin.writer.rawdata.route.dataIngestRoutes
-import com.epam.drill.admin.writer.rawdata.route.dataManagementRoutes
 import com.epam.drill.admin.writer.rawdata.route.dataManagementWriteRoutes
 import com.epam.drill.admin.writer.rawdata.route.payload.BuildPayload
 import com.epam.drill.admin.writer.rawdata.route.payload.InstancePayload
@@ -77,9 +79,11 @@ fun havingData(testsData: suspend TestDataDsl.() -> Unit): HttpClient {
                 put("drill.rawData.queue.capacity", "0")
             }) {
             dataIngestRoutes()
-            dataManagementRoutes()
             dataManagementWriteRoutes()
-            metricsRoutes()
+            legacyMetricsRoutes()
+            groupRoutes()
+            appsRoutes()
+            testsRoutes()
             route("/metrics") {
                 etlManagementRoutes()
             }

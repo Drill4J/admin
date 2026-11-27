@@ -16,9 +16,7 @@
 package com.epam.drill.admin.metrics
 
 import com.epam.drill.admin.common.service.generateBuildId
-import com.epam.drill.admin.writer.rawdata.route.payload.BuildInfoPayload
 import com.epam.drill.admin.writer.rawdata.route.payload.BuildPayload
-import com.epam.drill.admin.writer.rawdata.route.payload.InstancePayload
 import com.jayway.jsonpath.JsonPath
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
@@ -30,7 +28,7 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
-class BuildDetailApiTest : MetricsApiTests() {
+class BuildDetailApiTest : LegacyMetricsApiTests() {
     private val build1Id = generateBuildId(
         testGroup, testApp, build1.instanceId, null, build1.buildVersion
     )
@@ -43,7 +41,7 @@ class BuildDetailApiTest : MetricsApiTests() {
         havingData {
             build1 has listOf(method1, method2)
         }.expectThat {
-            client.get("/metrics/builds/$build1Id").apply {
+            client.get("/groups/$testGroup/apps/$testApp/builds/$build1Id").apply {
                 assertEquals(HttpStatusCode.OK, status)
                 val json = JsonPath.parse(bodyAsText())
                 val data = json.read<Map<String, Any>>("$.data")
@@ -65,7 +63,7 @@ class BuildDetailApiTest : MetricsApiTests() {
                 namePattern = "method2"
             )
         }.expectThat {
-            client.get("/metrics/builds/$build1Id").apply {
+            client.get("/groups/$testGroup/apps/$testApp/builds/$build1Id").apply {
                 assertEquals(HttpStatusCode.OK, status)
                 val data = JsonPath.parse(bodyAsText()).read<Map<String, Any>>("$.data")
                 assertEquals(2, data["totalMethods"])
@@ -90,7 +88,7 @@ class BuildDetailApiTest : MetricsApiTests() {
         havingData {
             build has listOf(method1, method2)
         }.expectThat {
-            client.get("/metrics/builds/${build.buildId}").apply {
+            client.get("/groups/$testGroup/apps/$testApp/builds/${build.buildId}").apply {
                 assertEquals(HttpStatusCode.OK, status)
                 val data = JsonPath.parse(bodyAsText()).read<Map<String, Any>>("$.data")
                 assertEquals("VALID", data["validationStatus"])
@@ -108,7 +106,7 @@ class BuildDetailApiTest : MetricsApiTests() {
             build2 hasModified method2 comparedTo build1
             build2 hasNew method3 comparedTo build1
         }.expectThat {
-            client.get("/metrics/builds/$build2Id/changes-summary") {
+            client.get("/groups/$testGroup/apps/$testApp/builds/$build2Id/changes/summary") {
                 parameter("baselineBuildId", build1Id)
             }.apply {
                 assertEquals(HttpStatusCode.OK, status)
@@ -128,7 +126,7 @@ class BuildDetailApiTest : MetricsApiTests() {
             build1 has listOf(method1, method2)
             build2 hasModified method2 comparedTo build1
         }.expectThat {
-            client.get("/metrics/builds/$build2Id/similar-builds").apply {
+            client.get("/groups/$testGroup/apps/$testApp/builds/$build2Id/similar-builds").apply {
                 assertEquals(HttpStatusCode.OK, status)
                 val json = JsonPath.parse(bodyAsText())
                 val data = json.read<List<Map<String, Any>>>("$.data")
@@ -145,7 +143,7 @@ class BuildDetailApiTest : MetricsApiTests() {
             test1 of session1.testProjectId("project-a") covers method1 with probesOf(1, 1) on build1
             test2 of session2.testProjectId("project-b") covers method2 with probesOf(1, 1, 1) on build1
         }.expectThat {
-            client.get("/metrics/builds/$build1Id/coverage-by-probes") {
+            client.get("/groups/$testGroup/apps/$testApp/builds/$build1Id/coverage-by-probes") {
                 parameter("testProjectIds", "project-a")
             }.apply {
                 assertEquals(HttpStatusCode.OK, status)
@@ -169,7 +167,7 @@ class BuildDetailApiTest : MetricsApiTests() {
             val build3Id = generateBuildId(
                 testGroup, testApp, build3.instanceId, null, build3.buildVersion
             )
-            client.get("/metrics/builds/$build3Id/coverage-by-probes").apply {
+            client.get("/groups/$testGroup/apps/$testApp/builds/$build3Id/coverage-by-probes").apply {
                 assertEquals(HttpStatusCode.OK, status)
                 val json = JsonPath.parse(bodyAsText())
                 val slices = json.read<List<Map<String, Any>>>("$.data.slices")
