@@ -20,7 +20,7 @@ import com.epam.drill.admin.common.principal.Role
 import com.epam.drill.admin.auth.route.*
 import com.epam.drill.admin.common.principal.User
 import com.epam.drill.admin.config.dataSourceDIModule
-import com.epam.drill.admin.metrics.route.metricsRoutes
+import com.epam.drill.admin.metrics.route.legacyMetricsRoutes
 import com.epam.drill.admin.common.route.commonStatusPages
 import com.epam.drill.admin.common.scheduler.DrillScheduler
 import com.epam.drill.admin.config.SchedulerConfig
@@ -32,6 +32,9 @@ import com.epam.drill.admin.etl.route.etlManagementWriteRoutes
 import com.epam.drill.admin.metrics.config.*
 import com.epam.drill.admin.config.*
 import com.epam.drill.admin.config.route.configRoutes
+import com.epam.drill.admin.metrics.route.appsRoutes
+import com.epam.drill.admin.metrics.route.groupRoutes
+import com.epam.drill.admin.metrics.route.testsRoutes
 import com.epam.drill.admin.route.rootRoute
 import com.epam.drill.admin.route.uiConfigRoute
 import com.epam.drill.admin.writer.rawdata.config.RawDataWriterDatabaseConfig
@@ -147,7 +150,10 @@ fun Application.module() {
 
             //Metrics
             authenticate("jwt", "api-key") {
-                metricsRoutes()
+                legacyMetricsRoutes()
+                groupRoutes()
+                appsRoutes()
+                testsRoutes()
                 withRole(Role.USER, Role.ADMIN) {
                     configRoutes()
                 }

@@ -65,7 +65,7 @@ suspend fun HttpClient.postImpactedTests(
             }
         }
     }
-    return post("/metrics/impacted-tests") {
+    return post("/groups/${build.groupId}/apps/${build.appId}/impacted-tests") {
         contentType(ContentType.Application.Json)
         setBody(body)
     }.assertSuccessStatus()
@@ -97,7 +97,7 @@ suspend fun HttpClient.postImpactedTestsFilterOptions(
             }
         }
     }
-    return post("/metrics/impacted-tests/filter-options") {
+    return post("/groups/${build.groupId}/apps/${build.appId}/impacted-tests/filter-options") {
         contentType(ContentType.Application.Json)
         setBody(body)
     }.assertSuccessStatus()
@@ -109,10 +109,7 @@ suspend fun HttpClient.getBuildChanges(
     hasImpactedTests: Boolean? = null,
     otherParameters: HttpRequestBuilder.() -> Unit = {}
 ): HttpResponse {
-    return get("/metrics/build-changes") {
-        parameter("groupId", build.groupId)
-        parameter("appId", build.appId)
-        parameter("buildVersion", build.buildVersion)
+    return get("/groups/${build.groupId}/apps/${build.appId}/builds/${build.buildId}/changes") {
         parameter("baselineBuildVersion", baselineBuild.buildVersion)
         if (hasImpactedTests == true) {
             parameter("hasImpactedTests", true)
@@ -126,9 +123,7 @@ suspend fun HttpClient.getImpactedMethods(
     baselineBuild: InstancePayload,
     otherParameters: HttpRequestBuilder.() -> Unit = {}
 ): HttpResponse {
-    return get("/metrics/impacted-methods") {
-        parameter("groupId", build.groupId)
-        parameter("appId", build.appId)
+    return get("/groups/${build.groupId}/apps/${build.appId}/impacted-methods") {
         parameter("buildVersion", build.buildVersion)
         parameter("baselineBuildVersion", baselineBuild.buildVersion)
         otherParameters()
@@ -139,10 +134,7 @@ suspend fun HttpClient.getCoverage(
     build: InstancePayload,
     otherParameters: HttpRequestBuilder.() -> Unit
 ): HttpResponse {
-    return get("/metrics/coverage") {
-        parameter("groupId", build.groupId)
-        parameter("appId", build.appId)
-        parameter("buildVersion", build.buildVersion)
+    return get("/groups/${build.groupId}/apps/${build.appId}/builds/${build.buildId}/methods") {
         otherParameters()
     }.assertSuccessStatus()
 }

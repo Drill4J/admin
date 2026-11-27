@@ -29,7 +29,7 @@ import kotlin.test.assertTrue
  * Checks that incremental ETL picks up raw data whose `updated_at` is touched by RawDataWriter
  * when related data arrives later.
  */
-class IncrementalEtlTest : MetricsApiTests() {
+class IncrementalEtlTest : LegacyMetricsApiTests() {
 
     @Test
     fun `given coverage sent before its test launch, incremental ETL should load it once the test launch arrives`() {

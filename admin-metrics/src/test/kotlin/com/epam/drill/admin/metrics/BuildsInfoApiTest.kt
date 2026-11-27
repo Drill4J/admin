@@ -28,7 +28,7 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
-class BuildsInfoApiTest : MetricsApiTests() {
+class BuildsInfoApiTest : LegacyMetricsApiTests() {
     private suspend fun TestDataDsl.initTestData() {
         client.putBuildInfo(
             BuildInfoPayload(
@@ -108,10 +108,7 @@ class BuildsInfoApiTest : MetricsApiTests() {
         havingData {
             initTestData()
         }.expectThat {
-            client.get("/metrics/builds") {
-                parameter("groupId", testGroup)
-                parameter("appId", testApp)
-            }.apply {
+            client.get("/groups/$testGroup/apps/$testApp/builds").apply {
                 assertEquals(HttpStatusCode.OK, status)
                 val json = JsonPath.parse(bodyAsText())
                 val data = json.read<List<Map<String, Any>>>("$.data")
@@ -130,9 +127,7 @@ class BuildsInfoApiTest : MetricsApiTests() {
         havingData {
             initTestData()
         }.expectThat {
-            client.get("/metrics/builds") {
-                parameter("groupId", testGroup)
-                parameter("appId", testApp)
+            client.get("/groups/$testGroup/apps/$testApp/builds") {
                 parameter("branches", testBranch)
             }.apply {
                 assertEquals(HttpStatusCode.OK, status)
@@ -155,9 +150,7 @@ class BuildsInfoApiTest : MetricsApiTests() {
             initTestData()
             initEnvironmentData()
         }.expectThat {
-            client.get("/metrics/builds") {
-                parameter("groupId", testGroup)
-                parameter("appId", testApp)
+            client.get("/groups/$testGroup/apps/$testApp/builds") {
                 parameter("envIds", testEnv)
             }.apply {
                 assertEquals(HttpStatusCode.OK, status)
@@ -178,9 +171,7 @@ class BuildsInfoApiTest : MetricsApiTests() {
         havingData {
             initTestData()
         }.expectThat {
-            client.get("/metrics/builds") {
-                parameter("groupId", testGroup)
-                parameter("appId", testApp)
+            client.get("/groups/$testGroup/apps/$testApp/builds") {
                 parameter("page", 1)
                 parameter("pageSize", 2)
             }.apply {
@@ -192,9 +183,7 @@ class BuildsInfoApiTest : MetricsApiTests() {
                 assertEquals(3, total)
             }
 
-            client.get("/metrics/builds") {
-                parameter("groupId", testGroup)
-                parameter("appId", testApp)
+            client.get("/groups/$testGroup/apps/$testApp/builds") {
                 parameter("page", 2)
                 parameter("pageSize", 2)
             }.apply {
@@ -213,10 +202,7 @@ class BuildsInfoApiTest : MetricsApiTests() {
         havingData {
             initTestData()
         }.expectThat {
-            client.get("/metrics/apps/branches") {
-                parameter("groupId", testGroup)
-                parameter("appId", testApp)
-            }.apply {
+            client.get("/groups/$testGroup/apps/$testApp/branches").apply {
                 assertEquals(HttpStatusCode.OK, status)
                 val json = JsonPath.parse(bodyAsText())
                 val data = json.read<List<String>>("$.data")
@@ -229,9 +215,7 @@ class BuildsInfoApiTest : MetricsApiTests() {
         havingData {
             initTestData()
         }.expectThat {
-            client.get("/metrics/builds") {
-                parameter("groupId", testGroup)
-                parameter("appId", testApp)
+            client.get("/groups/$testGroup/apps/$testApp/builds") {
                 parameter("buildVersion", "1.0.0")
             }.apply {
                 assertEquals(HttpStatusCode.OK, status)
@@ -273,9 +257,7 @@ class BuildsInfoApiTest : MetricsApiTests() {
                 )
             )
         }.expectThat {
-            client.get("/metrics/builds") {
-                parameter("groupId", testGroup)
-                parameter("appId", testApp)
+            client.get("/groups/$testGroup/apps/$testApp/builds") {
                 parameter("commitSha", "abc111")
             }.apply {
                 assertEquals(HttpStatusCode.OK, status)
@@ -291,9 +273,7 @@ class BuildsInfoApiTest : MetricsApiTests() {
         havingData {
             initTestData()
         }.expectThat {
-            client.get("/metrics/builds") {
-                parameter("groupId", testGroup)
-                parameter("appId", testApp)
+            client.get("/groups/$testGroup/apps/$testApp/builds") {
                 parameter("sortBy", "BUILD_VERSION")
                 parameter("sortOrder", "ASC")
             }.apply {
@@ -314,10 +294,7 @@ class BuildsInfoApiTest : MetricsApiTests() {
             initTestData()
             initEnvironmentData()
         }.expectThat {
-            client.get("/metrics/apps/env-ids") {
-                parameter("groupId", testGroup)
-                parameter("appId", testApp)
-            }.apply {
+            client.get("/groups/$testGroup/apps/$testApp/env-ids").apply {
                 assertEquals(HttpStatusCode.OK, status)
                 val json = JsonPath.parse(bodyAsText())
                 val data = json.read<List<String>>("$.data")
@@ -344,10 +321,7 @@ class BuildsInfoApiTest : MetricsApiTests() {
                 listOf(method1)
             )
         }.expectThat {
-            client.get("/metrics/builds") {
-                parameter("groupId", testGroup)
-                parameter("appId", testApp)
-            }.apply {
+            client.get("/groups/$testGroup/apps/$testApp/builds").apply {
                 assertEquals(HttpStatusCode.OK, status)
                 val json = JsonPath.parse(bodyAsText())
                 val data = json.read<List<Map<String, Any>>>("$.data")
@@ -366,9 +340,7 @@ class BuildsInfoApiTest : MetricsApiTests() {
         havingData {
             initTestData()
         }.expectThat {
-            client.get("/metrics/builds") {
-                parameter("groupId", testGroup)
-                parameter("appId", testApp)
+            client.get("/groups/$testGroup/apps/$testApp/builds") {
                 parameter("sortBy", "BUILD_VERSION")
                 parameter("sortOrder", "DESC")
             }.apply {

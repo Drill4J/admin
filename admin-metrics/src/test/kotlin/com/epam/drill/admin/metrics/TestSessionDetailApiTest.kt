@@ -23,7 +23,7 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
-class TestSessionDetailApiTest : MetricsApiTests() {
+class TestSessionDetailApiTest : LegacyMetricsApiTests() {
     private val build1Id = "${build1.groupId}:${build1.appId}:${build1.buildVersion}"
 
     @Test
@@ -33,9 +33,7 @@ class TestSessionDetailApiTest : MetricsApiTests() {
             test1 of session1 covers method1 with probesOf(1, 1) on build1
             test2 of session1 covers method1 with probesOf(1, 1) on build1
         }.expectThat {
-            client.get("/metrics/test-sessions/${session1.id}") {
-                parameter("groupId", testGroup)
-            }.returnsSingle { data ->
+            client.get("/groups/$testGroup/test-sessions/${session1.id}").returnsSingle { data ->
                 assertEquals(session1.id, data["testSessionId"])
                 assertEquals(testGroup, data["groupId"])
                 assertEquals(build1Id, data["buildId"])
@@ -49,9 +47,7 @@ class TestSessionDetailApiTest : MetricsApiTests() {
             build1 has listOf(method1)
             test1 of session1 covers method1 with probesOf(1, 1) on build1
         }.expectThat {
-            val response = client.get("/metrics/test-sessions/${session1.id}") {
-                parameter("groupId", "other-group")
-            }
+            val response = client.get("/groups/other-group/test-sessions/${session1.id}")
             assertEquals(HttpStatusCode.NotFound, response.status)
         }
     }
@@ -62,20 +58,19 @@ class TestSessionDetailApiTest : MetricsApiTests() {
             build1 has listOf(method1, method2)
             test1 of session1 covers method1 with probesOf(1, 1) on build1
         }.expectThat {
-            val probesResponse = client.get("/metrics/builds/$build1Id/coverage-by-probes")
+            val probesResponse = client.get("/groups/$testGroup/apps/$testApp/builds/$build1Id/coverage-by-probes")
             val buildProbes = JsonPath.read<List<Map<String, Any>>>(
                 probesResponse.bodyAsText(),
                 "$.data.slices"
             ).sumOf { (it["value"] as Number).toInt() }
 
-            val methodsResponse = client.get("/metrics/builds/$build1Id/coverage-by-methods")
+            val methodsResponse = client.get("/groups/$testGroup/apps/$testApp/builds/$build1Id/coverage-by-methods")
             val buildMethods = JsonPath.read<List<Map<String, Any>>>(
                 methodsResponse.bodyAsText(),
                 "$.data.slices"
             ).sumOf { (it["value"] as Number).toInt() }
 
-            client.get("/metrics/test-sessions/${session1.id}/coverage-summary") {
-                parameter("groupId", testGroup)
+            client.get("/groups/$testGroup/test-sessions/${session1.id}/coverage") {
                 parameter("buildId", build1Id)
             }.returnsSingle { data ->
                 @Suppress("UNCHECKED_CAST")
@@ -109,8 +104,7 @@ class TestSessionDetailApiTest : MetricsApiTests() {
                 namePattern = method3.name
             )
         }.expectThat {
-            client.get("/metrics/test-sessions/${session1.id}/coverage-summary") {
-                parameter("groupId", testGroup)
+            client.get("/groups/$testGroup/test-sessions/${session1.id}/coverage") {
                 parameter("buildId", build1Id)
             }.returnsSingle { data ->
                 @Suppress("UNCHECKED_CAST")
@@ -131,20 +125,19 @@ class TestSessionDetailApiTest : MetricsApiTests() {
             test1 of session1 covers method1 with probesOf(1, 1) on build1
             test2 of session1 covers method2 with probesOf(1, 1, 1) on build1
         }.expectThat {
-            val probesResponse = client.get("/metrics/builds/$build1Id/coverage-by-probes")
+            val probesResponse = client.get("/groups/$testGroup/apps/$testApp/builds/$build1Id/coverage-by-probes")
             val buildProbes = JsonPath.read<List<Map<String, Any>>>(
                 probesResponse.bodyAsText(),
                 "$.data.slices"
             ).sumOf { (it["value"] as Number).toInt() }
 
-            val methodsResponse = client.get("/metrics/builds/$build1Id/coverage-by-methods")
+            val methodsResponse = client.get("/groups/$testGroup/apps/$testApp/builds/$build1Id/coverage-by-methods")
             val buildMethods = JsonPath.read<List<Map<String, Any>>>(
                 methodsResponse.bodyAsText(),
                 "$.data.slices"
             ).sumOf { (it["value"] as Number).toInt() }
 
-            client.get("/metrics/test-sessions/${session1.id}/coverage-summary") {
-                parameter("groupId", testGroup)
+            client.get("/groups/$testGroup/test-sessions/${session1.id}/coverage") {
                 parameter("buildId", build1Id)
                 parameter("testDefinitionId", test1.definitionId)
             }.returnsSingle { data ->
@@ -173,8 +166,7 @@ class TestSessionDetailApiTest : MetricsApiTests() {
             build1 has listOf(method1)
             test1 of session1 covers method1 with probesOf(1, 1) on build1
         }.expectThat {
-            client.get("/metrics/test-sessions/${session1.id}/coverage-summary") {
-                parameter("groupId", testGroup)
+            client.get("/groups/$testGroup/test-sessions/${session1.id}/coverage") {
                 parameter("buildId", build1Id)
             }.returnsSingle { data ->
                 @Suppress("UNCHECKED_CAST")
@@ -195,14 +187,10 @@ class TestSessionDetailApiTest : MetricsApiTests() {
             test1 of session1 covers method1 with probesOf(1, 1) on build1
             test2 of session1 covers method1 with probesOf(1, 1) on build1
         }.expectThat {
-            client.get("/metrics/test-sessions/${session1.id}/launches") {
-                parameter("groupId", testGroup)
-            }.returns { data ->
+            client.get("/groups/$testGroup/test-sessions/${session1.id}/launches").returns { data ->
                 assertEquals(2, data.size)
             }
-            client.get("/metrics/test-sessions/${session1.id}/file-launches") {
-                parameter("groupId", testGroup)
-            }.returns { data ->
+            client.get("/groups/$testGroup/test-sessions/${session1.id}/test-files").returns { data ->
                 assertTrue(data.isNotEmpty())
                 assertEquals(testPath, data[0]["testPath"])
             }
@@ -216,8 +204,7 @@ class TestSessionDetailApiTest : MetricsApiTests() {
             test1 of session1 covers method1 with probesOf(1, 1) on build1
             test1 of session1 covers method2 with probesOf(0, 0, 1) on build1
         }.expectThat {
-            client.get("/metrics/coverage") {
-                parameter("buildId", build1Id)
+            client.get("/groups/$testGroup/apps/$testApp/builds/$build1Id/methods") {
                 parameter("testSessionId", session1.id)
                 parameter("className", method1.classname)
             }.returns { data ->
@@ -234,8 +221,7 @@ class TestSessionDetailApiTest : MetricsApiTests() {
             test1 of session1 covers method1 with probesOf(1, 1) on build1
             test2 of session1 covers method1 with probesOf(1, 1) on build1
         }.expectThat {
-            client.get("/metrics/test-sessions/${session1.id}/definitions") {
-                parameter("groupId", testGroup)
+            client.get("/groups/$testGroup/test-sessions/${session1.id}/definitions") {
                 parameter("page", 1)
                 parameter("pageSize", 1)
             }.apply {
@@ -247,8 +233,7 @@ class TestSessionDetailApiTest : MetricsApiTests() {
                 assertEquals(2, total)
             }
 
-            client.get("/metrics/test-sessions/${session1.id}/definitions") {
-                parameter("groupId", testGroup)
+            client.get("/groups/$testGroup/test-sessions/${session1.id}/definitions") {
                 parameter("query", test1.testName)
                 parameter("page", 1)
                 parameter("pageSize", 20)
@@ -266,16 +251,14 @@ class TestSessionDetailApiTest : MetricsApiTests() {
             test1 of session1 covers method1 with probesOf(1, 1) on build1
             test2 of session1 covers method1 with probesOf(1, 1) on build1
         }.expectThat {
-            client.get("/metrics/test-sessions/${session1.id}/file-launches") {
-                parameter("groupId", testGroup)
+            client.get("/groups/$testGroup/test-sessions/${session1.id}/test-files") {
                 parameter("sortBy", "successRate")
                 parameter("sortOrder", "DESC")
             }.returns { data ->
                 assertTrue(data.isNotEmpty())
             }
 
-            val invalid = client.get("/metrics/test-sessions/${session1.id}/file-launches") {
-                parameter("groupId", testGroup)
+            val invalid = client.get("/groups/$testGroup/test-sessions/${session1.id}/test-files") {
                 parameter("sortBy", "invalidSortBy")
             }
             assertEquals(HttpStatusCode.BadRequest, invalid.status)
@@ -289,9 +272,7 @@ class TestSessionDetailApiTest : MetricsApiTests() {
             build1 has listOf(method1)
             test1 of session1 covers method1 with probesOf(1, 1) on build1
         }.expectThat {
-            client.get("/metrics/test-sessions/${session1.id}/file-launches/filter-options") {
-                parameter("groupId", testGroup)
-            }.returnsSingle { data ->
+            client.get("/groups/$testGroup/test-sessions/${session1.id}/test-files/filter-options").returnsSingle { data ->
                 @Suppress("UNCHECKED_CAST")
                 val testPaths = data["testPaths"] as List<String>
 
@@ -301,8 +282,7 @@ class TestSessionDetailApiTest : MetricsApiTests() {
                 assertTrue(results.isNotEmpty())
             }
 
-            client.get("/metrics/test-sessions/${session1.id}/file-launches/filter-options") {
-                parameter("groupId", testGroup)
+            client.get("/groups/$testGroup/test-sessions/${session1.id}/test-files/filter-options") {
                 parameter("page", 1)
             }.returnsStrings { data ->
                 assertTrue(data.contains(testPath))
@@ -317,24 +297,21 @@ class TestSessionDetailApiTest : MetricsApiTests() {
             test1 of session1 covers method1 with probesOf(1, 1) on build1
             test2 of session1 covers method1 with probesOf(1, 1) on build1
         }.expectThat {
-            client.get("/metrics/test-sessions/${session1.id}/launches") {
-                parameter("groupId", testGroup)
+            client.get("/groups/$testGroup/test-sessions/${session1.id}/launches") {
                 parameter("testNames", test1.testName)
             }.returns { data ->
                 assertEquals(1, data.size)
                 assertEquals(test1.testName, data[0]["testName"])
             }
 
-            client.get("/metrics/test-sessions/${session1.id}/launches") {
-                parameter("groupId", testGroup)
+            client.get("/groups/$testGroup/test-sessions/${session1.id}/launches") {
                 parameter("sortBy", "testLaunches")
                 parameter("sortOrder", "DESC")
             }.returns { data ->
                 assertEquals(2, data.size)
             }
 
-            val invalid = client.get("/metrics/test-sessions/${session1.id}/launches") {
-                parameter("groupId", testGroup)
+            val invalid = client.get("/groups/$testGroup/test-sessions/${session1.id}/launches") {
                 parameter("sortBy", "invalidSortBy")
             }
             assertEquals(HttpStatusCode.BadRequest, invalid.status)
@@ -348,23 +325,20 @@ class TestSessionDetailApiTest : MetricsApiTests() {
             build1 has listOf(method1)
             test1 of session1 covers method1 with probesOf(1, 1) on build1
         }.expectThat {
-            client.get("/metrics/test-sessions/${session1.id}/file-launches/page") {
-                parameter("groupId", testGroup)
+            client.get("/groups/$testGroup/test-sessions/${session1.id}/test-files/page") {
                 parameter("path", testPath)
                 parameter("pageSize", 1)
             }.returnsSingle { data ->
                 assertEquals(1, (data["page"] as Number).toInt())
             }
 
-            val invalid = client.get("/metrics/test-sessions/${session1.id}/file-launches/page") {
-                parameter("groupId", testGroup)
+            val invalid = client.get("/groups/$testGroup/test-sessions/${session1.id}/test-files/page") {
                 parameter("path", testPath)
                 parameter("sortBy", "invalidSortBy")
             }
             assertEquals(HttpStatusCode.BadRequest, invalid.status)
 
-            val missing = client.get("/metrics/test-sessions/${session1.id}/file-launches/page") {
-                parameter("groupId", testGroup)
+            val missing = client.get("/groups/$testGroup/test-sessions/${session1.id}/test-files/page") {
                 parameter("path", "missing.spec.ts")
             }
             assertEquals(HttpStatusCode.NotFound, missing.status)
@@ -377,8 +351,7 @@ class TestSessionDetailApiTest : MetricsApiTests() {
             test1 of session1 covers method1 with probesOf(1, 1) on build1
             test2 of session1 covers method1 with probesOf(1, 1) on build1
         }.expectThat {
-            client.get("/metrics/test-sessions/${session1.id}/launches/page") {
-                parameter("groupId", testGroup)
+            client.get("/groups/$testGroup/test-sessions/${session1.id}/launches/page") {
                 parameter("path", testPath)
                 parameter("launchId", test2.definitionId)
                 parameter("pageSize", 1)
@@ -386,15 +359,13 @@ class TestSessionDetailApiTest : MetricsApiTests() {
                 assertEquals(2, (data["page"] as Number).toInt())
             }
 
-            val invalid = client.get("/metrics/test-sessions/${session1.id}/launches/page") {
-                parameter("groupId", testGroup)
+            val invalid = client.get("/groups/$testGroup/test-sessions/${session1.id}/launches/page") {
                 parameter("launchId", test1.definitionId)
                 parameter("sortBy", "invalidSortBy")
             }
             assertEquals(HttpStatusCode.BadRequest, invalid.status)
 
-            val missing = client.get("/metrics/test-sessions/${session1.id}/launches/page") {
-                parameter("groupId", testGroup)
+            val missing = client.get("/groups/$testGroup/test-sessions/${session1.id}/launches/page") {
                 parameter("launchId", "missing-launch")
             }
             assertEquals(HttpStatusCode.NotFound, missing.status)

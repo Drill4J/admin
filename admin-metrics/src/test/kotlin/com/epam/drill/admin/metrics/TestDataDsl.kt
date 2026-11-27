@@ -23,7 +23,10 @@ import com.epam.drill.admin.etl.job.IncrementalRunEtlJob
 import com.epam.drill.admin.etl.job.incrementalRunEtlJobKey
 import com.epam.drill.admin.etl.route.etlManagementRoutes
 import com.epam.drill.admin.metrics.job.DeleteMetricsDataJob
-import com.epam.drill.admin.metrics.route.metricsRoutes
+import com.epam.drill.admin.metrics.route.appsRoutes
+import com.epam.drill.admin.metrics.route.groupRoutes
+import com.epam.drill.admin.metrics.route.legacyMetricsRoutes
+import com.epam.drill.admin.metrics.route.testsRoutes
 import com.epam.drill.admin.metrics.views.ChangeType
 import com.epam.drill.admin.metrics.views.TestImpactStatus
 import com.epam.drill.admin.test.StubDrillScheduler
@@ -77,7 +80,10 @@ fun havingData(testsData: suspend TestDataDsl.() -> Unit): HttpClient {
             }) {
             dataIngestRoutes()
             dataManagementWriteRoutes()
-            metricsRoutes()
+            legacyMetricsRoutes()
+            groupRoutes()
+            appsRoutes()
+            testsRoutes()
             route("/metrics") {
                 etlManagementRoutes()
             }

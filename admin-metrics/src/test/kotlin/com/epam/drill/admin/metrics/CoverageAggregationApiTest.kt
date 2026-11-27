@@ -26,7 +26,7 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
-class CoverageAggregationApiTest : MetricsApiTests() {
+class CoverageAggregationApiTest : LegacyMetricsApiTests() {
     private val build1Id = generateBuildId(
         testGroup, testApp, build1.instanceId, null, build1.buildVersion
     )
@@ -48,9 +48,7 @@ class CoverageAggregationApiTest : MetricsApiTests() {
             test1 covers classAMethod with probesOf(1, 1) on build1
             test1 covers classBMethod with probesOf(0, 0, 1) on build1
         }.expectThat {
-            client.get("/metrics/coverage/by-package") {
-                parameter("buildId", build1Id)
-            }.apply {
+            client.get("/groups/$testGroup/apps/$testApp/builds/$build1Id/packages").apply {
                 assertEquals(HttpStatusCode.OK, status)
                 val data = JsonPath.parse(bodyAsText()).read<List<Map<String, Any>>>("$.data")
                 assertEquals(1, data.size)
@@ -81,9 +79,7 @@ class CoverageAggregationApiTest : MetricsApiTests() {
                 namePattern = "methodB"
             )
         }.expectThat {
-            client.get("/metrics/coverage/by-package") {
-                parameter("buildId", build1Id)
-            }.apply {
+            client.get("/groups/$testGroup/apps/$testApp/builds/$build1Id/packages").apply {
                 assertEquals(HttpStatusCode.OK, status)
                 val data = JsonPath.parse(bodyAsText()).read<List<Map<String, Any>>>("$.data")
                 assertEquals(1, data.size)
@@ -107,9 +103,7 @@ class CoverageAggregationApiTest : MetricsApiTests() {
             )
             build1 has listOf(classAMethod, classBMethod)
         }.expectThat {
-            client.get("/metrics/coverage/by-package") {
-                parameter("buildId", build1Id)
-            }.apply {
+            client.get("/groups/$testGroup/apps/$testApp/builds/$build1Id/packages").apply {
                 assertEquals(HttpStatusCode.OK, status)
                 val data = JsonPath.parse(bodyAsText()).read<List<Map<String, Any>>>("$.data")
                 assertTrue(data.size >= 2)
@@ -143,8 +137,7 @@ class CoverageAggregationApiTest : MetricsApiTests() {
             test1 covers classCMethod with probesOf(1, 1) on build1
         }.expectThat {
             val packageName = "com/example/foo"
-            client.get("/metrics/coverage/by-class") {
-                parameter("buildId", build1Id)
+            client.get("/groups/$testGroup/apps/$testApp/builds/$build1Id/classes") {
                 parameter("packageName", packageName)
             }.apply {
                 assertEquals(HttpStatusCode.OK, status)
@@ -162,8 +155,7 @@ class CoverageAggregationApiTest : MetricsApiTests() {
 
             // The nested subpackage must be addressable on its own and must report
             // its own package name for the class it contains.
-            client.get("/metrics/coverage/by-class") {
-                parameter("buildId", build1Id)
+            client.get("/groups/$testGroup/apps/$testApp/builds/$build1Id/classes") {
                 parameter("packageName", "com/example/foo/sub")
             }.apply {
                 assertEquals(HttpStatusCode.OK, status)
@@ -182,8 +174,7 @@ class CoverageAggregationApiTest : MetricsApiTests() {
         havingData {
             build1 has listOf(method1, method2)
         }.expectThat {
-            client.get("/metrics/coverage") {
-                parameter("buildId", build1Id)
+            client.get("/groups/$testGroup/apps/$testApp/builds/$build1Id/methods") {
                 parameter("page", 1)
                 parameter("pageSize", 10)
             }.apply {

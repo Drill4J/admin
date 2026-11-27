@@ -301,12 +301,8 @@ interface MetricsService {
     suspend fun getBuildChanges(
         groupId: String,
         appId: String,
-        instanceId: String?,
-        commitSha: String?,
-        buildVersion: String?,
-        baselineInstanceId: String?,
-        baselineCommitSha: String?,
-        baselineBuildVersion: String?,
+        buildId: String,
+        baselineBuildId: String,
         testResults: List<String> = emptyList(),
         envIds: List<String> = emptyList(),
         branches: List<String> = emptyList(),
@@ -322,12 +318,9 @@ interface MetricsService {
     ): PagedList<BuildChangeView>
 
     suspend fun getCoverage(
-        buildId: String? = null,
-        groupId: String? = null,
-        appId: String? = null,
-        instanceId: String? = null,
-        commitSha: String? = null,
-        buildVersion: String? = null,
+        groupId: String,
+        appId: String,
+        buildId: String,
         testTags: List<String> = emptyList(),
         testResults: List<String> = emptyList(),
         envIds: List<String> = emptyList(),
@@ -368,8 +361,8 @@ interface MetricsService {
     ): PagedList<ClassCoverageView>
 
     suspend fun getImpactedTests(
-        build: Build,
-        baselineBuild: BaselineBuild,
+        buildId: String,
+        baselineBuildId: String,
         testCriteria: TestCriteria = TestCriteria.NONE,
         methodCriteria: MethodCriteria = MethodCriteria.NONE,
         coverageCriteria: CoverageCriteria = CoverageCriteria.NONE,
@@ -381,15 +374,15 @@ interface MetricsService {
     ): PagedList<TestView>
 
     suspend fun getImpactedTestsFilterOptions(
-        build: Build,
-        baselineBuild: BaselineBuild,
+        buildId: String,
+        baselineBuildId: String,
         methodCriteria: MethodCriteria = MethodCriteria.NONE,
         coverageCriteria: CoverageCriteria = CoverageCriteria.NONE,
     ): ImpactedTestsFilterOptionsView
 
     suspend fun getImpactedMethods(
-        build: Build,
-        baselineBuild: BaselineBuild,
+        buildId: String,
+        baselineBuildId: String,
         testCriteria: TestCriteria = TestCriteria.NONE,
         methodCriteria: MethodCriteria = MethodCriteria.NONE,
         coverageCriteria: CoverageCriteria = CoverageCriteria.NONE,

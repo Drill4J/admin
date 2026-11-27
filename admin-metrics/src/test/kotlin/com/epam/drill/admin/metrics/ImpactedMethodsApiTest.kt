@@ -15,7 +15,6 @@
  */
 package com.epam.drill.admin.metrics
 
-import com.epam.drill.admin.writer.rawdata.route.payload.TestDetails
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
@@ -29,7 +28,7 @@ import io.ktor.http.contentType
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
 
-class ImpactedMethodsApiTest : MetricsApiTests() {
+class ImpactedMethodsApiTest : LegacyMetricsApiTests() {
     @Test
     fun `given a build with changes, build-changes with hasImpactedTests should return impacted methods`() {
         havingData {
@@ -119,7 +118,7 @@ class ImpactedMethodsApiTest : MetricsApiTests() {
             test1 covers method1 on build1
             build2 hasModified method1 comparedTo build1
         }.expectThat { client ->
-            val response = client.post("/metrics/impacted-methods") {
+            val response = client.post("/groups/${build2.groupId}/apps/${build2.appId}/impacted-methods") {
                 contentType(ContentType.Application.Json)
                 setBody(
                     buildJsonObject {

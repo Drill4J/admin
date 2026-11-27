@@ -27,7 +27,7 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
-class ImpactedTestsApiTest : MetricsApiTests() {
+class ImpactedTestsApiTest : LegacyMetricsApiTests() {
 
     @Test
     fun `given a build with changes, impacted tests service should return a list of impacted tests`() {
@@ -173,7 +173,7 @@ class ImpactedTestsApiTest : MetricsApiTests() {
             test1 covers method1 on build1
             build2 hasModified method1 comparedTo build1
         }.expectThat { client ->
-            val response = client.post("/metrics/impacted-tests") {
+            val response = client.post("/groups/${build2.groupId}/apps/${build2.appId}/impacted-tests") {
                 contentType(ContentType.Application.Json)
                 setBody(
                     buildJsonObject {
